@@ -1,6 +1,14 @@
+# Ignore all .txt files in specific folders, except Paracou_input_global.txt
 TROLL/transfer_8110311_files_8a5bba64/*.txt
+!TROLL/transfer_8110311_files_8a5bba64/Paracou_input_global.txt
+
+# Ignore specific files
 TROLL/transfer_8110311_files_8a5bba64/TROLL.out
-TROLL/rconTROLL/*.txt
 TROLL/rconTROLL/*.rda
-!TROLL/rconTROLL/running_rcontrol.R
+
+# Ignore all files in 'rconTROLL', except 'running_rcontrol.R'
 TROLL/rconTROLL/*
+!TROLL/rconTROLL/running_rcontrol.R
+
+# Ignore macOS system files
+.DS_Store
