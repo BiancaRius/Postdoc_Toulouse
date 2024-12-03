@@ -1,0 +1,28 @@
+---
+title: "Climate data"
+author: Sylvain Schmitt -
+date: today
+date-format: medium
+format: 
+  gfm:
+    toc: true
+    toc-depth: 2
+---
+
+This folder contains climate data used to force the TROLL model at hourly or half-hourly time steps depending on the product:
+
+-   Guyaflux at Paracou provided by Damien Bonal (D. Bonal pers. com.) used mainly for validation and soil water content (m3/m3)
+-   FLUXNET 2015 at Paracou and Tapajos was retrieved freely from FLUXNET with the manifest.txt file tracing this retrieve
+-   ERA5-Land at Paracou was retrieved from the Climate Data Store (CDS) using the R package rcontroll
+-   ERA5-Land at Tapajos was retrieved from [Open-Meteo](https://open-meteo.com/) using mamba environment defined in get_era.yml and python code defined in get_era.py ran with the code below
+
+```{bash }
+#| eval: false
+mamba env create -f get_era.yml 
+conda activate get-era
+python get_era.py
+```
+
+```{r, comment=""}
+fs::dir_tree()
+```
