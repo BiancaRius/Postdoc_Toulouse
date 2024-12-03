@@ -10,5 +10,8 @@ TROLL/rconTROLL/*.rda
 TROLL/rconTROLL/*
 !TROLL/rconTROLL/running_rcontrol.R
 
+# Dont ignore files from the Nouragues folder
+!TROLL/Nouragues_climate/*
+
 # Ignore macOS system files
 .DS_Store
