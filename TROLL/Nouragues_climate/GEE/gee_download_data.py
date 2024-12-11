@@ -4,29 +4,31 @@ import numpy as np
 
 # ee.Authenticate()
 ee.Initialize(project='ee-biancafaziorius')
-# Inicializar Earth Engine
+# Initialize Earth Engine
 ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
 
-# Ler o arquivo de sites
+# Read the sites file
 sites = pd.read_table("sites_tab.csv", delimiter=";")
 sites['site_plot'] = sites['site'] + "_" + sites['plot']
 
-# Selecionar o site desejado
-site = "Nouragues_plot1"  # Modifique conforme necessário
+
+
+# Select the desired site
+site = "Nouragues_plot1"  # Modify as necessary
 sites = sites[sites["site_plot"] == site]
 
-# Definir a região de interesse
+# Define the region of interest
 longitude, latitude = sites["longitude"].values[0], sites["latitude"].values[0]
 point = ee.Geometry.Point([longitude, latitude])
 
-# Coleção de dados ERA5-LAND
+# ERA5-LAND data collection
 ic = (
     ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY")
     .filterBounds(point)
-    .filterDate('2001-01-01', '2001-02-28')  # Ajuste conforme necessário
+    .filterDate('2001-01-01', '2001-02-28')  # Adjust as necessary
 )
 
-# Reduzir a coleção ao ponto
+# Reduce the collection to the point
 def extract_at_point(image):
     values = image.reduceRegion(
         reducer=ee.Reducer.mean(),
@@ -36,32 +38,31 @@ def extract_at_point(image):
     )
     return ee.Feature(None, values).set({'time': image.date().format()})
 
-# Aplicar a extração e criar uma coleção de features
+# Apply the extraction and create a feature collection
 features = ic.map(extract_at_point).getInfo()
 
 
-# Ler o arquivo de sites
+# Read the sites file
 sites = pd.read_table("sites_tab.csv", delimiter=";")
 sites['site_plot'] = sites['site'] + "_" + sites['plot']
 
-# Selecionar o site desejado
-site = "Nouragues_plot1"  # Modifique conforme necessário
+# Select the desired site
+site = "Nouragues_plot1"  # Modify as necessary
 sites = sites[sites["site_plot"] == site]
 
-# Definir a região de interesse
+# Define the region of interest
 longitude, latitude = sites["longitude"].values[0], sites["latitude"].values[0]
 point = ee.Geometry.Point([longitude, latitude])
-
 
 # Filter the ERA5-LAND data collection
 ic = (
     ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY")
     .filterBounds(point)
-    .filterDate('2001-01-01', '2001-02-28')  # Modifique conforme necessário
-    .select(['total_precipitation_hourly', 'u_component_of_wind_10m', 'v_component_of_wind_10m'])  # Seleciona apenas as variáveis desejadas
+    .filterDate('2001-01-01', '2001-02-28')  # Adjust as necessary
+    .select(['total_precipitation_hourly', 'u_component_of_wind_10m', 'v_component_of_wind_10m'])  # Select only the desired variables
 )
 
-# Extrair dados no ponto selecionado
+# Extract data at the selected point
 def extract_at_point(image):
     values = image.reduceRegion(
         reducer=ee.Reducer.mean(),
@@ -71,10 +72,10 @@ def extract_at_point(image):
     )
     return ee.Feature(None, values).set({'time': image.date().format()})
 
-# Mapear e coletar os dados
+# Map and collect the data
 features = ic.map(extract_at_point).getInfo()
 
-# Criar DataFrame com apenas as variáveis filtradas
+# Create DataFrame with only the filtered variables
 data = []
 for feature in features['features']:
     properties = feature['properties']
@@ -83,15 +84,17 @@ for feature in features['features']:
 
 df = pd.DataFrame(data)
 
-# Calcular velocidade do vento
+# Calculate wind speed
 df['ws'] = np.sqrt(df['u_component_of_wind_10m']**2 + df['v_component_of_wind_10m']**2)
 
-# Adicionar informações do site e plot
+# Add site and plot information
 df.insert(0, "site", sites["site"].values[0])
 df.insert(0, "plot", sites["plot"].values[0])
 
-# Salvar em CSV
+
+
+# Save to CSV
 output_file = "output_filtered_data.csv"
 df.to_csv(output_file, sep="\t", index=False)
 
-print(f"Dados filtrados salvos em {output_file}")
+print(f"Filtered data saved to {output_file}")
