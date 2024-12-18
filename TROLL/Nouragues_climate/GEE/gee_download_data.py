@@ -59,7 +59,7 @@ ic = (
     ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY")
     .filterBounds(point)
     .filterDate('2001-01-01', '2001-02-28')  # Adjust as necessary
-    .select(['total_precipitation_hourly', 'u_component_of_wind_10m', 'v_component_of_wind_10m'])  # Select only the desired variables
+    .select(['dewpoint_temperature_2m','temperature_2m','surface_solar_radiation_downwards','total_precipitation_hourly', 'u_component_of_wind_10m', 'v_component_of_wind_10m','surface_pressure'])  # Select only the desired variables
 )
 
 # Extract data at the selected point
@@ -94,7 +94,14 @@ df.insert(0, "plot", sites["plot"].values[0])
 
 
 # Save to CSV
-output_file = "output_filtered_data.csv"
+output_file = "output_daily.csv"
 df.to_csv(output_file, sep="\t", index=False)
 
 print(f"Filtered data saved to {output_file}")
+
+
+#monthly:ic = (
+#     ee.ImageCollection("ECMWF/ERA5_LAND/MONTHLY_AGGR")
+#     .filterBounds(point)
+#     .filterDate('2001-01-01', '2001-02-28')  # Adjust as necessary
+# )
