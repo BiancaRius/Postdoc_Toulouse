@@ -10,7 +10,11 @@ TROLL/rconTROLL/*.rda
 TROLL/rconTROLL/*
 !TROLL/rconTROLL/running_rcontrol.R
 
+# Ignore input files for running TROLL
 
+TROLL/Nouragues_climate/data/climate/*.nc
+TROLL/Nouragues_climate/data/climate/*txt
+TROLL/Nouragues_climate/GEE/output_daily.csv
 
 # Ignore macOS system files
 .DS_Store
