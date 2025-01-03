@@ -39,13 +39,13 @@ request <- list(
   "area" = "3.960414/-52.85468/4.160414/-52.65468"
 )
 
-#ncfile <- wf_request(
-  #user = "6aea1719-7d4d-4e0b-8232-eccd84c72369",
-  #request = request,
-  #transfer = TRUE,
-  #path = ".",
-  #verbose = FALSE
-#)
+ncfile <- wf_request(
+  user = "6aea1719-7d4d-4e0b-8232-eccd84c72369",
+  request = request,
+  transfer = TRUE,
+  path = ".",
+  verbose = FALSE
+)
 
 request <- list(
   "dataset_short_name" = "reanalysis-era5-land-monthly-means",
@@ -102,17 +102,54 @@ ggplot(test, aes(date, tp)) +
   xlab("") +
   ylab("Total precipitation")
 
+# get the nc files that you downloaded:
+
+path_era5land_hour = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/Nouragues_climate/data/climate/ERA5land_hr_Nouragues_2022_2.nc"
+
+path_era5land_month = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/Nouragues_climate/data/climate/ERA5land_mth_Nouragues_2021_2022_2.nc"
+
+#climate <- generate_climate(
+# x = -52.75468,
+# y = 4.060414,
+# tz = "America/Cayenne",
+# era5land_hour = system.file("extdata", "ERA5land_hr_Nouragues_2022.nc",
+#                             package = "rcontroll"
+# ),
+# era5land_month = system.file("extdata", "ERA5land_mth_Nouragues_2021_2022.nc",
+#                              package = "rcontroll"
+# )
+#)
+
 climate <- generate_climate(
   x = -52.75468,
   y = 4.060414,
   tz = "America/Cayenne",
-  era5land_hour = system.file("extdata", "ERA5land_hr_Nouragues_2022.nc",
-                              package = "rcontroll"
-  ),
-  era5land_month = system.file("extdata", "ERA5land_mth_Nouragues_2021_2022.nc",
-                               package = "rcontroll"
+  era5land_hour = path_era5land_hour,
+  era5land_month = path_era5land_month
   )
-)
 
 write_tsv(climate$daytimevar, "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/Nouragues_climate/data/climate/ERA5land_daytimevar.txt")
 write_tsv(climate$climatedaytime12, "ERA5land_climatedaytime12.txt")
+
+
+#verifying the files:
+library(ncdf4)
+
+# Abra o arquivo e veja suas variáveis
+nc_data_local <- nc_open(path_era5land_hour)
+print(nc_data_local)
+
+nc_data_r_path = system.file("extdata", "ERA5land_hr_Nouragues_2022.nc",
+                                                  package = "rcontroll")
+nc_data_r = nc_open(nc_data_r_path)
+print(nc_data_r)
+
+# Liste as variáveis disponíveis
+variables_local <- names(nc_data_local$var)
+print(variables_local)
+
+variables_r <- names(nc_data_r$var)
+print(variables_r)
+
+# Feche o arquivo
+nc_close(nc_data)

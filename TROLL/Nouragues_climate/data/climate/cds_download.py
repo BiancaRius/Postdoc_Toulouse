@@ -19,12 +19,12 @@ if product == "1":
     request = {
         "product_type": ["monthly_averaged_reanalysis_by_hour_of_day"],
         "variable": ["10m_u_component_of_wind",
-        "10m_v_component_of_wind",
-        "2m_dewpoint_temperature",
-        "2m_temperature",
-        "surface_pressure",
-        "total_precipitation",
-        "surface_solar_radiation_downwards"],
+            "10m_v_component_of_wind",
+            "2m_dewpoint_temperature",
+            "2m_temperature",
+            "surface_pressure",
+            "total_precipitation",
+            "surface_solar_radiation_downwards"],
         "year": ["2022"],
         "month": ["01", "02", "03","04", "05", "06","07", "08", "09","10", "11", "12"],
         "time": ["00:00", "01:00", "02:00",
@@ -39,9 +39,9 @@ if product == "1":
         "download_format": "unarchived",
         "area": [3.960414,-52.85468,4.160414,-52.65468]
     }
-    filename = "ERA5lan_hr_Nouragues_2022.nc"
+   
     client = cdsapi.Client()
-    client.retrieve(dataset, request, filename).download()
+    client.retrieve(dataset, request).download("ERA5land_hr_Nouragues_2022_2.nc")
 
 else:
 # Request (2): Month means for the variable value in an specific time 00:00 UTC
@@ -49,12 +49,12 @@ else:
     request = {
         "product_type": ["monthly_averaged_reanalysis"],
         "variable": ["10m_u_component_of_wind",
-        "10m_v_component_of_wind",
-        "2m_dewpoint_temperature",
-        "2m_temperature",
-        "surface_pressure",
-        "total_precipitation",
-        "surface_solar_radiation_downwards"],
+            "10m_v_component_of_wind",
+            "2m_dewpoint_temperature",
+            "2m_temperature",
+            "surface_pressure",
+            "total_precipitation",
+            "surface_solar_radiation_downwards"],
         "year": ["2021","2022"],
         "month": ["01", "02", "03","04", "05", "06","07", "08", "09","10", "11", "12"],
         "time": ["00:00"],
@@ -64,5 +64,5 @@ else:
     }
     
     client = cdsapi.Client()
-    client.retrieve(dataset, request).download("ERA5land_mth_Nouragues_2021_2022.nc")
+    client.retrieve(dataset, request).download("ERA5land_mth_Nouragues_2021_2022_2.nc")
 
