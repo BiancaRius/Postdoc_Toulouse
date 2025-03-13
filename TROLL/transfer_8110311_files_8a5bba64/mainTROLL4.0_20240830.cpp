@@ -4412,7 +4412,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             canopy_environment_cumulated[4] += PPFD_voxel_incident * dens;
             canopy_environment_cumulated[5] += ExtinctLW_voxel * dens;
 #endif
-            
+        
             
             //if (canopy_environment_cumulated[1]<=0 || dens < 0.05 || absorb_delta < 0.05) {
             // cout << "Warning in GetCanopyEnvironment, PPFD <=0; PPFD_voxel=" << PPFD_voxel << "; dens=" << dens << endl;
@@ -4469,6 +4469,17 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
         //###########     MAIN PROGRAM    ###########
         //###########################################
         //###########################################
+
+/**
+ * @brief The main entry point of the TROLL model.
+ *
+ * This function initializes model parameters, processes command-line arguments,
+ * and starts the simulation loop for the TROLL vegetation model.
+ *
+ * @param argc The number of command-line arguments.
+ * @param argv An array of command-line argument strings.
+ * @return An integer indicating the success or failure of the program.
+ */        
         
         int main(int argc,char *argv[]) {
             
