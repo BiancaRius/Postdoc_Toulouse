@@ -5582,7 +5582,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
         */
         void ReadInputSoil(){
             cout << endl << "Reading in file: " << inputfile_soil << endl;
-            
+
             /// @brief Open the soil input file for reading
             fstream InSoil(inputfile_soil, ios::in);
             
@@ -5616,7 +5616,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 // Read different sets of variables depending on _WATER_RETENTION_CURVE flag                    
 if (_WATER_RETENTION_CURVE==1) {
                     float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current, SOC_current, DBD_current, pH_current, CEC_current, WTD_current;
-                    linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current >> SOC_current >> DBD_current >> pH_current >> CEC_current;
+                    linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current >> SOC_current >> DBD_current >> pH_current >> CEC_current >> WTD_current;
                     
                     /// @brief Store the read values into respective vectors
                     layer_thickness.push_back(thickness_current);
@@ -5639,7 +5639,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     proportion_Silt.push_back(proportion_Silt_current);
                     proportion_Clay.push_back(proportion_Clay_current);
                     proportion_Sand.push_back(proportion_Sand_current);
-                    WTD.push_back(WTD_current)
+                    WTD.push_back(WTD_current);
 }
                     
                     nblayers_soil++;
@@ -5684,6 +5684,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     /// @brief Compute hydraulic conductivity using Cosby et al. 1984 equation
                     Ksat[l]=0.007055556*pow(10,(-0.60-(0.0064*proportion_Clay[l])+(0.0126*proportion_Sand[l]))); // according to Cosby et al. 1984 (the only expression of k_sat reported in Table 2 of Marthews et al. 2014). k_sat is here in mm/s or equivalently in kg/m2/s.
                     cout << "layer " << l << " Ksat=" << Ksat[l] <<"mm/s or kg/m2/s  "<< Ksat[l]*9.8/18 << endl;
+                    cout << "layer " << l << " WTD= " << WTD[l] << endl;
                 }
                 
                 // Compute residual soil water content
@@ -5705,7 +5706,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     Min_SWC[l]=Res_SWC[l]*sites_per_dcell*LH*LH*layer_thickness[l]; //in m3
 
                     cout << "layer " << l << " Vol=" << sites_per_dcell*LH*LH*layer_thickness[l] << "m3; Res=" << Res_SWC[l]<<  " MIN_SWC =" << Min_SWC[l] << " m3" << endl;
-                    cout << "layer TESTE " << l
                 }
                 
 if (_WATER_RETENTION_CURVE==1) {
