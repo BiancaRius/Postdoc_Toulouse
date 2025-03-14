@@ -1,0 +1,6 @@
+# For the moment, I will ignore the model outputs
+
+# Ignore the files that start with (null)_0_
+(null)_0_*
+*.out
+Paracou_input*
