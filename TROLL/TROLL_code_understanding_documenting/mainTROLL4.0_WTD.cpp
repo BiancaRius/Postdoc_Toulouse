@@ -5592,7 +5592,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 // Soil property vectors
                 vector<float> layer_thickness, proportion_Silt, proportion_Clay, proportion_Sand; // in m, %, %,%
                 vector<float> SOC, DBD, pH, CEC; //soil organic content, provided in %; dry bulk density, in g cm-3; pH; cation exchange capacity, in cmol kg-1
-                
+                vector<float> WTD; // #1 trying to include WTD (predefined)
+ 
                 // Reserve space for vectors
                 SOC.reserve(20);
                 DBD.reserve(20);
@@ -5602,6 +5603,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 proportion_Silt.reserve(20);
                 proportion_Clay.reserve(20);
                 proportion_Sand.reserve(20);
+                WTD.reserve(20);
 
                 // Initializes the variable that will count the number of soil layers
                 nblayers_soil = 0;
@@ -5613,7 +5615,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 
 // Read different sets of variables depending on _WATER_RETENTION_CURVE flag                    
 if (_WATER_RETENTION_CURVE==1) {
-                    float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current, SOC_current, DBD_current, pH_current, CEC_current;
+                    float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current, SOC_current, DBD_current, pH_current, CEC_current, WTD_current;
                     linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current >> SOC_current >> DBD_current >> pH_current >> CEC_current;
                     
                     /// @brief Store the read values into respective vectors
@@ -5626,9 +5628,10 @@ if (_WATER_RETENTION_CURVE==1) {
                     DBD.push_back(DBD_current);
                     pH.push_back(pH_current);
                     CEC.push_back(CEC_current);
+                    WTD.push_back(WTD_current);
                     
 } else if (_WATER_RETENTION_CURVE==0) {
-                    float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current;
+                    float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current, WTD_current;
                     linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current;
 
                     /// @brief Store the read values into respective vectors
@@ -5636,6 +5639,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     proportion_Silt.push_back(proportion_Silt_current);
                     proportion_Clay.push_back(proportion_Clay_current);
                     proportion_Sand.push_back(proportion_Sand_current);
+                    WTD.push_back(WTD_current)
 }
                     
                     nblayers_soil++;
@@ -5701,6 +5705,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     Min_SWC[l]=Res_SWC[l]*sites_per_dcell*LH*LH*layer_thickness[l]; //in m3
 
                     cout << "layer " << l << " Vol=" << sites_per_dcell*LH*LH*layer_thickness[l] << "m3; Res=" << Res_SWC[l]<<  " MIN_SWC =" << Min_SWC[l] << " m3" << endl;
+                    cout << "layer TESTE " << l
                 }
                 
 if (_WATER_RETENTION_CURVE==1) {
@@ -5709,7 +5714,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(c_vgm=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc c_vgm" << endl;
                 if(NULL==(m_vgm=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc m_vgm" << endl;
 
-                
                 for (int l=0; l<nblayers_soil; l++) {
                     /** 
                      * @brief Computes the alpha parameter for the van Genuchten-Mualem model 
