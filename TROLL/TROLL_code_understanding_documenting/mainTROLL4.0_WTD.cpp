@@ -118,6 +118,10 @@ using namespace std;
 #define MeteoStation_Height 55.0 //!< Height of the meteo station where the input climate data are taken from. Here supposed to be above the canopy.
 
 char buffer[256], inputfile[256], inputfile_daytimevar[256], inputfile_climate[256], inputfile_soil[256], outputinfo[256],inputfile_inventory[256], inputfile_pointcloud[256], *bufi(0), *bufi_daytimevar(0), *bufi_climate(0), *bufi_soil(0), *buf(0), *bufi_data(0), *bufi_pointcloud(0); //!< Global variable: character strings used to read file names, or other features
+
+// trying to create another input file (TODO: put in the above line)
+char inputfile_wtd[256], *bufi_wtd(0);
+
 #ifdef WATER
 char inputfile_SWC[256], *bufi_dataSWC(0);
 
@@ -4526,6 +4530,9 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                         case 'p':                       // new v.3.0; initialisation of soil parameters from separate file ('p' for pedology)
                             bufi_soil = argv[argn]+2;
                             break;
+                        case 't':                       // new v (??) TODO: establish version
+                            bufi_wtd = argv[argn]+2;
+                            break;    
                         case 's':                       // new v.3.0; initialisation of species parameters from separate file
                             bufi_species = argv[argn]+2;
                             break;
@@ -4545,7 +4552,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                             break;
                         case 'n':
                             easympi_rank=atoi(argv[argn]+2); // new v.2.2
-                            
+
                     }
                 }
             }
@@ -4557,6 +4564,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             sprintf(inputfile_climate,"%s",bufi_climate);
             sprintf(inputfile_soil,"%s",bufi_soil);
             sprintf(inputfile_species,"%s",bufi_species);
+            sprintf(inputfile_wtd, "%s", bufi_wtd);
+
             
             if(_OUTPUT_pointcloud){
                 sprintf(inputfile_pointcloud,"%s",bufi_pointcloud); // v.3.1.6
@@ -5684,7 +5693,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     /// @brief Compute hydraulic conductivity using Cosby et al. 1984 equation
                     Ksat[l]=0.007055556*pow(10,(-0.60-(0.0064*proportion_Clay[l])+(0.0126*proportion_Sand[l]))); // according to Cosby et al. 1984 (the only expression of k_sat reported in Table 2 of Marthews et al. 2014). k_sat is here in mm/s or equivalently in kg/m2/s.
                     cout << "layer " << l << " Ksat=" << Ksat[l] <<"mm/s or kg/m2/s  "<< Ksat[l]*9.8/18 << endl;
-                    cout << "layer " << l << " WTD= " << WTD[l] << endl;
                 }
                 
                 // Compute residual soil water content
@@ -5776,6 +5784,25 @@ if (_WATER_RETENTION_CURVE==1) {
             cout << endl;
         }
 #endif
+
+#ifdef WATER
+        //! Global function: This function reads inputs from water table depth file
+        /*!
+        * \brief Reads inputs from water table depth file
+        *
+        * TODO: better describe function
+        *
+        * \return void
+        *
+        * \exception std::ios_base::failure If the file cannot be opened for reading.
+        */
+
+        void ReadInputWTD(){
+            cout << endl << "Reading in file: " << inputfile_wtd << endl;
+            fstream InSoil(inputfile_wtd, ios::in);
+        }
+#endif
+
         
         //! Global function: initialise intraspecific variables
         void InitialiseIntraspecific(){
@@ -6469,7 +6496,12 @@ if (_WATER_RETENTION_CURVE==1) {
 #ifdef WATER
             ReadInputSoil();
 #endif
-            
+
+// TODO: include ifdef WTD?
+#ifdef WATER
+            ReadInputWTD();
+#endif
+
             //** Initialization of trees **
             //*****************************
             T.reserve(sites);

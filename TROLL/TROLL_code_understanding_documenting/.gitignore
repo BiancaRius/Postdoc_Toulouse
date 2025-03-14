@@ -1,6 +1,13 @@
 # For the moment, I will ignore the model outputs
 
-# Ignore the files that start with (null)_0_
+# Ignore th output files that start with (null)_0_
 (null)_0_*
+
+# Ignore executable created
 *.out
+
+# Ignore input files
 Paracou_input*
+
+# Ignore WTD input
+wtd_test.txt
