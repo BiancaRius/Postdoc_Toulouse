@@ -4564,7 +4564,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             sprintf(inputfile_climate,"%s",bufi_climate);
             sprintf(inputfile_soil,"%s",bufi_soil);
             sprintf(inputfile_species,"%s",bufi_species);
-            sprintf(inputfile_wtd, "%s", bufi_wtd);
+            sprintf(inputfile_wtd, "%s", bufi_wtd);// TODO: check if the file name will be this
 
             
             if(_OUTPUT_pointcloud){
