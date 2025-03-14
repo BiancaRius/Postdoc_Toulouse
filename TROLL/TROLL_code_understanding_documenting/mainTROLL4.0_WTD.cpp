@@ -5799,7 +5799,39 @@ if (_WATER_RETENTION_CURVE==1) {
 
         void ReadInputWTD(){
             cout << endl << "Reading in file: " << inputfile_wtd << endl;
-            fstream InSoil(inputfile_wtd, ios::in);
+            fstream InWTD(inputfile_wtd, ios::in);
+
+            if(InWTD){
+                InWTD.getline(buffer,256,'\n');
+                vector<float> WTD_test; // TODO: change var name
+
+                WTD_test.reserve(20);
+                nblayers_soil = 0;
+
+                // we go through all lines in the input file
+                string line;
+                while(getline(InWTD, line)){
+                    istringstream linestream(line);
+
+                    float WTD_current;
+                    linestream >> WTD_current;
+                    WTD_test.push_back(WTD_current);
+
+                    nblayers_soil++;
+                }
+
+                cout << "Read in: " << nblayers_soil << " soil layers" << endl;
+
+                // for through layers
+                for (int l=0; l<nblayers_soil; l++){
+                    
+                    // print WTD for each layer
+                    cout << "layer " << l << " WTD= " << WTD_test[l] << endl; 
+                }
+
+            } else {
+                cout << "ERROR with the WTD file" << endl;
+            }
         }
 #endif
 
