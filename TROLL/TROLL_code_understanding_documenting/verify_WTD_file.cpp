@@ -3,21 +3,22 @@
 #include <string>
 
 int main() {
-    std::ifstream infile("Paracou_input_pedology_WTD.txt"); // Altere para o nome do seu arquivo
+    std::string file_path = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/Paracou_input_pedology_WTD.txt";
+    std::ifstream file(file_path); // Abre o arquivo para leitura
 
-    // Verifica se o arquivo foi aberto com sucesso
-    if (!infile) {
-        std::cerr << "Erro ao abrir o arquivo." << std::endl;
-        return 1;
+    if (!file) {
+        std::cerr << "Erro ao abrir o arquivo: " << file_path << std::endl;
+        return 1; // Retorna erro
     }
 
     std::string line;
+    int line_count = 0;
 
-    // Lê o arquivo linha por linha
-    while (std::getline(infile, line)) {
-        std::cout << line << std::endl; // Imprime cada linha no console
+    while (std::getline(file, line) && line_count < 10) { // Lê e imprime as primeiras 10 linhas
+        std::cout << line << std::endl;
+        line_count++;
     }
 
-    infile.close(); // Fecha o arquivo
+    file.close(); // Fecha o arquivo
     return 0;
 }
