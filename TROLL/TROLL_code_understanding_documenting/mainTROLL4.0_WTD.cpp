@@ -7263,7 +7263,16 @@ if (_WATER_RETENTION_CURVE==1) {
         void UpdateField() {
             
 #ifdef FULL_CLIMATE
-            
+
+    /**
+    * @brief Assigns daily climate variables.
+    *
+    * This code snippet assigns values from daily climate data arrays to individual variables.
+    * The modulo operator (%) is used to cycle through the daily data.
+    *
+    * @param iter      The current iteration number.
+    * @param nbdays    The total number of days in the climate data cycle.
+    */            
             tnight=NightTemperature[iter%nbdays];
             precip=Rainfall[iter%nbdays];
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];

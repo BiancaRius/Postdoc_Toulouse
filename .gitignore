@@ -18,3 +18,4 @@ TROLL/Nouragues_climate/GEE/output_daily.csv
 
 # Ignore macOS system files
 .DS_Store
+.Rproj.user
