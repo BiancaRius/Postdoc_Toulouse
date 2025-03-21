@@ -415,7 +415,12 @@ if (_WATER_RETENTION_CURVE==1) {
             cout << endl;
         }
 #endif
-````
+```
+### Water availability
+
+Function used `Water_availability()`
+
+##### Description
 
 
 

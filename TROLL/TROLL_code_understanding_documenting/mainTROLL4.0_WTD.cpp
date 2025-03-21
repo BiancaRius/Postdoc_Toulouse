@@ -1938,7 +1938,7 @@ void Tree::Water_availability() {
         t_root_biomass[l]=total_root_biomass*(shallow_bound-deep_bound);            // this is the root biomass in layer l, computed from the integration of the root biomass exponential profile in this layer, following Arora & Boer 2003. This also corresponds to the shape of cumulative root fraction used by Jackson et al. 1996 Oecologia, who gathered a large global database of root distributions with this equation. It was thus used in many models, e.g. Duursma & Medlyn 2012; Xu et al. 2016.
         //t_soil_layer_weight[l]=t_root_biomass[l]*10.0/(-log(sqrt(PI*t_root_biomass[l]*10.0)*0.001)); // this soil layer weight integrates the soil-to-root conductance into account (as in de Kauwe et al. 2015; Duursma & Medlyn 2012)
         
-        if(t_LA > 0.0){
+        if(t_LA > 0.0){         
 
 if (_WATER_RETENTION_CURVE==1) {
             if (_SOIL_LAYER_WEIGHT==0) { // soil layer weights as a function of root biomass in each layer only (cf. M1 in de Kauwe et al 2015)
@@ -4558,7 +4558,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             }
             
             
-            // input files
+            // input files (assigns file names)
             sprintf(inputfile,"%s",bufi);
             sprintf(inputfile_daytimevar,"%s",bufi_daytimevar);
             sprintf(inputfile_climate,"%s",bufi_climate);
@@ -5663,6 +5663,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 for (int l=0; l<nblayers_soil; l++) {
                     cumulative_depth+=layer_thickness[l];
                     layer_depth[l]=cumulative_depth;
+                    cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl ;
                 }
 
                 // Compute soil water characteristics
@@ -5823,9 +5824,10 @@ if (_WATER_RETENTION_CURVE==1) {
                 cout << "Read in: " << nblayers_soil << " soil layers" << endl;
 
                 // for through layers
+                // TODO: decide if it will be a new file or just a new column at the already existing pedology file
                 for (int l=0; l<nblayers_soil; l++){
                     
-                    // print WTD for each layer
+                    // print WTD for each layer (if a new file is created)
                     cout << "layer " << l << " WTD= " << WTD_test[l] << endl; 
                 }
 
