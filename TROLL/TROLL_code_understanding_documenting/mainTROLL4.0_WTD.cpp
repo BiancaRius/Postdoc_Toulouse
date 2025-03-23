@@ -54,7 +54,7 @@
 #undef CHECK_CARBON      //!< new in v.2.5: DIAGNOSTIC TOOL, checking of carbon budgets, could potentially be extended for nutrient budget checking in the future. The idea is to keep track of carbon stocks and carbon fluxes every timestep to see whether there are any deviations from expectations - to do so, differences between stocks are computed at each timestep, and can be compared to the gross and net assimilation of carbon
 #define FULL_CLIMATE
 #undef MIP_Lichstein //!< includes specific developments and outputs needed for the MIP experiment led by Jeremy Lichstein.
-
+#define WATER_TABLE_DEPTH
 
 
 // LIBRAIRIES
@@ -5663,6 +5663,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 for (int l=0; l<nblayers_soil; l++) {
                     cumulative_depth+=layer_thickness[l];
                     layer_depth[l]=cumulative_depth;
+                    cout << "print in read input soil " << endl;
                     cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl ;
                 }
 
@@ -7545,6 +7546,10 @@ if (_WATER_RETENTION_CURVE==1) {
                         if(in>(FC_SWC[l]-SWC3D[l][d])) {
                             in-=(FC_SWC[l]-SWC3D[l][d]);
                             SWC3D[l][d]=FC_SWC[l];
+#ifdef WATER_TABLE_DEPTH
+                            cout << " IF DEF WATER TABLE DEPTH" << endl;
+#endif
+
                             if(isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<=0) {
                                 cout << "incorrect SWC3D, Min/Max_SWC" << endl;
                                 cout <<Max_SWC[l] << endl;

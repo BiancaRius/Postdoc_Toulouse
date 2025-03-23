@@ -423,6 +423,30 @@ Function used `Water_availability()`
 ##### Description
 
 ### Update Field (bucket model, update seeds, recruit Tree)
+
+.................. COMPLETE
+
+#### Bucket model
+
+for dcells
+
+......... COMPLETE
+
+calculates water uptake from transpiration
+discount from SWC3D
+calculates evaporation from soil
+discount from SWCD3
+
+refill the soil with rainfall (the amount of rainfall that goes to the soil)
+calculates interception based on LAI
+throughfall is converted to m3
+
+rename the variable
+```cpp
+in = Throughfall[d] 
+```
+
+
  
 
 
