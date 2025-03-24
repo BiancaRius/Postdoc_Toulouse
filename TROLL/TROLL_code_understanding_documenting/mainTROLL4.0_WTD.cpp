@@ -172,6 +172,8 @@ int _OUTPUT_pointcloud;  //!<User control: ATTENTION! At the moment assumes a li
 int _SOIL_LAYER_WEIGHT; // !< User control: three ways of computing the fraction of transpiration supplied by each soil layer in individual tree total transpiration, and to weight the tree average water potential in the root zone. (0: root biomass only, 1: relative root-to soil conductance, 2: relative estimated maximal transpiration as in Duursma & Medlyn 2012).
 int _WATER_RETENTION_CURVE; // !< User control: different water retention curves can be used. So far two are have been implemented: either brooks & Corey (0), either van Genuchten-Mualem (1). To each wtare retention cirve option is associated a different set of pedo-transfer functions, see Table 2 (texture-based Tomasella & Hodnett 1998
 
+int _TOPOGRAPHY; // !< User control: different water retention curves can be used. So far two are have been implemented: either brooks & Corey (0), either van Genuchten-Mualem (1). To each wtare retention cirve option is associated a different set of pedo-transfer functions, see Table 2 (texture-based Tomasella & Hodnett 1998
+
 // GLOBAL PARAMETERS OF THE SIMULATION
 int sites;      //!< Global variable: number of pixels in the scene (cols*rows)
 int cols;       //!< Global variable: number of columns in the scene
@@ -7540,23 +7542,49 @@ if (_WATER_RETENTION_CURVE==1) {
                         l++;
                     }
                 }*/
+
+                float wtd_fix = 0.0; // variable used in the fixed (predefined) scheme of water table depth 
+
+// #ifdef WATER_TABLE_DEPTH
+//     if (_TOPOGRAPHY==0) wtd_fix = 0.33; 
+// #endif
+                wtd_fix = 0.33;
                 if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
                         if(in>(FC_SWC[l]-SWC3D[l][d])) {
                             in-=(FC_SWC[l]-SWC3D[l][d]);
-                            SWC3D[l][d]=FC_SWC[l];
-#ifdef WATER_TABLE_DEPTH
-                            cout << " IF DEF WATER TABLE DEPTH" << endl;
-#endif
+
+                            // if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water
+                            #ifdef WATER_TABLE_DEPTH
+
+                                if(layer_depth[l]>wtd_fix){
+                                    SWC3D[l][d]=Max_SWC[l];
+                                }
+                                else{ 
+                                    SWC3D[l][d]=FC_SWC[l];   
+                                }
+                            #else
+                                SWC3D[l][d]=FC_SWC[l];
+                            #endif
 
                             if(isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<=0) {
-                                cout << "incorrect SWC3D, Min/Max_SWC" << endl;
-                                cout <<Max_SWC[l] << endl;
-                            }
+                                    cout << "incorrect SWC3D, Min/Max_SWC" << endl;
+                                    cout <<Max_SWC[l] << endl;
+                            } 
                         }
                         else{
-                            SWC3D[l][d]+=in;
+                            #ifdef WATER_TABLE_DEPTH
+                                if(layer_depth[l]>wtd_fix){
+                                    SWC3D[l][d]=Max_SWC[l];
+                                }
+                                else{ 
+                                    SWC3D[l][d]+=in;   
+                                }
+                            #else
+                                SWC3D[l][d]+=in;
+                            #endif
+                            
                             if (isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<0) {
                                 cout << "incorrect SWC3D, Min/Max_SWC" << endl;
                                 cout << Throughfall[d] << "\t" <<in <<"\t" <<  precip << "\t" << Interception[d] << "\t" << LAI_DCELL[0][d] << endl;
