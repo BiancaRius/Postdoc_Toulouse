@@ -165,6 +165,8 @@ bool _FromInventory;      //!< User control: if defined, an additional input fil
 bool _sapwood;         //!< User control: two ways of parameterising sapwood density: constant thickness (0), Fyllas, but with lower limit (1)
 bool _seedsadditional; //!< User control: excess carbon into seeds? no/yes=(0/1)
 bool _LL_parameterization;   //!< User control: two ways for parameterising leaf lifespan: empirical (derived by Sylvain Schmitt, TODO: from which data?), Kikuzawa model (0,1)
+bool _WATER_TABLE; // !< User control: different water retention curves can be used. So far two are have been implemented: either brooks & Corey (0), either van Genuchten-Mualem (1). To each wtare retention cirve option is associated a different set of pedo-transfer functions, see Table 2 (texture-based Tomasella & Hodnett 1998
+
 
 int _LA_regulation;     //!< User control: updated v.3.1: potentially three ways of parameterising leaf dynamic allocation, but currently using only two ways: no regulation (0), never exceed LAImax, i.e. the maximum LAI under full sunlight (1), adjust LAI to the current light environment (2). To switch between option 1 and 2, only one line is necessary in CalcLAmax()
 int _OUTPUT_pointcloud;  //!<User control: ATTENTION! At the moment assumes a little-endian system (most personal computers, but not necessarily server systems), because LAS fles are in little-endian! If == 1, creates a point cloud from a simplified ALS simulation;
@@ -172,7 +174,6 @@ int _OUTPUT_pointcloud;  //!<User control: ATTENTION! At the moment assumes a li
 int _SOIL_LAYER_WEIGHT; // !< User control: three ways of computing the fraction of transpiration supplied by each soil layer in individual tree total transpiration, and to weight the tree average water potential in the root zone. (0: root biomass only, 1: relative root-to soil conductance, 2: relative estimated maximal transpiration as in Duursma & Medlyn 2012).
 int _WATER_RETENTION_CURVE; // !< User control: different water retention curves can be used. So far two are have been implemented: either brooks & Corey (0), either van Genuchten-Mualem (1). To each wtare retention cirve option is associated a different set of pedo-transfer functions, see Table 2 (texture-based Tomasella & Hodnett 1998
 
-int _TOPOGRAPHY; // !< User control: different water retention curves can be used. So far two are have been implemented: either brooks & Corey (0), either van Genuchten-Mualem (1). To each wtare retention cirve option is associated a different set of pedo-transfer functions, see Table 2 (texture-based Tomasella & Hodnett 1998
 
 // GLOBAL PARAMETERS OF THE SIMULATION
 int sites;      //!< Global variable: number of pixels in the scene (cols*rows)
@@ -399,6 +400,7 @@ unsigned short *Thurt[3];  //!<  Global vector:Treefall field
 #ifdef WATER
 int nblayers_soil; //!< Global variable: number of soil layers (for water module)
 float *layer_depth(0); //!< Global vector: depth of each layer (m) !!!UPDATE
+float WTD;
 
 // soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this should be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils, and comments in the code). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data made using a new function of RconTROLL, if unearthed.
 // since soil layers (silt, clay, sand) are only needed locally, they are now coded as vectors
@@ -4634,7 +4636,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 #ifdef WATER
             cout << "Atmospheric pressure is: " << PRESS << endl;
 #endif
-            
+            if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD=" << WTD << endl;
+
             if(_GPPcrown == 1) cout << "Activated Module: FastGPP" << endl;
             if(_BASICTREEFALL == 1) cout << "Activated Module: BASICTREEFALL" << endl;
             if(_NDD == 1) cout << "Activated Module: NDD" << endl;
@@ -4838,6 +4841,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 SetParameter(parameter_name, parameter_value, SWtoPPFD, 0.0f, 5.0f, 2.29f, quiet);
             } else if(parameter_name == "klight"){
                 SetParameter(parameter_name, parameter_value, klight, 0.0f, 1.0f, 0.5f, quiet);
+            } else if(parameter_name == "WTD"){
+                SetParameter(parameter_name, parameter_value, WTD, 0.0f, 100.0f, 3.0f, quiet);
             } else if(parameter_name == "absorptance_leaves"){
                 SetParameter(parameter_name, parameter_value, absorptance_leaves, 0.0f, 1.0f, 0.9f, quiet);
             } else if(parameter_name == "theta"){
@@ -4951,6 +4956,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 SetParameter(parameter_name, parameter_value, _WATER_RETENTION_CURVE, 0, 1, 0, quiet);
             } else if(parameter_name == "_NONRANDOM"){
                 SetParameter(parameter_name, parameter_value, _NONRANDOM, bool(0), bool(1), bool(1), quiet);
+            } else if(parameter_name == "_WATER_TABLE"){
+                SetParameter(parameter_name, parameter_value, _WATER_TABLE, bool(0), bool(1), bool(0), quiet);
             } else if(parameter_name == "_GPPcrown"){
                 SetParameter(parameter_name, parameter_value, _GPPcrown, bool(0), bool(1), bool(0), quiet);
             } else if(parameter_name == "_BASICTREEFALL"){
@@ -5039,8 +5046,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             fstream In(inputfile, ios::in);
             if(In){
 #ifdef WATER
-                string parameter_names[71] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
-                int nb_parameters = 71;
+                string parameter_names[73] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta","WTD", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_WATER_TABLE", "_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
+                int nb_parameters = 73;
 #else
                 string parameter_names[61] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_NONRANDOM","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","extent_visual"};
                 int nb_parameters = 61;
@@ -5689,7 +5696,11 @@ if (_WATER_RETENTION_CURVE==1) {
 }
                     Max_SWC[l]=Sat_SWC[l]*sites_per_dcell*LH*LH*layer_thickness[l]; // in m3
                     cout << "layer " << l << " Vol=" << sites_per_dcell*LH*LH*layer_thickness[l]<< " m3; Sat_SWC =" << Sat_SWC[l] << " MAX_SWC =" << Max_SWC[l] << " m3." << endl;
+                
+                    cout << "layer " << l << "  Max SWC!!!! = " << Max_SWC[l] << endl;
+
                 }
+
                 
                 // Compute saturated hydraulic conductivity
                 if(NULL==(Ksat=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc Ksat" << endl;
@@ -7543,48 +7554,19 @@ if (_WATER_RETENTION_CURVE==1) {
                     }
                 }*/
 
-                float wtd_fix = 0.0; // variable used in the fixed (predefined) scheme of water table depth 
-
-// #ifdef WATER_TABLE_DEPTH
-//     if (_TOPOGRAPHY==0) wtd_fix = 0.33; 
-// #endif
-                wtd_fix = 0.33;
                 if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
                         if(in>(FC_SWC[l]-SWC3D[l][d])) {
                             in-=(FC_SWC[l]-SWC3D[l][d]);
-
-                            // if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water
-                            #ifdef WATER_TABLE_DEPTH
-
-                                if(layer_depth[l]>wtd_fix){
-                                    SWC3D[l][d]=Max_SWC[l];
-                                }
-                                else{ 
-                                    SWC3D[l][d]=FC_SWC[l];   
-                                }
-                            #else
-                                SWC3D[l][d]=FC_SWC[l];
-                            #endif
-
+                            SWC3D[l][d]=FC_SWC[l];
                             if(isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<=0) {
                                     cout << "incorrect SWC3D, Min/Max_SWC" << endl;
                                     cout <<Max_SWC[l] << endl;
                             } 
                         }
                         else{
-                            #ifdef WATER_TABLE_DEPTH
-                                if(layer_depth[l]>wtd_fix){
-                                    SWC3D[l][d]=Max_SWC[l];
-                                }
-                                else{ 
-                                    SWC3D[l][d]+=in;   
-                                }
-                            #else
-                                SWC3D[l][d]+=in;
-                            #endif
-                            
+                            SWC3D[l][d]+=in;
                             if (isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<0) {
                                 cout << "incorrect SWC3D, Min/Max_SWC" << endl;
                                 cout << Throughfall[d] << "\t" <<in <<"\t" <<  precip << "\t" << Interception[d] << "\t" << LAI_DCELL[0][d] << endl;
@@ -7597,8 +7579,37 @@ if (_WATER_RETENTION_CURVE==1) {
                 else{ //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
                     Runoff[d]=Throughfall[d];
                 }
+
+
                 // Leakage
                 Leakage[d]=in;
+                
+#ifdef WATER_TABLE_DEPTH
+
+
+                float wtd_fix = 0.0; // variable used in the fixed (predefined) scheme of water table depth 
+
+
+// #ifdef WATER_TABLE_DEPTH
+//     if (_TOPOGRAPHY==0) wtd_fix = 0.33; 
+// #endif
+                wtd_fix = 0.33;
+
+                /// Considering water table depth
+                int l=0; // layer counter
+                while((l<nblayers_soil)) {
+                    // cout << "layer bucket model  " << l << endl;
+                    //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water
+                        if(layer_depth[l]>wtd_fix){
+                            SWC3D[l][d]=Max_SWC[l];
+                            // cout << "> wtd - layer :  " << l << endl;
+                            // cout << " SWC " << SWC3D[l][d] << endl;
+                        }
+
+                    l++;
+                }
+ #endif
+            
             }
             // END of the BUCKET MODEL.
             
@@ -8059,6 +8070,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 float soilWC=0.0;
                 for (int d=0; d<nbdcells;d++) {
                     soilWC+=SWC3D[l][d]; // in m3
+                    // cout << "layer OUTPUT  " << l << " soilWC " << soilWC << " SWC3D " << SWC3D[l][d] << endl; 
                 }
                 float layer_depth_current = layer_depth[l];
                 float layer_thickness = layer_depth_current - layer_depth_previous;
