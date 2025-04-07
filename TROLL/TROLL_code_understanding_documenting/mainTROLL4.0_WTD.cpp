@@ -119,8 +119,6 @@ using namespace std;
 
 char buffer[256], inputfile[256], inputfile_daytimevar[256], inputfile_climate[256], inputfile_soil[256], outputinfo[256],inputfile_inventory[256], inputfile_pointcloud[256], *bufi(0), *bufi_daytimevar(0), *bufi_climate(0), *bufi_soil(0), *buf(0), *bufi_data(0), *bufi_pointcloud(0); //!< Global variable: character strings used to read file names, or other features
 
-// trying to create another input file (TODO: put in the above line)
-char inputfile_wtd[256], *bufi_wtd(0);
 
 #ifdef WATER
 char inputfile_SWC[256], *bufi_dataSWC(0);
@@ -165,7 +163,7 @@ bool _FromInventory;      //!< User control: if defined, an additional input fil
 bool _sapwood;         //!< User control: two ways of parameterising sapwood density: constant thickness (0), Fyllas, but with lower limit (1)
 bool _seedsadditional; //!< User control: excess carbon into seeds? no/yes=(0/1)
 bool _LL_parameterization;   //!< User control: two ways for parameterising leaf lifespan: empirical (derived by Sylvain Schmitt, TODO: from which data?), Kikuzawa model (0,1)
-bool _WATER_TABLE; // !< User control: different water retention curves can be used. So far two are have been implemented: either brooks & Corey (0), either van Genuchten-Mualem (1). To each wtare retention cirve option is associated a different set of pedo-transfer functions, see Table 2 (texture-based Tomasella & Hodnett 1998
+bool _WATER_TABLE; // !< User control: if _WATER_TABLE == 1, the water table depth is activated, then the soil layer below the depth (WTD variable in global parameters) are always saturated
 
 
 int _LA_regulation;     //!< User control: updated v.3.1: potentially three ways of parameterising leaf dynamic allocation, but currently using only two ways: no regulation (0), never exceed LAImax, i.e. the maximum LAI under full sunlight (1), adjust LAI to the current light environment (2). To switch between option 1 and 2, only one line is necessary in CalcLAmax()
@@ -4534,9 +4532,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                         case 'p':                       // new v.3.0; initialisation of soil parameters from separate file ('p' for pedology)
                             bufi_soil = argv[argn]+2;
                             break;
-                        case 't':                       // new v (??) TODO: establish version
-                            bufi_wtd = argv[argn]+2;
-                            break;    
                         case 's':                       // new v.3.0; initialisation of species parameters from separate file
                             bufi_species = argv[argn]+2;
                             break;
@@ -4568,7 +4563,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             sprintf(inputfile_climate,"%s",bufi_climate);
             sprintf(inputfile_soil,"%s",bufi_soil);
             sprintf(inputfile_species,"%s",bufi_species);
-            sprintf(inputfile_wtd, "%s", bufi_wtd);// TODO: check if the file name will be this
 
             
             if(_OUTPUT_pointcloud){
@@ -4636,7 +4630,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 #ifdef WATER
             cout << "Atmospheric pressure is: " << PRESS << endl;
 #endif
-            if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD=" << WTD << endl;
+            if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD = " << WTD << endl;
 
             if(_GPPcrown == 1) cout << "Activated Module: FastGPP" << endl;
             if(_BASICTREEFALL == 1) cout << "Activated Module: BASICTREEFALL" << endl;
@@ -5610,7 +5604,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 // Soil property vectors
                 vector<float> layer_thickness, proportion_Silt, proportion_Clay, proportion_Sand; // in m, %, %,%
                 vector<float> SOC, DBD, pH, CEC; //soil organic content, provided in %; dry bulk density, in g cm-3; pH; cation exchange capacity, in cmol kg-1
-                vector<float> WTD; // #1 trying to include WTD (predefined)
  
                 // Reserve space for vectors
                 SOC.reserve(20);
@@ -5621,7 +5614,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 proportion_Silt.reserve(20);
                 proportion_Clay.reserve(20);
                 proportion_Sand.reserve(20);
-                WTD.reserve(20);
 
                 // Initializes the variable that will count the number of soil layers
                 nblayers_soil = 0;
@@ -5633,8 +5625,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 
 // Read different sets of variables depending on _WATER_RETENTION_CURVE flag                    
 if (_WATER_RETENTION_CURVE==1) {
-                    float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current, SOC_current, DBD_current, pH_current, CEC_current, WTD_current;
-                    linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current >> SOC_current >> DBD_current >> pH_current >> CEC_current >> WTD_current;
+                    float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current, SOC_current, DBD_current, pH_current, CEC_current;
+                    linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current >> SOC_current >> DBD_current >> pH_current >> CEC_current;
                     
                     /// @brief Store the read values into respective vectors
                     layer_thickness.push_back(thickness_current);
@@ -5646,10 +5638,10 @@ if (_WATER_RETENTION_CURVE==1) {
                     DBD.push_back(DBD_current);
                     pH.push_back(pH_current);
                     CEC.push_back(CEC_current);
-                    WTD.push_back(WTD_current);
+
                     
 } else if (_WATER_RETENTION_CURVE==0) {
-                    float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current, WTD_current;
+                    float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current;
                     linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current;
 
                     /// @brief Store the read values into respective vectors
@@ -5657,7 +5649,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     proportion_Silt.push_back(proportion_Silt_current);
                     proportion_Clay.push_back(proportion_Clay_current);
                     proportion_Sand.push_back(proportion_Sand_current);
-                    WTD.push_back(WTD_current);
 }
                     
                     nblayers_soil++;
@@ -5797,57 +5788,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 cout<< "ERROR with the soil file" << endl;
             }
             cout << endl;
-        }
-#endif
-
-#ifdef WATER
-        //! Global function: This function reads inputs from water table depth file
-        /*!
-        * \brief Reads inputs from water table depth file
-        *
-        * TODO: better describe function
-        *
-        * \return void
-        *
-        * \exception std::ios_base::failure If the file cannot be opened for reading.
-        */
-
-        void ReadInputWTD(){
-            cout << endl << "Reading in file: " << inputfile_wtd << endl;
-            fstream InWTD(inputfile_wtd, ios::in);
-
-            if(InWTD){
-                InWTD.getline(buffer,256,'\n');
-                vector<float> WTD_test; // TODO: change var name
-
-                WTD_test.reserve(20);
-                nblayers_soil = 0;
-
-                // we go through all lines in the input file
-                string line;
-                while(getline(InWTD, line)){
-                    istringstream linestream(line);
-
-                    float WTD_current;
-                    linestream >> WTD_current;
-                    WTD_test.push_back(WTD_current);
-
-                    nblayers_soil++;
-                }
-
-                cout << "Read in: " << nblayers_soil << " soil layers" << endl;
-
-                // for through layers
-                // TODO: decide if it will be a new file or just a new column at the already existing pedology file
-                for (int l=0; l<nblayers_soil; l++){
-                    
-                    // print WTD for each layer (if a new file is created)
-                    cout << "layer " << l << " WTD= " << WTD_test[l] << endl; 
-                }
-
-            } else {
-                cout << "ERROR with the WTD file" << endl;
-            }
         }
 #endif
 
@@ -6545,10 +6485,7 @@ if (_WATER_RETENTION_CURVE==1) {
             ReadInputSoil();
 #endif
 
-// TODO: include ifdef WTD?
-#ifdef WATER
-            ReadInputWTD();
-#endif
+
 
             //** Initialization of trees **
             //*****************************
@@ -7583,32 +7520,36 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // Leakage
                 Leakage[d]=in;
-                
-#ifdef WATER_TABLE_DEPTH
 
 
-                float wtd_fix = 0.0; // variable used in the fixed (predefined) scheme of water table depth 
+    /**  @brief Applies water table depth effect on soil water content (SWC) if the bucket model is enabled.
+    *If the water table model (_WATER_TABLE) is enabled (== 1), this block updates the soil water content
+    *(SWC3D) in each soil layer. For layers located below the water table depth (WTD), the soil water
+    *content is set to its maximum (Max_SWC).
+    * @details
+    * - `layer_depth[l] > WTD`: if the depth of the soil layer is below the water table,
+    *   the layer is considered saturated and assigned its maximum water holding capacity.
+    * - `SWC3D[l][d]`: 3D matrix representing soil water content per layer `l` and day `d`.
+    * - `Max_SWC[l]`: maximum soil water content for each layer.
+    * - `nblayers_soil`: total number of soil layers.
+    * - The loop increments through each soil layer `l` from 0 to `nblayers_soil - 1`
+    */
+                if (_WATER_TABLE == 1){
 
+                    /// Considering water table depth
+                    int l=0; // layer counter
+                    while((l<nblayers_soil)) {
+                        // cout << "layer bucket model  " << l << endl;
+                        //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water the soil layer can hold
+                            if(layer_depth[l]>WTD){
+                                SWC3D[l][d] = Max_SWC[l];
+                                // cout << "> wtd - layer :  " << l << endl;
+                                // cout << " SWC " << SWC3D[l][d] << endl;
+                            }
 
-// #ifdef WATER_TABLE_DEPTH
-//     if (_TOPOGRAPHY==0) wtd_fix = 0.33; 
-// #endif
-                wtd_fix = 0.33;
-
-                /// Considering water table depth
-                int l=0; // layer counter
-                while((l<nblayers_soil)) {
-                    // cout << "layer bucket model  " << l << endl;
-                    //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water
-                        if(layer_depth[l]>wtd_fix){
-                            SWC3D[l][d]=Max_SWC[l];
-                            // cout << "> wtd - layer :  " << l << endl;
-                            // cout << " SWC " << SWC3D[l][d] << endl;
-                        }
-
-                    l++;
+                        l++;
+                    }
                 }
- #endif
             
             }
             // END of the BUCKET MODEL.
