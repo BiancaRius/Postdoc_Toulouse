@@ -440,11 +440,56 @@ discount from SWCD3
 refill the soil with rainfall (the amount of rainfall that goes to the soil)
 calculates interception based on LAI
 throughfall is converted to m3
+soil layer weight
 
 rename the variable
 ```cpp
 in = Throughfall[d] 
 ```
+
+##### Water table depth - fixed values version
+
+This version introduces the option to include a fixed water table depth (WTD) in the model, with three configuration modes:
+
+1. No WTD – original soil water dynamics.
+
+2. Shallow WTD – last three soil layers are saturated.
+
+3. Deep WTD – only the last soil layer is saturated.
+
+###### Activation
+Control the water table feature via the a parameter in the input_global file:
+
+```cpp
+_WATER_TABLE = 0 // disables water table
+_WATER_TABLE = 1 // enables water table
+```
+If _WATER_TABLE = 1, the model will simulate soil water content based on a fixed water table depth.
+
+
+###### Water Table Depth Definitions
+Soil layers from surface to bottom:
+
+| Layer | Thickness (m) | Cumulative Depth (m) |
+|-------|----------------|----------------------|
+| 1     | 0.10           | 0.10                 |
+| 2     | 0.23           | 0.33                 |
+| 3     | 0.40           | 0.73                 |
+| 4     | 0.80           | 1.53                 |
+| 5     | 0.97           | 2.50                 |
+
+Water table depth settings:
+
+- Shallow WTD: below the top two layers → WTD = 0.33 m
+
+- Deep WTD: below the top four layers → WTD = 1.53 m
+
+- TODO: some tests that can be done: vary layers depths? vary layers soil composition?
+
+
+
+
+
 
 
  

@@ -7230,7 +7230,12 @@ if (_WATER_RETENTION_CURVE==1) {
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[iter%nbdays];
             VPDDailyMean=DailyMeanVapourPressureDeficit[iter%nbdays];
-            
+
+           // cout << "redular prec :  " << precip << endl;
+            // Applying reduced precipitation for tests with WTD
+            precip *= 0.3;
+            //cout << "reduced prec :  " << precip << endl;
+           
 #else
             tnight=NightTemperature[iter%iterperyear];
             precip=Rainfall[iter%iterperyear];
@@ -7456,7 +7461,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 SWC3D[0][d]-=Evaporation[d];
                 
                 // Refilling by rainfall
-                
+
                 Interception[d]=fminf(precip, 0.2*LAI_DCELL[0][d]);      // This is the amount of rainfall - in mm, as rainfall -, intercepted by vegetation cover, following the approach used in Liang et al. 1994 Journal of Geophysical Reserach, and also used by Laio et al. 2001 Advances in Water Resources and Fischer et al. 2014 Environmental Modelling & Software (FORMIX3, Madagascar). More complex approach can be used however - see eg. Gutierrez et al. 2014 Plos One (FORMIND, Chili), or Wagner et al. 2011 AFM (Paracou)
                 Throughfall[d]=precip-Interception[d];
                 Throughfall[d]*=sites_per_dcell*LH*LH*0.001; // to convert in absolute amount of water entering the soil voxel in m3

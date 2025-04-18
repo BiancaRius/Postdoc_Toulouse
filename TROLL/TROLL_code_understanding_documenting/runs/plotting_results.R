@@ -4,6 +4,7 @@ library(gridExtra)
 library(dplyr)
 
 
+### PLOTTING RUNS SEPARATELY
 # Define the plotting function
 plot_time_series <- function(data, time_col, value_col, line_color = "blue") {
   ggplot(data, aes_string(x = time_col, y = value_col)) +
@@ -22,31 +23,17 @@ plot_variables <- function(file_path, variables, ncol, nrow, time_col = "iter", 
   grid.arrange(grobs = plots, ncol = ncol, nrow = nrow)
 }
 
-# File paths
-biogem_file <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/transfer_8110311_files_8a5bba64/(null)_0_sumstats.txt"
-water_file <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/transfer_8110311_files_8a5bba64/(null)_0_water_balance.txt"
-
-# Biogeochemical variables
-plot_variables(biogem_file, 
-               c('npp', 'sum1', 'sum10', 'sum30', 'ba', 'ba10', 'agb', 
-                 'gpp', 'npp', 'rday', 'rnight', 'rstem', 'litterfall'),
-               ncol = 3, nrow = 5)
-
-# Water balance variables
-plot_variables(water_file, 
-               c('SWC_0', 'SWC_1', 'SWC_2', 'SWC_3', 'SWC_4'),
-               ncol = 2, nrow = 3)
-
 #########
-biogem_file_nowtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/no_WTD/(null)_0_sumstats.txt"
-water_file_nowtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/no_WTD/(null)_0_water_balance.txt"
+biogem_file_nowtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/regular_climate/no_WTD/(null)_0_sumstats.txt"
+water_file_nowtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/regular_climate/no_WTD/(null)_0_water_balance.txt"
 
-biogem_file_shallowwtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/shallow_WTD/(null)_0_sumstats.txt"
-water_file_shallowwtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/shallow_WTD/(null)_0_water_balance.txt"
+biogem_file_shallowwtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/regular_climate/shallow_WTD/(null)_0_sumstats.txt"
+water_file_shallowwtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/regular_climate/shallow_WTD/(null)_0_water_balance.txt"
 
-biogem_file_deepwtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/deep_WTD/(null)_0_sumstats.txt"
-water_file_deepwtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/deep_WTD/(null)_0_water_balance.txt"
+biogem_file_deepwtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/regular_climate/deep_WTD/(null)_0_"
+water_file_deepwtd <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/regular_climate/deep_WTD/(null)_0_water_balance.txt"
 
+biogem_shallow_30 = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/prec_red_30/shallow_WTD/(null)_0_sumstats.txt"
 
 # Biogeochemical variables
 plot_variables(biogem_file_shallowwtd, 
@@ -79,183 +66,20 @@ plot_variables(water_file_nowtd,
                c('SWC_0', 'SWC_1', 'SWC_2', 'SWC_3', 'SWC_4'),
                ncol = 2, nrow = 3)
 
+plot_variables(biogem_shallow_30, 
+              c('npp', 'sum1', 'sum10', 'sum30', 'ba', 'ba10', 'agb', 
+                'gpp', 'npp', 'rday', 'rnight', 'rstem', 'litterfall'),
+              ncol = 3, nrow = 5)
+
+# Water balance variables
+plot_variables(water_file_nowtd, 
+               c('SWC_0', 'SWC_1', 'SWC_2', 'SWC_3', 'SWC_4'),
+               ncol = 2, nrow = 3)
 
 
-
-
-
-
-library(ggplot2)
-library(gridExtra)
-
-# Função para criar gráficos com cores diferenciadas
-plot_time_series <- function(data, time_col, value_col, line_color, title, x_label) {
-  ggplot(data, aes_string(x = time_col, y = value_col)) +
-    geom_line(color = line_color, alpha = 0.6, size = 1) +  # Ajuste de transparência
-    ggtitle(title) +
-    xlab(x_label) +
-    ylab(value_col) +
-    theme_minimal()
-}
-
-# Lendo os dados
-table_shallow <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/shallow_WTD/(null)_0_water_balance.txt", header = TRUE)
-table_deep <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/deep_WTD/(null)_0_water_balance.txt", header = TRUE)
-
-columns_to_plot <- c('SWC_0', 'SWC_1', 'SWC_2', 'SWC_3', 'SWC_4')
-
-plots <- list()
-
-# Criando gráficos para cada coluna
-for (col in columns_to_plot) {
-  combined_plot <- ggplot() +
-    geom_line(data = table_shallow, aes_string(x = "iter", y = col), color = "blue", alpha = 0.6, size = 1) +  # Azul para shallow WTD
-    geom_line(data = table_deep, aes_string(x = "iter", y = col), color = "red", alpha = 0.6, size = 1) +  # Vermelho para deep WTD
-    ggtitle(paste(col, "- Shallow (Blue) vs Deep (Red) WTD")) +
-    xlab("Iteration") +
-    ylab(col) +
-    theme_minimal()
-  
-  plots[[col]] <- combined_plot
-}
-
-# Arranjando os gráficos em uma grade
-grid.arrange(grobs = plots, ncol = 2, nrow = 3)
-
-
-library(ggplot2)
-library(gridExtra)
-library(dplyr)
-
-# Função para criar gráficos combinados
-plot_time_series <- function(shallow, deep, nowtd, time_col, value_col) {
-  ggplot() +
-    geom_line(data = shallow, aes_string(x = time_col, y = value_col), color = "green", alpha = 0.6, size = 1) +  # Verde para shallow WTD
-    geom_line(data = deep, aes_string(x = time_col, y = value_col), color = "red", alpha = 0.6, size = 1) +  # Vermelho para deep WTD
-    geom_line(data = nowtd, aes_string(x = time_col, y = value_col), color = "blue", alpha = 0.6, size = 1) +  # Azul para no WTD
-    ggtitle(paste(value_col, "- No WTD (Blue), Shallow (Green), Deep (Red)")) +
-    xlab("Iteration") +
-    ylab(value_col) +
-    theme_minimal()
-}
-
-# Lendo os dados
-table_shallow <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/shallow_WTD/(null)_0_water_balance.txt", header = TRUE)
-table_deep <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/deep_WTD/(null)_0_water_balance.txt", header = TRUE)
-table_nowtd <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/(null)_0_water_balance.txt", header = TRUE)
-
-# Filtrar as 5000 primeiras observações para no WTD
-table_nowtd <- table_nowtd %>% filter(iter <= 5000)
-
-columns_to_plot <- c('SWC_0', 'SWC_1', 'SWC_2', 'SWC_3', 'SWC_4')
-
-plots <- list()
-
-# Criando gráficos para cada coluna
-for (col in columns_to_plot) {
-  combined_plot <- plot_time_series(table_shallow, table_deep, table_nowtd, "iter", col)
-  plots[[col]] <- combined_plot
-}
-
-# Arranjando os gráficos em uma grade
-grid.arrange(grobs = plots, ncol = 2, nrow = 3)
-
-library(ggplot2)
-library(gridExtra)
-library(dplyr)
-
-# Função para criar gráficos combinados
-plot_time_series <- function(shallow, nowtd, time_col, value_col) {
-  ggplot() +
-    geom_line(data = shallow, aes_string(x = time_col, y = value_col), color = "black", alpha = 0.8, size = 1) +  # Verde para shallow WTD
-    geom_line(data = nowtd, aes_string(x = time_col, y = value_col), color = "blue", alpha = 0.5, size = 1) +  # Azul para no WTD
-    ggtitle(paste(value_col, "- No WTD (Blue) & Shallow WTD (Green)")) +
-    xlab("Iteration") +
-    ylab(value_col) +
-    theme_minimal()
-}
-
-# Lendo os dados
-table_shallow <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/shallow_WTD/(null)_0_water_balance.txt", header = TRUE)
-table_nowtd <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/(null)_0_water_balance.txt", header = TRUE)
-
-# Filtrar as 5000 primeiras observações para no WTD
-table_nowtd <- table_nowtd %>% filter(iter <= 5000)
-
-columns_to_plot <- c('SWC_0', 'SWC_1', 'SWC_2', 'SWC_3', 'SWC_4')
-
-plots <- list()
-
-# Criando gráficos para cada coluna
-for (col in columns_to_plot) {
-  combined_plot <- plot_time_series(table_shallow, table_nowtd, "iter", col)
-  plots[[col]] <- combined_plot
-}
-
-# Arranjando os gráficos em uma grade
-grid.arrange(grobs = plots, ncol = 2, nrow = 3)
-
-library(ggplot2)
-library(gridExtra)
-library(dplyr)
-
-plot_time_series <- function(shallow, deep, nowtd, time_col, value_col) {
-  ggplot() +
-    geom_line(data = shallow, aes_string(x = time_col, y = value_col), color = "green", alpha = 0.6, size = 1) +  # Verde para shallow WTD
-    geom_line(data = deep, aes_string(x = time_col, y = value_col), color = "red", alpha = 0.6, size = 1) +  # Vermelho para deep WTD
-    geom_line(data = nowtd, aes_string(x = time_col, y = value_col), color = "blue", alpha = 0.6, size = 1) +  # Azul para no WTD
-    ggtitle(paste(value_col, "- No WTD (Blue), Shallow (Green), Deep (Red)")) +
-    xlab("Iteration") +
-    ylab(value_col) +
-    theme_minimal()
-}
-
-# Lendo os dados
-table_shallow <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/shallow_WTD/(null)_0_sumstats.txt", header = TRUE)
-table_deep <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/deep_WTD/(null)_0_sumstats.txt", header = TRUE)
-table_nowtd <- read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/(null)_0_sumstats.txt", header = TRUE)
-
-# Filtrar as 5000 primeiras observações para no WTD
-table_nowtd <- table_nowtd %>% filter(iter <= 5000)
-
-# Variáveis para plotar
-columns_to_plot <- c('npp', 'sum1', 'sum10', 'sum30', 'ba', 'ba10', 'agb', 
-                     'gpp', 'rday', 'rnight', 'rstem', 'litterfall')
-
-plots <- list()
-
-for (col in columns_to_plot) {
-  combined_plot <- plot_time_series(table_shallow, table_nowtd,table_deep, "iter", col)
-  plots[[col]] <- combined_plot
-}
-
-grid.arrange(grobs = plots, ncol = 3, nrow = 5)
-
-### current run
-table_Paracou_current = read.table("/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/(null)_0_water_balance.txt", header = TRUE) # nolint
-
-
-columns_to_plot = c('SWC_0', 'SWC_1', 'SWC_2', 'SWC_3', 'SWC_4')
-
-plots = list()
-
-# Loop through the column names and create plots
-for (col in columns_to_plot) {
-  plot <- plot_time_series(table_Paracou_current, time_col = "iter", value_col = col,
-                           line_color = "darkblue",
-                           title = paste(col, "Over Time"),
-                           x_label = "Iteration")
-  plots[[col]] <- plot  # Store the plot in the list
-}
-
-# Arrange the plots side by side
-grid.arrange(grobs = plots, ncol = 2, nrow = 3)
-
-
-
-library(ggplot2)
-library(gridExtra)
-library(dplyr)
+####################################
+####################################
+##### PLOTTING RUNS TOGETHER #######
 
 # Function to read data
 read_data <- function(base_path, condition, file_type) {
@@ -263,25 +87,16 @@ read_data <- function(base_path, condition, file_type) {
   read.table(file_path, header = TRUE)
 }
 
-plot_time_series <- function(shallow, deep, nowtd, time_col, value_col) {
-  ggplot() +
-    geom_line(data = nowtd, aes_string(x = time_col, y = value_col), 
-              color = "darkblue", linetype = "solid", size = 0.7, alpha = 0.9) +  # Sólida
-    geom_line(data = shallow, aes_string(x = time_col, y = value_col), 
-              color = "darkgreen", linetype = "solid", size = 0.7,alpha = 0.6) +  # Tracejada
-    geom_line(data = deep, aes_string(x = time_col, y = value_col), 
-              color = "darkorange", linetype = "solid", size = 0.7,alpha = 0.4) +  # Pontilhada
-    
-    ggtitle(paste(value_col, "- No WTD (Blue, Solid), Shallow (Green, Dashed), Deep (Red, Dotted)")) +
-    xlab("Iteration") +
-    ylab(value_col) +
-    theme_minimal()
-}
 
-# Define paths
-base_path <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs"
+# Define paths 
+##### Regular climate, redprec50 e redprec30
+climate_paths = list(
+  regular = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/regular_climate/",
+  redprec50 = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/prec_red_50/",
+  redprec30 = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/prec_red_30/"
+  )
 
-# Variable lists
+# Define the variables of interest
 biogeochem_vars <- c('npp', 'sum1', 'sum10', 'sum30', 'ba', 'ba10', 'agb', 
                      'gpp', 'npp', 'rday', 'rnight', 'rstem', 'litterfall')
 
@@ -293,43 +108,163 @@ transpiration_layer <- c('transpitation_0', 'transpitation_1', 'transpitation_2'
 
 waterflux_vars <- c('precipitation', 'interception', 'throughfall',	'runoff',	'leak',	'evaporation')
 
-
-# Function to plot selected variables
-plot_selected_variables <- function(variable_type) {
-  if (variable_type == "biogeochemical") {
-    vars <- biogeochem_vars
-    file_type <- "sumstats"
-  } else if (variable_type == "water soil content") {
-    vars <- water_soil_content
-    file_type <- "water_balance"
-  } else if (variable_type == "water soil potential") {
-    vars <- water_soil_potential
-    file_type <- "water_balance"
-  } else if (variable_type == "transpiration layer") {
-    vars <- transpiration_layer
-    file_type <- "water_balance"
-  } else if (variable_type == "water fluxes") {
-    vars <- waterflux_vars
-    file_type <- "water_balance"
-  } else {
-    stop("Invalid variable type. Choose 'biogeochemical' or 'water'.")
+#### function with optional plotting nowtd
+plot_time_series <- function(shallow, deep, nowtd = TRUE, time_col, value_col) {
+  p <- ggplot()
+  
+  if (!is.null(nowtd)) {
+    p <- p + geom_line(data = nowtd, aes_string(x = time_col, y = value_col), 
+                       color = "darkblue", linetype = "solid", size = 0.7, alpha = 0.6)
   }
   
-  # Read data
+  p <- p +
+    geom_line(data = shallow, aes_string(x = time_col, y = value_col), 
+              color = "darkgreen", linetype = "solid", size = 0.7, alpha = 0.6) +
+    geom_line(data = deep, aes_string(x = time_col, y = value_col), 
+              color = "darkorange", linetype = "solid", size = 0.7, alpha = 0.6) +
+    xlab("") +
+    ylab(value_col) +
+    theme_minimal()
+  
+  return(p)
+}
+
+get_variable_info <- function(variable_type) {
+  switch(variable_type,
+         "biogeochemical" = list(vars = biogeochem_vars, file_type = "sumstats"),
+         "water soil content" = list(vars = water_soil_content, file_type = "water_balance"),
+         "water soil potential" = list(vars = water_soil_potential, file_type = "water_balance"),
+         "transpiration layer" = list(vars = transpiration_layer, file_type = "water_balance"),
+         "water fluxes" = list(vars = waterflux_vars, file_type = "water_balance"),
+         stop("Invalid variable type.")
+  )
+}
+
+plot_selected_variables <- function(variable_type,base_path, include_nowtd = TRUE) {
+  info <- get_variable_info(variable_type)
+  vars <- info$vars
+  file_type <- info$file_type
+  
   shallow <- read_data(base_path, "shallow_WTD", file_type)
   deep <- read_data(base_path, "deep_WTD", file_type)
-  nowtd <- read_data(base_path, "no_WTD", file_type)
   
-  # Generate and arrange plots
+  if (include_nowtd) {
+    nowtd <- read_data(base_path, "no_WTD", file_type)
+  } else {
+    nowtd <- NULL
+  }
+  
   plots <- lapply(vars, function(var) plot_time_series(shallow, deep, nowtd, "iter", var))
   grid.arrange(grobs = plots, ncol = 3, nrow = ceiling(length(vars) / 3))
 }
 
-# Example: Call the function with "biogeochemical" or "water"
-plot_selected_variables("biogeochemical")  
-plot_selected_variables("water soil content")         
-plot_selected_variables("water soil potential")        
-plot_selected_variables("transpiration layer")         
-plot_selected_variables("water fluxes")        
+## Here you can select which climate and it will give you the correspondent
+# path and you also choose if you want to include nowtd or not (by default, nowtd = TRUE)
+plot_selected_variables("biogeochemical", climate_paths$regular)
+plot_selected_variables("water soil content", climate_paths$regular)         
+plot_selected_variables("water soil potential", climate_paths$regular)        
+plot_selected_variables("transpiration layer", climate_paths$regular)
+plot_selected_variables("water fluxes", climate_paths$regular)
+
+plot_selected_variables("biogeochemical", climate_paths$redprec50)
+plot_selected_variables("water soil content", climate_paths$redprec50)         
+plot_selected_variables("water soil potential", climate_paths$redprec50)        
+plot_selected_variables("transpiration layer", climate_paths$redprec50)
+plot_selected_variables("water fluxes", climate_paths$redprec50)
 
 
+plot_selected_variables("biogeochemical", climate_paths$redprec30)
+plot_selected_variables("water soil content", climate_paths$redprec30)         
+plot_selected_variables("water soil potential", climate_paths$redprec30)        
+plot_selected_variables("transpiration layer", climate_paths$redprec30)
+plot_selected_variables("water fluxes", climate_paths$redprec30)
+
+
+
+##############################
+## PLOTTING FOR EACH WTD CONDITION
+## DIFFERENT LINES FOR EACH CLIMATE
+
+####################################
+####################################
+##### PLOTTING RUNS TOGETHER #######
+
+# Function to read data
+read_data <- function(base_path, condition, file_type) {
+  file_path <- file.path(base_path, condition, paste0("(null)_0_", file_type, ".txt"))
+  read.table(file_path, header = TRUE)
+}
+
+# Define paths 
+##### Regular climate, redprec50 e redprec30
+climate_paths = list(
+  regular = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/regular_climate/",
+  redprec50 = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/prec_red_50/",
+  redprec30 = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/prec_red_30/"
+)
+
+# Define the variables of interest
+biogeochem_vars <- c('npp', 'sum1', 'sum10', 'sum30', 'ba', 'ba10', 'agb', 
+                     'gpp', 'npp', 'rday', 'rnight', 'rstem', 'litterfall')
+
+water_soil_content <- c('SWC_0', 'SWC_1', 'SWC_2', 'SWC_3', 'SWC_4')
+
+water_soil_potential <- c('SWP_0', 'SWP_1', 'SWP_2', 'SWP_3', 'SWP_4')
+
+transpiration_layer <- c('transpitation_0', 'transpitation_1', 'transpitation_2', 'transpitation_3', 'transpitation_4')
+
+waterflux_vars <- c('precipitation', 'interception', 'throughfall', 'runoff', 'leak', 'evaporation')
+
+#### function with optional plotting nowtd
+plot_time_series_combined <- function(data_list, condition_names, time_col, value_col) {
+  p <- ggplot()
+  
+  for (i in seq_along(data_list)) {
+    p <- p + geom_line(data = data_list[[i]], aes_string(x = time_col, y = value_col, color = shQuote(condition_names[i])), 
+                       linetype = "solid", size = 0.7, alpha = 0.9)
+  }
+  
+  p <- p +
+    xlab("") +
+    ylab(value_col) +
+    theme_minimal() +
+    scale_color_discrete(name = "Climate")
+  
+  return(p)
+}
+
+get_variable_info <- function(variable_type) {
+  switch(variable_type,
+         "biogeochemical" = list(vars = biogeochem_vars, file_type = "sumstats"),
+         "water soil content" = list(vars = water_soil_content, file_type = "water_balance"),
+         "water soil potential" = list(vars = water_soil_potential, file_type = "water_balance"),
+         "transpiration layer" = list(vars = transpiration_layer, file_type = "water_balance"),
+         "water fluxes" = list(vars = waterflux_vars, file_type = "water_balance"),
+         stop("Invalid variable type.")
+  )
+}
+
+plot_combined_climates <- function(variable_type) {
+  info <- get_variable_info(variable_type)
+  vars <- info$vars
+  file_type <- info$file_type
+  
+  conditions <- c("shallow_WTD", "deep_WTD", "no_WTD")
+  condition_names <- names(climate_paths)
+  
+  for (condition in conditions) {
+    data_list <- lapply(climate_paths, function(path) read_data(path, condition, file_type))
+    
+    plots <- lapply(vars, function(var) plot_time_series_combined(data_list, condition_names, "iter", var))
+    
+    print(paste("Condition:", condition))
+    grid.arrange(grobs = plots, ncol = 3, nrow = ceiling(length(vars) / 3))
+  }
+}
+
+# Plotting for each condition (shallow, deep, no_WTD) with all climates combined
+plot_combined_climates("biogeochemical")
+plot_combined_climates("water soil content")
+plot_combined_climates("water soil potential")
+plot_combined_climates("transpiration layer")
+plot_combined_climates("water fluxes")
