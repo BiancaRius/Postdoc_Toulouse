@@ -4556,7 +4556,12 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 }
             }
             
-            
+            if (bufi == NULL) {
+                fprintf(stderr, "ERROR: bufi is NULL at iteration X\n");
+            } else {
+                fprintf(stderr, "bufi = %s\n", bufi);
+            }
+
             // input files (assigns file names)
             sprintf(inputfile,"%s",bufi);
             sprintf(inputfile_daytimevar,"%s",bufi_daytimevar);
@@ -7231,7 +7236,7 @@ if (_WATER_RETENTION_CURVE==1) {
             tDailyMean=DailyMeanTemperature[iter%nbdays];
             VPDDailyMean=DailyMeanVapourPressureDeficit[iter%nbdays];
 
-           // cout << "redular prec :  " << precip << endl;
+            // cout << "regular prec :  " << precip << endl;
             // Applying reduced precipitation for tests with WTD
             precip *= 0.3;
             //cout << "reduced prec :  " << precip << endl;
