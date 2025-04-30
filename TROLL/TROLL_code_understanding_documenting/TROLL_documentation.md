@@ -420,12 +420,136 @@ if (_WATER_RETENTION_CURVE==1) {
 
 Function used `Water_availability()`
 
-##### Description
+#### Description
 
 ### Update Field (bucket model, update seeds, recruit Tree)
+Function used `UpdateField()`
 
-.................. COMPLETE
+#### Description
+The UpdateField() function advances the simulation by one time step. It updates daily climate variables, models neighborhood-based ecological interactions, handles tree recruitment, calculates the field's leaf area index (LAI), and simulates soil water dynamics (if enabled), including processes like interception, throughfall, evaporation, transpiration, runoff, and leakage. It also updates soil water potential based on the soil water content and a chosen water retention model.
 
+#### Functionalities
+- Its primary responsibility is to update various environmental and biological state variables within the simulated field for a single time step.
+
+- Climate Data Assimilation:
+    - reads daily climate variables (night temperature, precipitation, daily mean wind speed, daily mean irradiance, daily mean temperature, and daily mean vapor pressure deficit) from arrays.
+    - The modulo operator (%) is used to cycle through the daily data.
+
+- Possibility of declaring reduced precipitation (and others) experiments
+
+- call UpdateSeeds()
+
+- Neighborhood Density Dependence (NDD):
+
+      If _NDD is true, it calculates a neighborhood density dependence field (t_NDDfield) for each site and species. It iterates through each site and then through a defined neighborhood (radius Rndd) around that site. This code block calculates, for each location in the field and for each species, a measure of neighborhood influence. This influence is based on the basal area of neighbors within a specific radius. The idea is that the presence and size of neighboring plants can affect the growth, survival, or other processes occurring at the central location.
+      For each "site" in the field, it iterates through its neighbors within a defined radius (`Rndd`). If a neighbor is established (has a positive age), its basal area (proportional to the square of its diameter, `t_dbh`) contributes to the `t_NDDfield` of the central site, specific to the neighbor's species (`t_sp_lab`). This contribution is scaled by a normalization factor (`normBA`). Essentially, it quantifies how the size and proximity of neighboring entities influence each location in the field for each species present.
+
+
+- Recruitment:
+
+      It calls a function RecruitTree(), which handles the introduction of new individuals (e.g., seedlings) into the simulated field.
+
+- Leaf Area Index (LAI) Calculation:
+
+      It initializes a 3D leaf area index field (LAI3D).
+      It calls a CalcLAI() method for each tree (T[site].CalcLAI()), implying that individual trees contribute to the overall LAI at different heights.
+      It then cumulatively sums the LAI from the canopy top downwards, resulting in a vertical profile of LAI.
+
+- Water Cycle Processes (if WATER is defined):
+
+      It initializes various hydrological variables for each "dcell": runoff, interception, throughfall, evaporation, leakage, and  it also initializes LAI/canopy height related variables for dcells.
+
+- LAI(average) at height h in dcell
+      It calculates the average LAI at different heights (LAI_DCELL) and the average canopy   height (Canopy_height_DCELL) for each dcell based on the trees within that dcell.
+      It estimates the wind speed at the top of the canopy (TopWindSpeed_DCELL) based on the daily mean wind speed and the canopy height, using a logarithmic or exponential relationship depending on whether the canopy height is below or above a meteorological station height.
+
+- Soil water dynamics using a "bucket model":
+      - Water Uptake: Reduces soil water content (SWC3D) based on tree transpiration (Transpiration).
+
+      - Evaporation: Calculates and subtracts evaporation from the top soil layer based on a physically based model involving vapor pressure deficits, soil and air temperatures, and resistances (soil and aerodynamic).
+
+      - Refilling by Rainfall: Calculates interception by the canopy and adds the remaining throughfall to the soil water content, prioritizing upper soil layers. If the topsoil is saturated, excess water becomes runoff.
+
+      - Leakage: Accounts for water leaving the bottom of the soil profile.
+
+      - Water Table Effect: If _WATER_TABLE is enabled, it sets the soil water content in layers below the water table depth (WTD) to the maximum water holding capacity.
+
+      - It updates the soil water potential (soil_phi3D) and hydraulic conductivity (Ks, KsPhi) based on the current soil water content
+
+
+#### Function (code and description)
+```cpp
+        //#################################
+        // Global function: Update all fields
+        //#################################
+        //! - This is an important function for TROLL -- Includes many of the operations
+        //! - set the iteration environment -- nb: the current structure of code suppose that environment is periodic (a period = a year), if one wants to input a variable climate, with interannual variation and climate change along the simulation, a full climatic input needs to be input (ie number of columns=iter and not iterperyear) and change iterperyear by nbiter here.
+        void UpdateField() {
+          #ifdef FULL_CLIMATE
+
+    /**
+    * @brief Assigns daily climate variables.
+    *
+    * This code snippet assigns values from daily climate data arrays to individual variables.
+    * The modulo operator (%) is used to cycle through the daily data.
+    *
+    * @param iter      The current iteration number.
+    * @param nbdays    The total number of days in the climate data cycle.
+    */            
+            tnight=NightTemperature[iter%nbdays];
+            precip=Rainfall[iter%nbdays];
+            WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
+            WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
+            tDailyMean=DailyMeanTemperature[iter%nbdays];
+            VPDDailyMean=DailyMeanVapourPressureDeficit[iter%nbdays];
+
+            // cout << "regular prec :  " << precip << endl;
+            // Applying reduced precipitation for tests with WTD
+            precip *= 0.3;
+            //cout << "reduced prec :  " << precip << endl;
+           
+#else
+            tnight=NightTemperature[iter%iterperyear];
+            precip=Rainfall[iter%iterperyear];
+            WSDailyMean=DailyMeanWindSpeed[iter%iterperyear];
+            WDailyMean=DailyMeanIrradiance[iter%iterperyear]*SWtoPPFD;
+            tDailyMean=DailyMeanTemperature[iter%iterperyear];
+            VPDDailyMean=DailyMeanVapourPressureDeficit[iter%iterperyear];
+            
+#endif // FULL_CLIMATE
+....... COMPLETE
+        }
+```
+#### **Functions called**
+
+##### 1. UpdateSeeds()
+######  *1.a. Description*
+######  *1.b. Functionalities*
+######  *1.c. Function (code and description)*
+######  *1.d. Functions called*
+
+###### **1.d.1. DisperseSeed**
+######  1.d.1.a. Description
+######  1.d.1.b. Functionalities
+######  1.d.1.c. Function (code and description)
+
+
+##### 2. RecreuitTree()
+######  *2.a. Description*
+######  *2.b. Functionalities*
+######  *2.c. Function (code and description)*
+
+##### 3. CalcLAI()
+######  *3.a. Description*
+This is not a function but it is an important part of the code, so I decided to put it here as a function description
+######  *3.b. Functionalities*
+######  *3.c. Function (code and description)*
+
+##### 4. Bucket model (NOT a function)
+######  *4.a. Description*
+This is not a function but it is an important part of the code, so I decided to put it here as a function description
+######  *4.b. Functionalities*
+######  *4.c. Function (code and description)*
 #### Bucket model
 
 for dcells
@@ -447,7 +571,7 @@ rename the variable
 in = Throughfall[d] 
 ```
 
-##### Water table depth - fixed values version
+##### **\_Water table depth - fixed values version\_**
 
 This version introduces the option to include a fixed water table depth (WTD) in the model, with three configuration modes:
 
@@ -457,15 +581,9 @@ This version introduces the option to include a fixed water table depth (WTD) in
 
 3. Deep WTD – only the last soil layer is saturated.
 
-###### Activation
-Control the water table feature via the a parameter in the input_global file:
-
-```cpp
-_WATER_TABLE = 0 // disables water table
-_WATER_TABLE = 1 // enables water table
-```
-If _WATER_TABLE = 1, the model will simulate soil water content based on a fixed water table depth.
-
+- Possible tests:
+  - vary layers depths
+  - vary layers soil composition
 
 ###### Water Table Depth Definitions
 Soil layers from surface to bottom:
@@ -484,7 +602,43 @@ Water table depth settings:
 
 - Deep WTD: below the top four layers → WTD = 1.53 m
 
-- TODO: some tests that can be done: vary layers depths? vary layers soil composition?
+![Texto alternativo](comparingWTD_impementation/wtd_representation.png)
+
+
+###### Code implementations
+
+1. WTD on and off 
+
+Control the water table feature via the a parameter in the input_global file:
+
+```cpp
+_WATER_TABLE = 0 // disables water table
+_WATER_TABLE = 1 // enables water table
+```
+If _WATER_TABLE = 1, the model will simulate soil water content based on a fixed water table depth.
+
+2. Soil water saturation depending on WTD
+
+- Inside bucket model:
+
+```cpp
+if (_WATER_TABLE == 1){ /// WTD on
+  int l=0; // layer counter
+  while((l<nblayers_soil)) {
+    //if the depth of the layer is higher than the wtd, the amount of water in the layer (SWC3D) is = max of water the soil layer can hold
+    if(layer_depth[l]>WTD){
+      SWC3D[l][d] = Max_SWC[l];
+    }
+      l++;
+  }
+}
+
+```
+
+**3. Comparing soil water content with and without WTD implementation**
+
+![Texto alternativo](comparingWTD_impementation/hill.png)
+
 
 
 

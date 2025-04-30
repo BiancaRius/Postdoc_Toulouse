@@ -4560,9 +4560,9 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 fprintf(stderr, "ERROR: bufi is NULL at iteration X\n");
             } else {
                 fprintf(stderr, "bufi = %s\n", bufi);
-            }
+            }   
 
-            // input files (assigns file names)
+            // input files (assigns file names) 
             sprintf(inputfile,"%s",bufi);
             sprintf(inputfile_daytimevar,"%s",bufi_daytimevar);
             sprintf(inputfile_climate,"%s",bufi_climate);
