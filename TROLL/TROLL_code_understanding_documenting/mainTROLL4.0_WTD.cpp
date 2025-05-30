@@ -3354,14 +3354,31 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 #ifdef WATER
                 float leafarea_toprounding=0.0; //newIM
                 float MeanDCELLHeight=Canopy_height_DCELL[site_DCELL[t_site]];
+
+                /// It avoids MeanDCELLHeight to be too small or 0, otherwise the value convHratio used as an index for LookUp_Wind is out of the boounderies             
+                /// MeanDCELLHeight = max(1.0f, MeanDCELLHeight); // BR addition
 #endif
-                
+                if (crown_above_top < h_stop || crown_above_top < 0 || h_stop < 0 || crown_above_top >= nbHbins) {
+                    std::cerr << "[ERRO LOOP] crown_above_top=" << crown_above_top
+                    << ", h_stop=" << h_stop
+                    << ", t_height=" << t_height
+                    << ", t_CD=" << t_CD
+                    << std::endl;
+                }
+
                 for(int h = crown_above_top; h >= h_stop ; h--) {
                     float PPFD = 0.0, VPD = 0.0, Tmp = 0.0, leafarea_layer = 0;
 #ifdef WATER
                     float PPFD_incident = 0.0, ExtinctLW=0.0;
                     //float W=WS*exp(-0.5*LAI_DCELL[h][site_DCELL[t_site]]); // computation of wind speed, which is here assumed to declined exponentially with the cumulative LAI within a given neighborhood (here taken as the tree's dcell) (see equation B11 in Medvigy et al. 2009; see Leuning et al. 1995 PCE equ. E2). We could alternatively used the aerodynamic momentum transfer model (Monteith and Unsworth 2008) using Lorey'sheight (see E-Ping's second manuscript) -- to be discussed. // to be computed with a lookup table maybe, and within Fluxh probably.
                     int convHratio= int(iHaccuracy*h/MeanDCELLHeight);
+
+
+                    /// Verifying the error with memory allocation /// BFR - to be taken out of the code
+                    if (convHratio < 0 || convHratio >= 2000) {
+                        printf("ERRO -- convHratio fora do intervalo: h = %.2f, MeanDCELLHeight = %.2f, convHratio = %d\n", h, MeanDCELLHeight, convHratio);
+                    }
+
                     float W=TopWindSpeed_DCELL[site_DCELL[t_site]]*LookUp_Wind[convHratio];
                     if (W<=0) {
                         cout << " Wind=" << W << " h=" << h << " MeanDCELLHeight=" << MeanDCELLHeight <<" convHratio=" << convHratio << " LookUp_Wind[convHratio]=" << LookUp_Wind[convHratio] << endl;
