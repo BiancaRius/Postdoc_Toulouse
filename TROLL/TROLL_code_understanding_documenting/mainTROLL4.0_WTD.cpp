@@ -7541,7 +7541,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         l++;
                     }
                 }
-                else{ //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
+                else{ //if the top soil layer (SWC3D[0][d]) is already saturated (eg. inundated forest), throughfall -> runoff
                     Runoff[d]=Throughfall[d];
                 }
 
