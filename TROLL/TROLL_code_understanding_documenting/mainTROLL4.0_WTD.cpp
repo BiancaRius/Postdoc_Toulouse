@@ -399,8 +399,6 @@ unsigned short *Thurt[3];  //!<  Global vector:Treefall field
 int nblayers_soil; //!< Global variable: number of soil layers (for water module)
 float *layer_depth(0); //!< Global vector: depth of each layer (m) !!!UPDATE
 float WTD;
-vector<float> layer_center_z; //!< Global vector: z (datum value) for each layer in its center (m) -- used in the implementation of water capillary rise // BR addition
-
 
 // soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this should be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils, and comments in the code). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data made using a new function of RconTROLL, if unearthed.
 // since soil layers (silt, clay, sand) are only needed locally, they are now coded as vectors
@@ -5688,6 +5686,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 for (int l=0; l<nblayers_soil; l++) {
                     cumulative_depth+=layer_thickness[l];
                     layer_depth[l]=cumulative_depth;
+                    cout << "print in read input soil " << endl;
                     cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl ;
                 }
 
@@ -7257,7 +7256,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
             // cout << "regular prec :  " << precip << endl;
             // Applying reduced precipitation for tests with WTD
-            // precip *= 0.3;
+            precip *= 0.3;
             //cout << "reduced prec :  " << precip << endl;
            
 #else
@@ -7420,13 +7419,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 // NOTE: under the assumption of a flat terrain and no lateral fluxes, as it is assumed here for a first implementation, the order with which dcells are visited during the loop does not matter. With topography, we will need to visit the soil voxels (ie. dcells*layer) from highest to lowest elevation so that run-off from highest voxels contribute to the water flux entering the lowest ones.
                 //  to be investigated: does the order in which transpiration and evaporation are retrieved from the soil affect the overall outcome? which one should be retrieved first?
                 
-                // testing the computation of z value in the center of each layer
-                float z_reference = 0.0; // the datum value used as reference to be used in the calculus of z for each soil layer -- it corresponds to the upper limit of the first soil layer (soil surface)
-                for (int l=0; l<nblayers_soil; l++) {
-                    //layer_center_z[l] = layer_depth[l]/2;
-                    cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << endl;
-
-                }
+                
 
                 
                 // Water uptake through tree transpiration
@@ -7548,7 +7541,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         l++;
                     }
                 }
-                else{ //if the top soil layer (SWC3D[0][d]) is already saturated (eg. inundated forest), throughfall -> runoff
+                else{ //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
                     Runoff[d]=Throughfall[d];
                 }
 
@@ -10667,4 +10660,3 @@ if (_WATER_RETENTION_CURVE==1) {
         }
         
         
-
