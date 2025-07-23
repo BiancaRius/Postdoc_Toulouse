@@ -7427,10 +7427,17 @@ if (_WATER_RETENTION_CURVE==1) {
                         cerr << "!!! Mem_Alloc layer_center_z" << endl;
                     }
                 }
+                float layer_depth_previous = 0.0;
                 float z_reference = 0.0; // the datum value used as reference to be used in the calculus of z for each soil layer -- it corresponds to the upper limit of the first soil layer (soil surface)
                 for (int l=0; l<nblayers_soil; l++) {
-                    //layer_center_z[l] = layer_depth[l]/2;
-                    cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << endl;
+                   
+                    float layer_depth_current = layer_depth[l];
+                    float layer_thickness = layer_depth_current - layer_depth_previous;
+                    
+                    layer_center_z[l] = - (layer_depth_previous + (layer_thickness / 2.0));
+
+                    layer_depth_previous = layer_depth_current;
+                    cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
 
                 }
 
