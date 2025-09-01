@@ -7421,22 +7421,27 @@ if (_WATER_RETENTION_CURVE==1) {
                 // NOTE: under the assumption of a flat terrain and no lateral fluxes, as it is assumed here for a first implementation, the order with which dcells are visited during the loop does not matter. With topography, we will need to visit the soil voxels (ie. dcells*layer) from highest to lowest elevation so that run-off from highest voxels contribute to the water flux entering the lowest ones.
                 //  to be investigated: does the order in which transpiration and evaporation are retrieved from the soil affect the overall outcome? which one should be retrieved first?
                 
-                // testing the computation of z value in the center of each layer
+                
+                // Calculating the 'z' coordinate (elevation, in m) for the center of each soil layer // BR 
+                // The 'z' values are relative to a defined datum (reference point), which in this case is the soil surface (z = 0.0).
+                // These calculated 'z' values are crucial to identify the vertical position within the soil profile
+                // in order to implement water capillary rise.
                 if (layer_center_z == NULL) {
                     if (NULL == (layer_center_z = new float[nblayers_soil])) {
                         cerr << "!!! Mem_Alloc layer_center_z" << endl;
                     }
                 }
-                float layer_depth_previous = 0.0;
+  
+                float layer_depth_cumulative = 0.0; //stores the cumulative depth to the bottom of the *previous* layer in relation to soil surface
                 float z_reference = 0.0; // the datum value used as reference to be used in the calculus of z for each soil layer -- it corresponds to the upper limit of the first soil layer (soil surface)
                 for (int l=0; l<nblayers_soil; l++) {
                    
                     float layer_depth_current = layer_depth[l];
-                    float layer_thickness = layer_depth_current - layer_depth_previous;
+                    float layer_thickness = layer_depth_current - layer_depth_cumulative;
                     
-                    layer_center_z[l] = - (layer_depth_previous + (layer_thickness / 2.0));
+                    layer_center_z[l] = - (layer_depth_cumulative + (layer_thickness / 2.0));
 
-                    layer_depth_previous = layer_depth_current;
+                    layer_depth_cumulative = layer_depth_current;
                     cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
 
                 }
