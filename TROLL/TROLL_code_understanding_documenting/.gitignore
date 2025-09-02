@@ -11,3 +11,5 @@ Paracou_input*
 
 # Ignore WTD input
 wtd_test.txt
+# Track this specific file
+!Paracou_input_global.txt
