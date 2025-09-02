@@ -7615,7 +7615,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     
                     cum_depth_surface = layer_depth_current;
                     
-                    cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
+                    //cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
 
                 }
 
@@ -7631,7 +7631,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l]; 
                     // delta_z_face should be negative, as z decreases with depth
 
-                    cout << "Δz between layer " << l << " and " << l+1 << " = " << delta_z_face[l] << endl;
+                    //cout << "Δz between layer " << l << " and " << l+1 << " = " << delta_z_face[l] << endl;
                 
                 }
 
