@@ -422,6 +422,7 @@ float *phi_e(0);            //!< Global vector: parameter for the Campbell-Muale
 float *b(0);                //!< Global vector: parameter for the Campbell-Mualem soil water retention curves (possible update: replace with a Genuchten parameter)
 float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL)
 float **soil_phi3D(0);      //!< Global 3D field: soil water potential (in MPa) in each soil voxel (layer * DCELL)
+float **soil_phi3D_cap(0);  //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
