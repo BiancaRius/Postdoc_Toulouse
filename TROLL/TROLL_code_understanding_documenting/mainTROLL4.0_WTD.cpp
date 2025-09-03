@@ -7672,7 +7672,7 @@ if (_WATER_RETENTION_CURVE==1) {
                             cout << "Warning theta_w_cap = 0 " << endl ;
                         }
 }
-                    } // end for layers
+                    } // end for layers 
 
 
                 } // end if (_CAPILLARY_RISE==1)
