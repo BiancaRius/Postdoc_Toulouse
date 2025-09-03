@@ -7052,6 +7052,7 @@ if (_WATER_RETENTION_CURVE==1) {
 #ifdef WATER
             if(NULL==(SWC3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(soil_phi3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
+            if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";            
             if(NULL==(Ks=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(KsPhi=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             //if (NULL==(KsPhi2=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
@@ -7059,6 +7060,7 @@ if (_WATER_RETENTION_CURVE==1) {
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
+                if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Ks[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(KsPhi[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7067,6 +7069,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     //SWC3D[l][dcell]=Max_SWC[l];
                     SWC3D[l][dcell]=FC_SWC[l];
                     soil_phi3D[l][dcell]=0.0;
+                    soil_phi3D_cap[l][dcell]=0.0;
                     Ks[l][dcell]=0.0;
                     KsPhi[l][dcell]=0.0;
                     //KsPhi2[l][dcell]=0.0;
@@ -7612,6 +7615,12 @@ if (_WATER_RETENTION_CURVE==1) {
                             cerr << "!!! Mem_Alloc layer_center_z" << endl;
                         }
                     }
+
+                    if (delta_z_face == NULL) {
+                        if (NULL == (delta_z_face = new float[nblayers_soil - 1])) {
+                        cerr << "!!! Mem_Alloc layer_dz" << endl;
+                        }
+                    }
   
                     float cum_depth_surface = 0.0; // cummulative depth from surface; initialized at 0.0 = soil surface (z_reference), i.e., the reference datum for z is already embedded here //BR
 
@@ -7626,22 +7635,15 @@ if (_WATER_RETENTION_CURVE==1) {
                     
                         cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
 
-                    }
-
-                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
-                    if (delta_z_face == NULL) {
-                        if (NULL == (delta_z_face = new float[nblayers_soil - 1])) {
-                        cerr << "!!! Mem_Alloc layer_dz" << endl;
-                        }
-                    }
-
-                    for (int l = 0; l < nblayers_soil - 1; l++) {
-                    
+                        // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
                         delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l]; 
                         // delta_z_face should be negative, as z decreases with depth
 
                         cout << "Δz between layer " << l << " and " << l+1 << " = " << delta_z_face[l] << endl;
                     }
+
+                    
+                    
     
     /** Calculating soil water potential for each soil layer (to further calculate harmonic mean of them)
     * @brief 
@@ -7651,7 +7653,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
 
 
-                } // end if (_CAPILLARY_RISE==1
+                } // end if (_CAPILLARY_RISE==1)
             
             }
             // END of the BUCKET MODEL.
