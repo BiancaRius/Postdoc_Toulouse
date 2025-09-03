@@ -426,6 +426,7 @@ float **soil_phi3D_cap(0);  //!<Global 3D field: intermediate soil water potenti
 float **SWC3D_cap(0);       //!<Global 3D field: intermediate soil water content in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
 float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
+float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -7058,6 +7059,7 @@ if (_WATER_RETENTION_CURVE==1) {
             if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR                                   
             if(NULL==(Ks=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(Ks_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(Ks_cap_harmonic=new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(KsPhi=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             //if (NULL==(KsPhi2=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(Transpiration=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
@@ -7068,6 +7070,9 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(Ks[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if (l < nblayers_soil-1){
+                    if(NULL==(Ks_cap_harmonic[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                }    
                 if(NULL==(KsPhi[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7079,6 +7084,9 @@ if (_WATER_RETENTION_CURVE==1) {
                     soil_phi3D_cap[l][dcell]=0.0; //BR
                     Ks[l][dcell]=0.0;
                     Ks_cap[l][dcell]=0.0; //BR
+                    if (l < nblayers_soil-1){
+                        Ks_cap_harmonic[l][dcell]=0.0; //BR
+                    } 
                     KsPhi[l][dcell]=0.0;
                     //KsPhi2[l][dcell]=0.0;
                     Transpiration[l][dcell]=0.0;
@@ -7647,6 +7655,14 @@ if (_WATER_RETENTION_CURVE==1) {
                         // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
                         if (l < nblayers_soil - 1) {
                             delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
+
+                            // Sanity checks for delta_z_face    
+                            if (delta_z_face[l] >= 0.0f) {
+                                cerr << "[WARN] delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
+                            }
+                            if (fabs(delta_z_face[l]) < 1e-6f) {
+                                cerr << "[WARN] delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
+    }
                         }   
                         
                         // delta_z_face should be negative, as z decreases with depth
