@@ -400,6 +400,8 @@ unsigned short *Thurt[3];  //!<  Global vector:Treefall field
 int nblayers_soil; //!< Global variable: number of soil layers (for water module)
 float *layer_depth(0); //!< Global vector: depth of each layer (m) !!!UPDATE
 float WTD;
+float *layer_center_z(0); //!< Global vector: z (datum value) for each layer in its center (m) -- used in the implementation of water capillary rise // BR addition
+float *delta_z_face(0); //!< Global vector: the center-to-center distance between adjacent layers 𝑙 and l+1. -- used in the implementation of water capillary rise // BR addition
 
 // soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this should be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils, and comments in the code). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data made using a new function of RconTROLL, if unearthed.
 // since soil layers (silt, clay, sand) are only needed locally, they are now coded as vectors
@@ -420,6 +422,7 @@ float *phi_e(0);            //!< Global vector: parameter for the Campbell-Muale
 float *b(0);                //!< Global vector: parameter for the Campbell-Mualem soil water retention curves (possible update: replace with a Genuchten parameter)
 float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL)
 float **soil_phi3D(0);      //!< Global 3D field: soil water potential (in MPa) in each soil voxel (layer * DCELL)
+float **soil_phi3D_cap(0);  //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
@@ -7259,7 +7262,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
             // cout << "regular prec :  " << precip << endl;
             // Applying reduced precipitation for tests with WTD
-            precip *= 0.3;
+            //precip *= 0.3;
             //cout << "reduced prec :  " << precip << endl;
            
 #else
@@ -7581,6 +7584,74 @@ if (_WATER_RETENTION_CURVE==1) {
                         l++;
                     }
                 }
+
+    
+                
+                if (_CAPILLARY_RISE==1) { // BR
+
+    /** Calculating variables needed for capillary rise
+    * @brief Calculates the vertical coordinate (z, in meters) for the center 
+    * of each soil layer. //BR
+    *
+    * The soil surface is used as the reference datum (z = 0.0). 
+    * Depth increases downward, so the computed z values are negative 
+    * below the surface. These values are essential to locate each layer 
+    * within the soil profile in order to implement water capillary rise.
+    * @details
+    *  - layer_depth[l]       : Depth from soil surface to the bottom of layer l [m]
+    *  - cum_depth_surface    : Running cumulative depth from the soil surface [m]
+    *  - layer_thickness      : Thickness of current soil layer l [m]
+    *  - layer_center_z[l]    : Elevation (z-coordinate) of the center of soil layer l [m],
+    *                           relative to the soil surface (negative below surface).
+    *  - delta_z_face[l]      : Vertical spacing between centers of two adjacent layers
+    *                           (layer l and l+1) [m]. Negative, since z decreases with depth.
+    */
+                    if (layer_center_z == NULL) {
+                    
+                        if (NULL == (layer_center_z = new float[nblayers_soil])) {
+                            cerr << "!!! Mem_Alloc layer_center_z" << endl;
+                        }
+                    }
+  
+                    float cum_depth_surface = 0.0; // cummulative depth from surface; initialized at 0.0 = soil surface (z_reference), i.e., the reference datum for z is already embedded here //BR
+
+                    for (int l=0; l<nblayers_soil; l++) {
+                   
+                        float layer_depth_current = layer_depth[l];
+                        float layer_thickness = layer_depth_current - cum_depth_surface;
+                    
+                        layer_center_z[l] = - (cum_depth_surface + (layer_thickness / 2.0));
+                    
+                        cum_depth_surface = layer_depth_current;
+                    
+                        cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
+
+                    }
+
+                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
+                    if (delta_z_face == NULL) {
+                        if (NULL == (delta_z_face = new float[nblayers_soil - 1])) {
+                        cerr << "!!! Mem_Alloc layer_dz" << endl;
+                        }
+                    }
+
+                    for (int l = 0; l < nblayers_soil - 1; l++) {
+                    
+                        delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l]; 
+                        // delta_z_face should be negative, as z decreases with depth
+
+                        cout << "Δz between layer " << l << " and " << l+1 << " = " << delta_z_face[l] << endl;
+                    }
+    
+    /** Calculating soil water potential for each soil layer (to further calculate harmonic mean of them)
+    * @brief 
+    */
+
+
+
+
+
+                } // end if (_CAPILLARY_RISE==1
             
             }
             // END of the BUCKET MODEL.
@@ -10599,6 +10670,10 @@ if (_WATER_RETENTION_CURVE==1) {
             delete [] SPECIES_GERM;
 #ifdef WATER
             delete [] site_DCELL;
+            delete [] layer_center_z; // BR
+            delete [] delta_z_face; // BR
+            
+
 #endif
             for(int site=0; site < sites; site++) delete [] SPECIES_SEEDS[site];
             delete [] SPECIES_SEEDS;
