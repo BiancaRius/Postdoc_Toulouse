@@ -7641,24 +7641,38 @@ if (_WATER_RETENTION_CURVE==1) {
                     
                         cum_depth_surface = layer_depth_current;
                     
-                        cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
+                        //cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
 
                         // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
                         delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l]; 
                         // delta_z_face should be negative, as z decreases with depth
 
-                        cout << "Δz between layer " << l << " and " << l+1 << " = " << delta_z_face[l] << endl;
-                    }
-
-                    
-                    
-    
-    /** Calculating soil water potential for each soil layer (to further calculate harmonic mean of them)
-    * @brief 
-    */
+                        //cout << "Δz between layer " << l << " and " << l+1 << " = " << delta_z_face[l] << endl;
 
 
+                        float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  // intermediate relative humidity for capillary rise calculation
 
+if (_WATER_RETENTION_CURVE==1) {
+                        if(theta_w_cap == 0) {
+                            theta_w_cap = 0.001; // following the below rule added by SS
+                            cout << "Warning theta_w_cap = 0 " << endl ;
+                        }
+                        soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+
+                        float inter_cap = 1-pow((1-pow(theta_w_cap, b_vgm[l])),m_vgm[l]);
+                        Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 0.5)*inter_cap*inter_cap; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+
+                        if (isnan(soil_phi3D_cap[l][d]) || isnan(Ks_cap[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
+                            cout << "In bucket model, layer - CAPILLARITY LOGIC " << l << " dcell " << d << " theta_w_cap=" << theta_w_cap << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D_cap[l][d]=" << soil_phi3D_cap[l][d] << " Ksat=" << Ksat[l] << " Ks_cap[l][d]=" << Ks_cap[l][d] << endl ;
+
+
+} else if (_WATER_RETENTION_CURVE==0) {
+                        if(theta_w_cap == 0) {
+                            theta_w_cap = 0.001; // following the below rule added by SS
+                            cout << "Warning theta_w_cap = 0 " << endl ;
+                        }
+}
+                    } // end for layers
 
 
                 } // end if (_CAPILLARY_RISE==1)
