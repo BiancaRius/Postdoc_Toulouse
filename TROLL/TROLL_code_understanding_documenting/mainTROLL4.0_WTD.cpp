@@ -163,7 +163,7 @@ bool _FromInventory;      //!< User control: if defined, an additional input fil
 bool _sapwood;         //!< User control: two ways of parameterising sapwood density: constant thickness (0), Fyllas, but with lower limit (1)
 bool _seedsadditional; //!< User control: excess carbon into seeds? no/yes=(0/1)
 bool _LL_parameterization;   //!< User control: two ways for parameterising leaf lifespan: empirical (derived by Sylvain Schmitt, TODO: from which data?), Kikuzawa model (0,1)
-bool _WATER_TABLE; // !< User control: if _WATER_TABLE == 1, the water table depth is activated, then the soil layer below the depth (WTD variable in global parameters) are always saturated
+bool _WATER_TABLE; // !< User control: if _WATER_TABLE == 1, the water table depth is activated, then the soil layer below the depth (WTD variable in global parameters) are always saturated //BR
 bool _CAPILLARY_RISE; // !< User control: if _CAPILLARY_RISE == 1, the capillary rise is activated, then the soil moisture in the layer below can rise to the above layer depending on the soil water potential gradient between the two layers //BR
 
 
@@ -423,7 +423,9 @@ float *b(0);                //!< Global vector: parameter for the Campbell-Muale
 float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL)
 float **soil_phi3D(0);      //!< Global 3D field: soil water potential (in MPa) in each soil voxel (layer * DCELL)
 float **soil_phi3D_cap(0);  //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in capillary rise //BR
+float **SWC3D_cap(0);       //!<Global 3D field: intermediate soil water content in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
+float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -4978,9 +4980,9 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             } else if(parameter_name == "_NONRANDOM"){
                 SetParameter(parameter_name, parameter_value, _NONRANDOM, bool(0), bool(1), bool(1), quiet);
             } else if(parameter_name == "_WATER_TABLE"){
-                SetParameter(parameter_name, parameter_value, _WATER_TABLE, bool(0), bool(1), bool(0), quiet);
+                SetParameter(parameter_name, parameter_value, _WATER_TABLE, bool(0), bool(1), bool(0), quiet); //BR
             } else if(parameter_name == "_CAPILLARY_RISE"){
-                SetParameter(parameter_name, parameter_value, _CAPILLARY_RISE, bool(0), bool(1), bool(0), quiet);
+                SetParameter(parameter_name, parameter_value, _CAPILLARY_RISE, bool(0), bool(1), bool(0), quiet); //BR
             } else if(parameter_name == "_GPPcrown"){
                 SetParameter(parameter_name, parameter_value, _GPPcrown, bool(0), bool(1), bool(0), quiet);
             } else if(parameter_name == "_BASICTREEFALL"){
@@ -7052,25 +7054,31 @@ if (_WATER_RETENTION_CURVE==1) {
 #ifdef WATER
             if(NULL==(SWC3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(soil_phi3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
-            if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";            
+            if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR                                   
             if(NULL==(Ks=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
+            if(NULL==(Ks_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(KsPhi=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             //if (NULL==(KsPhi2=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(Transpiration=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-                if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
+                if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(Ks[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
+                if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(KsPhi[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 for(int dcell=0; dcell<nbdcells; dcell++) {
                     //SWC3D[l][dcell]=Max_SWC[l];
                     SWC3D[l][dcell]=FC_SWC[l];
+                    SWC3D_cap[l][dcell]=FC_SWC[l]; //BR
                     soil_phi3D[l][dcell]=0.0;
-                    soil_phi3D_cap[l][dcell]=0.0;
+                    soil_phi3D_cap[l][dcell]=0.0; //BR
                     Ks[l][dcell]=0.0;
+                    Ks_cap[l][dcell]=0.0; //BR
                     KsPhi[l][dcell]=0.0;
                     //KsPhi2[l][dcell]=0.0;
                     Transpiration[l][dcell]=0.0;
