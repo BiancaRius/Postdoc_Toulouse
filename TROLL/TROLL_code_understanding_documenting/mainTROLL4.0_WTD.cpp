@@ -7644,7 +7644,11 @@ if (_WATER_RETENTION_CURVE==1) {
                         //cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
 
                         // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
-                        delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l]; 
+                        // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
+                        if (l < nblayers_soil - 1) {
+                            delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
+                        }   
+                        
                         // delta_z_face should be negative, as z decreases with depth
 
                         //cout << "Δz between layer " << l << " and " << l+1 << " = " << delta_z_face[l] << endl;
@@ -7654,28 +7658,50 @@ if (_WATER_RETENTION_CURVE==1) {
 
 if (_WATER_RETENTION_CURVE==1) {
                         if(theta_w_cap == 0) {
-                            theta_w_cap = 0.001; // following the below rule added by SS
+                            theta_w_cap = 0.001; // following the below rule added by SS //BR
                             cout << "Warning theta_w_cap = 0 " << endl ;
                         }
                         soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
 
                         float inter_cap = 1-pow((1-pow(theta_w_cap, b_vgm[l])),m_vgm[l]);
                         Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 0.5)*inter_cap*inter_cap; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+                        
 
-                        if (isnan(soil_phi3D_cap[l][d]) || isnan(Ks_cap[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
-                            cout << "In bucket model, layer - CAPILLARITY LOGIC " << l << " dcell " << d << " theta_w_cap=" << theta_w_cap << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D_cap[l][d]=" << soil_phi3D_cap[l][d] << " Ksat=" << Ksat[l] << " Ks_cap[l][d]=" << Ks_cap[l][d] << endl ;
+                        if (layer_depth[l] > WTD) { //BR
+                            soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
+                            theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
+                            Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
+                        }
+                        // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 
 
 } else if (_WATER_RETENTION_CURVE==0) {
                         if(theta_w_cap == 0) {
-                            theta_w_cap = 0.001; // following the below rule added by SS
+                            theta_w_cap = 0.001; // following the below rule added by SS //BR
                             cout << "Warning theta_w_cap = 0 " << endl ;
                         }
+
+                        soil_phi3D_cap[l][d]=phi_e[l]*pow(theta_w_cap, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                        Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                        KsPhi[l][d]=Ksat[l]*phi_e[l]*pow(theta_w_cap, 2.5+b[l]); //Ks times soil_phi3D, computed directly as the exact power of theta.
+                        //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
+                        // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
+
+
+                        if (layer_depth[l] > WTD) { //BR
+                            soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
+                            theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
+                            Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
+                        }
+
+                        // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
+
+
 }
-                    } // end for layers 
+                    } // end for layers
 
 
-                } // end if (_CAPILLARY_RISE==1)
+                } // end if (_CAPILLARY_RISE==1) 
             
             }
             // END of the BUCKET MODEL.
@@ -7696,6 +7722,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     float inter= 1-pow((1-pow(theta_w, b_vgm[l])),m_vgm[l]);
                     Ks[l][d]=Ksat[l]*pow(theta_w, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     
+                    //cout << "Outside bucket model" << " layer " << l <<  "\t" << "theta_w - theta_cap=  "<< theta_w << "\t" << "soil_phi= " << soil_phi3D[l][d] - soil_phi3D_cap[l][d] << "\t" << "Ks= "<< Ks[l][d] - Ks_cap[l][d] << endl;
+
                     if (isnan(soil_phi3D[l][d]) || isnan(Ks[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
                         cout << "In bucket model, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " Ks[l][d]=" << Ks[l][d] << endl ;
                     
