@@ -428,6 +428,7 @@ float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in
 float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
+float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -7069,7 +7070,8 @@ if (_WATER_RETENTION_CURVE==1) {
             if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
- 
+            if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+
 
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7108,10 +7110,12 @@ if (_WATER_RETENTION_CURVE==1) {
             for(int l=0;l<nblayers_soil-1;l++) {
                     if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(water_height_upward[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     delta_z_face[l] = 0.0; //BR
                 for (int dcell=0; dcell<nbdcells; dcell++) {
                     Ks_cap_harmonic[l][dcell] = 0.0; //BR
                     q_cap[l][dcell] = 0.0; //BR
+                    water_height_upward[l][dcell] = 0.0; //BR
                 }
             }
 
@@ -7763,7 +7767,21 @@ if (_WATER_RETENTION_CURVE==1) {
                         q_cap[l][d] = - Ks_cap_harmonic[l][d]*((delta_phi_Pa/((water_density * gravity) * (delta_z_face[l])))+1);
                         cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
 
+                        // Calculate the total height of water [m] moved during the timestep.
+                        // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
+                        // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
+                        const float delta_t_sec = 86400.0f;
+                        
+                        if (q_cap[l][d] > 0.0f) { // Upward flux only
+                            water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward during the timestep [m]
+                        } else {
+                            water_height_upward[l][d] = 0.0f; // No downward flux considered
+                        }
+
+                        cout << "Height of water moved upward during the timestep at interface between layers " << l << " and " << l+1 << " is " << water_height_upward[l][d] << " m" << endl;   
                     }
+
+
                 } // end if (_CAPILLARY_RISE==1) 
             
             }
