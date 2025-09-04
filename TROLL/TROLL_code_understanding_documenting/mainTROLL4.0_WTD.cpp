@@ -7058,24 +7058,29 @@ if (_WATER_RETENTION_CURVE==1) {
             if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR                                   
             if(NULL==(Ks=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
-            if(NULL==(Ks_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(Ks_cap_harmonic=new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(KsPhi=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             //if (NULL==(KsPhi2=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(Transpiration=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
+
+            // Variables for capillarity
+            if(NULL==(layer_center_z = new float[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(delta_z_face = new float[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(Ks_cap_harmonic=new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
+                if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(Ks[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if (l < nblayers_soil-1){
-                    if(NULL==(Ks_cap_harmonic[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                }    
                 if(NULL==(KsPhi[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
+
+                layer_center_z[l] = 0.0; //BR
+
                 for(int dcell=0; dcell<nbdcells; dcell++) {
                     //SWC3D[l][dcell]=Max_SWC[l];
                     SWC3D[l][dcell]=FC_SWC[l];
@@ -7084,17 +7089,27 @@ if (_WATER_RETENTION_CURVE==1) {
                     soil_phi3D_cap[l][dcell]=0.0; //BR
                     Ks[l][dcell]=0.0;
                     Ks_cap[l][dcell]=0.0; //BR
-                    if (l < nblayers_soil-1){
-                        Ks_cap_harmonic[l][dcell]=0.0; //BR
-                    } 
                     KsPhi[l][dcell]=0.0;
                     //KsPhi2[l][dcell]=0.0;
                     Transpiration[l][dcell]=0.0;
                     if (SWC3D[l][dcell]<=0.0) {
-                        cout <<SWC3D[l][dcell] << "\t" <<Max_SWC[l] << "\n";
+                        cout << "Soil water content <=0.0  " << SWC3D[l][dcell] << "\t" <<Max_SWC[l] << "\n";
+                    }
+                     if (SWC3D_cap[l][dcell]<=0.0) {
+                        cout << "Soil water content capillarity <=0.0  " << SWC3D_cap[l][dcell] << "\t" <<Max_SWC[l] << "\n";
                     }
                 }
             }
+
+            // Loop for variables that only exists at the interface of soil layers
+            for(int l=0;l<nblayers_soil-1;l++) {
+                    if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    delta_z_face[l] = 0.0; //BR
+                for (int dcell=0; dcell<nbdcells; dcell++) {
+                    Ks_cap_harmonic[l][dcell] = 0.0; //BR
+                }
+            }
+
             if(NULL==(LAI_DCELL=new float*[HEIGHT+1]))
                 cerr<<"!!! Mem_Alloc\n";
             for(int h=0;h<(HEIGHT+1);h++) {
@@ -7625,19 +7640,6 @@ if (_WATER_RETENTION_CURVE==1) {
     *  - delta_z_face[l]      : Vertical spacing between centers of two adjacent layers
     *                           (layer l and l+1) [m]. Negative, since z decreases with depth.
     */
-                    if (layer_center_z == NULL) {
-                    
-                        if (NULL == (layer_center_z = new float[nblayers_soil])) {
-                            cerr << "!!! Mem_Alloc layer_center_z" << endl;
-                        }
-                    }
-
-                    if (delta_z_face == NULL) {
-                        if (NULL == (delta_z_face = new float[nblayers_soil - 1])) {
-                        cerr << "!!! Mem_Alloc layer_dz" << endl;
-                        }
-                    }
-  
                     float cum_depth_surface = 0.0; // cummulative depth from surface; initialized at 0.0 = soil surface (z_reference), i.e., the reference datum for z is already embedded here //BR
 
                     for (int l=0; l<nblayers_soil; l++) {
@@ -7650,27 +7652,27 @@ if (_WATER_RETENTION_CURVE==1) {
                         cum_depth_surface = layer_depth_current;
                     
                         //cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
+                    }
 
-                        // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
-                        // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
-                        if (l < nblayers_soil - 1) {
-                            delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
+                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
+                    // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
+                    // delta_z_face should be negative, as z decreases with depth
+                    for (int l=0; l<nblayers_soil-1; l++) {
+                        delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
 
-                            // Sanity checks for delta_z_face    
-                            if (delta_z_face[l] >= 0.0f) {
-                                cerr << "[WARN] delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
-                            }
-                            if (fabs(delta_z_face[l]) < 1e-6f) {
-                                cerr << "[WARN] delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
-    }
-                        }   
+                        // Sanity checks for delta_z_face    
+                        if (delta_z_face[l] >= 0.0f) {
+                            cerr << "[WARN] delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
+                        }
+                        if (fabs(delta_z_face[l]) < 1e-6f) {
+                            cerr << "[WARN] delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
+                        }
+                    }   
                         
-                        // delta_z_face should be negative, as z decreases with depth
+                    for (int l=0; l<nblayers_soil; l++) {
 
-                        //cout << "Δz between layer " << l << " and " << l+1 << " = " << delta_z_face[l] << endl;
-
-
-                        float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  // intermediate relative humidity for capillary rise calculation
+                        // Intermediate relative humidity for capillary rise calculation
+                        float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
 if (_WATER_RETENTION_CURVE==1) {
                         if(theta_w_cap == 0) {
@@ -7711,12 +7713,13 @@ if (_WATER_RETENTION_CURVE==1) {
                         }
 
                         // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
-
-
 }
-                    } // end for layers
+                    } 
 
+                    // Calculating harmonic mean between Ks of two adjacent layers //BR
+                    for (int l=0; l<nblayers_soil-1; l++) { 
 
+                    }
                 } // end if (_CAPILLARY_RISE==1) 
             
             }
