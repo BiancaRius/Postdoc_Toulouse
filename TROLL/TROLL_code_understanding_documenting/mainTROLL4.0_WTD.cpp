@@ -427,6 +427,7 @@ float **SWC3D_cap(0);       //!<Global 3D field: intermediate soil water content
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
 float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
+float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -7066,7 +7067,9 @@ if (_WATER_RETENTION_CURVE==1) {
             if(NULL==(layer_center_z = new float[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(delta_z_face = new float[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(Ks_cap_harmonic=new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+ 
 
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7104,9 +7107,11 @@ if (_WATER_RETENTION_CURVE==1) {
             // Loop for variables that only exists at the interface of soil layers
             for(int l=0;l<nblayers_soil-1;l++) {
                     if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     delta_z_face[l] = 0.0; //BR
                 for (int dcell=0; dcell<nbdcells; dcell++) {
                     Ks_cap_harmonic[l][dcell] = 0.0; //BR
+                    q_cap[l][dcell] = 0.0; //BR
                 }
             }
 
@@ -7662,10 +7667,10 @@ if (_WATER_RETENTION_CURVE==1) {
 
                         // Sanity checks for delta_z_face    
                         if (delta_z_face[l] >= 0.0f) {
-                            cerr << "[WARN] delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
+                            cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
                         }
                         if (fabs(delta_z_face[l]) < 1e-6f) {
-                            cerr << "[WARN] delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
+                            cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
                         }
                     }   
                         
@@ -7717,7 +7722,46 @@ if (_WATER_RETENTION_CURVE==1) {
                     } 
 
                     // Calculating harmonic mean between Ks of two adjacent layers //BR
-                    for (int l=0; l<nblayers_soil-1; l++) { 
+                    for (int l=0; l<nblayers_soil-1; l++) {
+                        float k1 = Ks_cap[l][d];
+                        float k2 = Ks_cap[l+1][d];
+
+                        float sum_k = k1 + k2;
+
+                        // Check for division by zero to avoid errors 
+                        // If both conductivities are zero, the harmonic mean is also zero
+                        if (sum_k > 1e-9f){
+                            Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                            // Use este formato para imprimir e depurar
+                            //cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
+
+                            // Define precision
+                            cout << std::fixed << std::setprecision(15);
+
+                            //cout << "Ks_cap_harmonic at layer " << l << " and " << l+1 << " is " << Ks_cap_harmonic[l][d] << endl;
+                            //cout << "Ks_cap at layer " << l << " is " << Ks_cap[l][d] << endl;
+                            //cout << "Ks_cap at layer " << l+1 << " is " << Ks_cap[l+1][d] << endl;
+                        } else {
+                            Ks_cap_harmonic[l][d] = 0.0f;
+                            cerr << "Warning Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
+                        }
+
+                    }
+
+                    // Calculating capillary rise between two adjacent layers //BR
+                    for (int l=0; l<nblayers_soil-1; l++) {
+                        
+                        float delta_phi_MPa = soil_phi3D_cap[l+1][d] - soil_phi3D_cap[l][d]; // Delta phi between two adjacent layers l and l+1 [MPa]
+                        float delta_phi_Pa = delta_phi_MPa * 1e6f; // Convert Delta phi from MPa to Pa
+
+                        cout << std::fixed << std::setprecision(15);
+                        cout << "Delta phi between layers " << l << " and " << l+1 << " is " << delta_phi_MPa << " MPa or " << delta_phi_Pa << " Pa" << endl;
+
+                        float water_density = 1000.0f; // Density of water [kg/m3]
+                        float gravity = 9.81f; // Acceleration due to gravity [m/s2]
+
+                        q_cap[l][d] = - Ks_cap_harmonic[l][d]*((delta_phi_Pa/((water_density * gravity) * (delta_z_face[l])))+1);
+                        cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
 
                     }
                 } // end if (_CAPILLARY_RISE==1) 
