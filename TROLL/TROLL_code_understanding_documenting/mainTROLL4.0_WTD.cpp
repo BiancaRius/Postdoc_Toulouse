@@ -420,7 +420,7 @@ float *c_vgm(0);            //!< Global vector: parameter for the van Genuchten_
 float *m_vgm(0);            //!< Global vector: parameter for the van Genuchten_mualem soil water retention curves
 float *phi_e(0);            //!< Global vector: parameter for the Campbell-Mualem soil water retention curves (possible update: replace with a Genuchten parameter)
 float *b(0);                //!< Global vector: parameter for the Campbell-Mualem soil water retention curves (possible update: replace with a Genuchten parameter)
-float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL)
+float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL) 
 float **soil_phi3D(0);      //!< Global 3D field: soil water potential (in MPa) in each soil voxel (layer * DCELL)
 float **soil_phi3D_cap(0);  //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **SWC3D_cap(0);       //!<Global 3D field: intermediate soil water content in each soil voxel (layer * DCELL). To be used in capillary rise //BR
@@ -429,6 +429,8 @@ float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic con
 float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
 float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
+float **SWC3D_gain(0);      //!<Global 3D field: the water gained by a layer due to capillarity (layer * DCELL) //BR
+float **SWC3D_loss(0);      //!<Global 3D field: the water lost by a layer due to capillarity (layer * DCELL) //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -7056,22 +7058,23 @@ if (_WATER_RETENTION_CURVE==1) {
             
 #ifdef WATER
             if(NULL==(SWC3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
-            if(NULL==(soil_phi3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
-            if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR                                   
+            if(NULL==(soil_phi3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";                                  
             if(NULL==(Ks=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(KsPhi=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             //if (NULL==(KsPhi2=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(Transpiration=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
 
             // Variables for capillarity
+            if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
             if(NULL==(layer_center_z = new float[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(delta_z_face = new float[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-
+            if(NULL==(SWC3D_gain = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(SWC3D_loss = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
 
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
