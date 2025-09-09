@@ -429,8 +429,7 @@ float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic con
 float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
 float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
-float **SWC3D_gain(0);      //!<Global 3D field: the water gained by a layer due to capillarity (layer * DCELL) //BR
-float **SWC3D_loss(0);      //!<Global 3D field: the water lost by a layer due to capillarity (layer * DCELL) //BR
+float **water_change_cap(0); //!<Global 3D field: the change of soil water content due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -7073,14 +7072,16 @@ if (_WATER_RETENTION_CURVE==1) {
             if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(SWC3D_gain = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(SWC3D_loss = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+            if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR  
+            //if(NULL==(SWC3D_gain = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+            //if(NULL==(SWC3D_loss = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
 
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(water_change_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(Ks[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(KsPhi[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7095,6 +7096,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     SWC3D_cap[l][dcell]=FC_SWC[l]; //BR
                     soil_phi3D[l][dcell]=0.0;
                     soil_phi3D_cap[l][dcell]=0.0; //BR
+                    water_change_cap[l][dcell]=0.0; //BR
                     Ks[l][dcell]=0.0;
                     Ks_cap[l][dcell]=0.0; //BR
                     KsPhi[l][dcell]=0.0;
@@ -7653,13 +7655,14 @@ if (_WATER_RETENTION_CURVE==1) {
     *                           (layer l and l+1) [m]. Negative, since z decreases with depth.
     */
                     float cum_depth_surface = 0.0; // cummulative depth from surface; initialized at 0.0 = soil surface (z_reference), i.e., the reference datum for z is already embedded here //BR
-
+                    vector<float> layer_thickness(nblayers_soil, 0.0f);; // thickness of each soil layer (m) //BR
+                    
                     for (int l=0; l<nblayers_soil; l++) {
                    
                         float layer_depth_current = layer_depth[l];
-                        float layer_thickness = layer_depth_current - cum_depth_surface;
+                        layer_thickness[l] = layer_depth_current - cum_depth_surface;
                     
-                        layer_center_z[l] = - (cum_depth_surface + (layer_thickness / 2.0));
+                        layer_center_z[l] = - (cum_depth_surface + (layer_thickness[l] / 2.0));
                     
                         cum_depth_surface = layer_depth_current;
                     
@@ -7784,7 +7787,34 @@ if (_WATER_RETENTION_CURVE==1) {
                         cout << "Height of water moved upward during the timestep at interface between layers " << l << " and " << l+1 << " is " << water_height_upward[l][d] << " m" << endl;   
                     }
 
-
+                    // Calculating the amount of water transferred between layers due to capillary rise //BR // TEMPORARY
+                    
+                    for (int l=0; l<nblayers_soil; l++){
+                        if (water_height_upward[l][d]>0.0f){    
+                            float water_gain = 0.0f;
+                            float water_loss = 0.0f;
+                            if (l != 0 && l != nblayers_soil - 1){
+                                water_gain = water_height_upward[l][d]/layer_thickness[l]; // water gain from the layer below. Since water_height_upward[l][d] is calculated at the interface between layer l and l+1, the index l here corresponds to the layer below (l+1 in the flux calculation)
+                                water_loss = water_height_upward[l-1][d]/layer_thickness[l];
+                                water_change_cap[l][d] = (water_gain - water_loss);
+                            } else if (l == 0){
+                                water_gain = water_height_upward[l][d]/layer_thickness[l]; // for the top layer, water gain comes from the layer below
+                                water_change_cap[l][d] = water_gain;                       
+                        
+                        } else if (l == nblayers_soil - 1){
+                                water_loss = water_height_upward[l-1][d]/layer_thickness[l];
+                                water_change_cap[l][d] = - water_loss; // No capillary rise from below the deepest layer
+                                
+                                if (layer_depth[l] > WTD) { //BR
+                                    water_change_cap[l][d] = 0.0f; // if the layer is a WT, it is always saturated, so no loss due to capillary rise
+                                }
+                            }
+                        } else {
+                            water_change_cap[l][d] = 0.0f; // No upward water movement
+                        }    
+                    }
+                       
+                    
                 } // end if (_CAPILLARY_RISE==1) 
             
             }
