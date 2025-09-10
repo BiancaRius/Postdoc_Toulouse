@@ -7632,28 +7632,45 @@ if (_WATER_RETENTION_CURVE==1) {
                         l++;
                     }
                 }
+                // end of water table consideration
 
-    
+/**
+ * @brief Manages calculations for capillary rise within the soil profile.
+ *
+ * This function calculates key variables necessary for modeling upward water movement 
+ * (capillary rise) between soil layers. It determines layer properties like thickness 
+ * and elevation, then uses either the van Genuchten-Mualem or Brooks & Corey-Mualem 
+ * models to compute soil hydraulic properties. Finally, it calculates the water flux 
+ * and the resulting change in water content for each layer.
+ *
+ * The code uses the soil surface as the reference datum ($z=0.0$), with depth increasing
+ * downwards (negative $z$ values).
+ *
+ * @param nblayers_soil Number of soil layers.
+ * @param layer_depth A vector containing the depth to the bottom of each layer from the soil surface [m].
+ * @param WTD Water table depth from the soil surface [m].
+ * @param SWC3D A 3D array of soil water content for each layer.
+ * @param Min_SWC A vector of minimum soil water content for each layer.
+ * @param Max_SWC A vector of maximum soil water content for each layer.
+ * @param a_vgm, b_vgm, c_vgm, m_vgm Parameters for the van Genuchten-Mualem model.
+ * @param phi_e, b Parameters for the Brooks & Corey-Mualem model.
+ * @param Ksat A vector of saturated hydraulic conductivity for each layer [m/s].
+ * @param layer_center_z A vector to store the calculated z-coordinate of each layer's center [m].
+ * @param delta_z_face A vector to store the vertical distance between adjacent layer centers [m].
+ * @param soil_phi3D_cap A 3D array to store the calculated soil water potential [MPa].
+ * @param Ks_cap A 3D array to store the calculated unsaturated hydraulic conductivity [m/s].
+ * @param Ks_cap_harmonic A 3D array to store the harmonic mean of hydraulic conductivity between layers [m/s].
+ * @param q_cap A 3D array to store the upward capillary flux between layers [m/s].
+ * @param water_height_upward A 3D array to store the height of water moved upward during the timestep [m].
+ * @param water_change_cap A 3D array to store the change in water content due to capillary rise.
+ */
+
+                if (_CAPILLARY_RISE==1) { // BR     
                 
-                if (_CAPILLARY_RISE==1) { // BR
-
-    /** Calculating variables needed for capillary rise
-    * @brief Calculates the vertical coordinate (z, in meters) for the center 
-    * of each soil layer. //BR
-    *
-    * The soil surface is used as the reference datum (z = 0.0). 
-    * Depth increases downward, so the computed z values are negative 
-    * below the surface. These values are essential to locate each layer 
-    * within the soil profile in order to implement water capillary rise.
-    * @details
-    *  - layer_depth[l]       : Depth from soil surface to the bottom of layer l [m]
-    *  - cum_depth_surface    : Running cumulative depth from the soil surface [m]
-    *  - layer_thickness      : Thickness of current soil layer l [m]
-    *  - layer_center_z[l]    : Elevation (z-coordinate) of the center of soil layer l [m],
-    *                           relative to the soil surface (negative below surface).
-    *  - delta_z_face[l]      : Vertical spacing between centers of two adjacent layers
-    *                           (layer l and l+1) [m]. Negative, since z decreases with depth.
-    */
+                // --- Step 1: Calculate layer geometry ---
+                // This section computes the vertical position of each layer's center and the
+                // distance between adjacent layer centers. 
+                    
                     float cum_depth_surface = 0.0; // cummulative depth from surface; initialized at 0.0 = soil surface (z_reference), i.e., the reference datum for z is already embedded here //BR
                     vector<float> layer_thickness(nblayers_soil, 0.0f);; // thickness of each soil layer (m) //BR
                     
@@ -7683,7 +7700,10 @@ if (_WATER_RETENTION_CURVE==1) {
                             cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
                         }
                     }   
-                        
+                    
+                // --- Step 2: Calculate soil hydraulic properties for capillary rise ---
+                // Computes relative soil water content, soil water potential (phi), and hydraulic 
+                // conductivity (Ks) based on the chosen water retention model.
                     for (int l=0; l<nblayers_soil; l++) {
 
                         // Intermediate relative humidity for capillary rise calculation
@@ -7731,7 +7751,8 @@ if (_WATER_RETENTION_CURVE==1) {
 }
                     } 
 
-                    // Calculating harmonic mean between Ks of two adjacent layers //BR
+                // --- Step 3: Calculate harmonic mean of hydraulic conductivity ---
+                // The harmonic mean is used to find the effective conductivity at the interface between layers.
                     for (int l=0; l<nblayers_soil-1; l++) {
                         float k1 = Ks_cap[l][d];
                         float k2 = Ks_cap[l+1][d];
@@ -7758,19 +7779,23 @@ if (_WATER_RETENTION_CURVE==1) {
 
                     }
 
-                    // Calculating capillary rise between two adjacent layers //BR
+                // --- Step 4: Calculate capillary flux ---
+                // The flux is computed using Darcy's Law, considering only upward movement.
                     for (int l=0; l<nblayers_soil-1; l++) {
-                        
+
+                        // Difference in soil water potential (phi) between adjacent layers [MPa]
                         float delta_phi_MPa = soil_phi3D_cap[l+1][d] - soil_phi3D_cap[l][d]; // Delta phi between two adjacent layers l and l+1 [MPa]
                         float delta_phi_Pa = delta_phi_MPa * 1e6f; // Convert Delta phi from MPa to Pa
 
                         cout << std::fixed << std::setprecision(15);
-                        cout << "Delta phi between layers " << l << " and " << l+1 << " is " << delta_phi_MPa << " MPa or " << delta_phi_Pa << " Pa" << endl;
+                        //cout << "Delta phi between layers " << l+1 << " and " << l << " is " << delta_phi_MPa << " MPa or " << delta_phi_Pa << " Pa" << endl;
 
                         float water_density = 1000.0f; // Density of water [kg/m3]
                         float gravity = 9.81f; // Acceleration due to gravity [m/s2]
 
-                        q_cap[l][d] = - Ks_cap_harmonic[l][d]*((delta_phi_Pa/((water_density * gravity) * (delta_z_face[l])))+1);
+                        // Calculate flux using a modified Darcy's Law. Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
+                        q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
+                           (delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1));
                         cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
 
                         // Calculate the total height of water [m] moved during the timestep.
@@ -7787,32 +7812,134 @@ if (_WATER_RETENTION_CURVE==1) {
                         cout << "Height of water moved upward during the timestep at interface between layers " << l << " and " << l+1 << " is " << water_height_upward[l][d] << " m" << endl;   
                     }
 
-                    // Calculating the amount of water transferred between layers due to capillary rise //BR // TEMPORARY
-                    
-                    for (int l=0; l<nblayers_soil; l++){
-                        if (water_height_upward[l][d]>0.0f){    
-                            float water_gain = 0.0f;
-                            float water_loss = 0.0f;
-                            if (l != 0 && l != nblayers_soil - 1){
-                                water_gain = water_height_upward[l][d]/layer_thickness[l]; // water gain from the layer below. Since water_height_upward[l][d] is calculated at the interface between layer l and l+1, the index l here corresponds to the layer below (l+1 in the flux calculation)
-                                water_loss = water_height_upward[l-1][d]/layer_thickness[l];
-                                water_change_cap[l][d] = (water_gain - water_loss);
-                            } else if (l == 0){
-                                water_gain = water_height_upward[l][d]/layer_thickness[l]; // for the top layer, water gain comes from the layer below
-                                water_change_cap[l][d] = water_gain;                       
-                        
-                        } else if (l == nblayers_soil - 1){
-                                water_loss = water_height_upward[l-1][d]/layer_thickness[l];
-                                water_change_cap[l][d] = - water_loss; // No capillary rise from below the deepest layer
-                                
-                                if (layer_depth[l] > WTD) { //BR
-                                    water_change_cap[l][d] = 0.0f; // if the layer is a WT, it is always saturated, so no loss due to capillary rise
-                                }
+                // --- Step 5: Distribute water change across layers ---
+                // This section calculates the net change in water content for each layer
+                // by balancing the inflow and outflow from capillary rise.
+
+
+                // Configure print formatting for better readability
+                cout << "\n--- Upward flux due to capillarity " << " ---" << endl;
+                cout << setfill('-') << setw(80) << "" << setfill(' ') << endl; 
+                cout << left // Aligns the text to the left
+                        << setw(8) << "Layer"
+                        << setw(15) << "Position"
+                        << setw(15) << "Water gain"
+                        << setw(15) << "Water loss"
+                        << setw(15) << "Delta water"
+                        << "Obs: " << endl;
+                        cout << setfill('-') << setw(80) << "" << setfill(' ') << endl;
+                cout << fixed << setprecision(6);
+
+                    for (int l = 0; l < nblayers_soil; l++) {
+                        float water_gain_pot = 0.0f; // Potential gain
+                        float water_loss_pot = 0.0f; // Potential loss
+                        float final_delta = 0.0f;
+                        string obs = ""; // String for observations/notes in the table
+
+                        // Calculate POTENTIAL gains and losses based on position ---
+
+                        if (l == 0) { // Top Layer
+                            water_loss_pot = 0.0f;
+                            if (nblayers_soil > 1) { // Prevents out-of-bounds access if there is only 1 layer
+                                water_gain_pot = water_height_upward[l][d] / layer_thickness[l];
                             }
+                        } else if (l < nblayers_soil - 1) { // Intermediate Layers
+                            water_gain_pot = water_height_upward[l][d] / layer_thickness[l];
+                            water_loss_pot = water_height_upward[l-1][d] / layer_thickness[l];
+                        } else { // l == nblayers_soil - 1 (Deepest Layer)
+                            water_gain_pot = 0.0f;
+                            water_loss_pot = water_height_upward[l-1][d] / layer_thickness[l];
+                        }
+
+                        // Check the layer's state and set the FINAL change ---
+
+                        if (layer_depth[l] > WTD) {
+                            // The layer is SATURATED (it's part of the water table).
+                            // The net change due to capillarity is zero.
+                            final_delta = 0.0f;
+                            obs = "WT, saturated"; // Add a clear note
+                            cout << "potential water loss" << water_loss_pot << endl;
                         } else {
-                            water_change_cap[l][d] = 0.0f; // No upward water movement
-                        }    
+                            // The layer is UNSATURATED.
+                            // The net change is the difference between potential gain and loss.
+                            final_delta = water_gain_pot - water_loss_pot;
+                        }
+                        
+                        // Assign the final value to your results array
+                        water_change_cap[l][d] = final_delta;
+
+                        // --- Print the table  ---
+                        
+                        cout << left << setw(8) << l;
+                        
+                        if (l == 0) cout << setw(15) << "Top";
+                        else if (l < nblayers_soil - 1) cout << setw(15) << "Intermediate";
+                        else cout << setw(15) << "Deep";
+
+                        // For consistency, if the layer is WT, we can show gain/loss as 0
+                        if (obs == "WT, saturated") {
+                            cout << setw(15) << 0.0f << setw(15) << 0.0f;
+                        } else {
+                            cout << setw(15) << water_gain_pot << setw(15) << water_loss_pot;
+                        }
+                        
+                        cout << setw(15) << final_delta << obs << endl;
                     }
+
+                    // for (int l=0; l<nblayers_soil; l++){
+                    //     float water_gain = 0.0f;
+                    //     float water_loss = 0.0f;
+
+                    //     // Printing layer number
+                    //     cout << left << setw(8) << l;
+
+                    //     if (l == 0){
+                    //         cout << setw(15) << "Top ";
+
+                    //         water_loss = 0.0f; // No capillary rise from above the top layer
+                    //         water_gain = water_height_upward[l][d]/layer_thickness[l]; // for the top layer, water gain comes from the layer below
+                    //         water_change_cap[l][d] = water_gain;
+
+                    //         cout << setw(15) << water_gain 
+                    //                 << setw(15) << water_loss 
+                    //                 << setw(15) << water_change_cap[l][d] << endl;
+                       
+                    //     } else if (l != 0 && l != nblayers_soil - 1){
+                    //         cout << setw(15) << "Intermediate ";
+
+                    //         water_gain = water_height_upward[l][d]/layer_thickness[l]; // water gain from the layer below. Since water_height_upward[l][d] is calculated at the interface between layer l and l+1, the index l here corresponds to the layer below (l+1 in the flux calculation)
+                    //         water_loss = water_height_upward[l-1][d]/layer_thickness[l];
+                            
+
+                    //         cout << setw(15) << water_gain 
+                    //                 << setw(15) << water_loss 
+                    //                 << setw(15) << water_change_cap[l][d] << endl;
+                        
+                    //     } else if (l == nblayers_soil - 1){
+                    //         cout << setw(15) << "Deep ";
+                            
+                    //         water_loss = water_height_upward[l-1][d]/layer_thickness[l];
+                    //         water_gain = 0.0f; // No capillary rise from below the deepest layer
+                    //         water_change_cap[l][d] = -water_loss; // The gain is zero, then the change is just the negative loss
+                           
+                    //         cout << setw(15) << water_gain 
+                    //              << setw(15) << water_loss;
+
+                    //         // Handling the deepest layer with water table consideration
+                    //         if (layer_depth[l] > WTD) { //BR
+                    //             water_change_cap[l][d] = 0.0f; // if the layer is a WT, it is always saturated, so no loss due to capillary rise
+                    //             cout << setw(15) << water_change_cap[l][d]
+                    //                  << "WT, loss = 0 " << endl;  
+
+                    //             cout << "layer  is water table  " << l << endl;
+                          
+                    //         } else {
+                    //             water_change_cap[l][d] = (water_gain - water_loss);
+                    //             cout << setw(15) << water_change_cap[l][d] << endl;
+                    //         }
+
+                    //     }   
+                    // }
                        
                     
                 } // end if (_CAPILLARY_RISE==1) 
