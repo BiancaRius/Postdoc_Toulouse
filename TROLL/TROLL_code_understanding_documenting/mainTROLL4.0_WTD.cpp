@@ -7073,8 +7073,6 @@ if (_WATER_RETENTION_CURVE==1) {
             if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR  
-            //if(NULL==(SWC3D_gain = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            //if(NULL==(SWC3D_loss = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
 
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7796,7 +7794,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         // Calculate flux using a modified Darcy's Law. Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
                         q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
                            (delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1));
-                        cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
+                        // cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
 
                         // Calculate the total height of water [m] moved during the timestep in the interface of layers.
                         // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
@@ -7809,136 +7807,106 @@ if (_WATER_RETENTION_CURVE==1) {
                             water_height_upward[l][d] = 0.0f; // No downward flux considered
                         }
 
-                        cout << "Height of water moved upward during the timestep at interface between layers " << l << " and " << l+1 << " is " << water_height_upward[l][d] << " m" << endl;   
+                        // cout << "Height of water moved upward during the timestep at interface between layers " << l << " and " << l+1 << " is " << water_height_upward[l][d] << " m" << endl;   
                     }
 
                 // --- Step 5: Evaluate the capacities of the layers to donate or receive water ---
-                // Establish physical boundaries for the layers
+                // Establish physical boundaries for the layers. 
+                // Each layer has two INDEPENDENT physical limits (in m^3): its receiver capacity and its donor capacity. These limits are used to constrain the actual water transfer between layers.
 
-                    for (int l = 0; l<nblayers_soil -1; l++){
+                    // creates vectors for auxiliary variables needed in the loop
+                    vector<float> max_cap(nblayers_soil, 0.0f);       // maximum capacity of the layer (m^3)
+                    vector<float> min_cap(nblayers_soil, 0.0f);       // minimum capacity of the layer (m^3)
+                    vector<float> current_SWC(nblayers_soil, 0.0f);    // current status of SWC in the layer (m^3)
+                    vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
+                    vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
+                    vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
+		            vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
 
-                        // Maximum water storage capacity of the upper layer (l)
-                        float max_upper = Max_SWC[l];
-                        // Min water store capacity of the lower layer (l+1)
-                        float min_lower = Min_SWC[l+1];
+                
+                // loop to set the capacities of each layer
+		            for (int l = 0; l<nblayers_soil; l++){
+			
+                        // Maximum water storage capacity of a layer(l)
+                        max_cap[l] = Max_SWC[l];
+                        // Min water store capacity of the same layer (l)
+                        min_cap[l] = Min_SWC[l];
 
-                        // Current status of SWC in both layers
-                        float current_SWC_upper = SWC3D[l][d];
-                        float current_SWC_lower = SWC3D[l+1][d];
+                        // Current status of SWC in the layer
+                        current_SWC[l] = SWC3D[l][d];
 
                         // Maximum gains and losses
-                        float max_gain = max_upper - current_SWC_upper; // How much water the upper layer can still hold
-                        float max_loss = current_SWC_lower - min_lower; // How much water the lower layer can still lose
+                        max_gain[l] = max_cap[l] - current_SWC[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold
+                        max_loss[l] = current_SWC[l] - min_cap[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
 
-                        // Calculate potential water transfer based on capillary rise
-                        float water_gain_pot = 0.0f; // Potential gain
-                        float water_loss_pot = 0.0f; // Potential loss
+                        // Receiver capacity: cannot exceed saturation
+                        receiv_capacity[l] = max(0.0f, max_gain[l]); 
+                        // Donor capacity: cannot go below residual
+                        donor_capacity[l] = max(0.0f, max_loss[l]);
 
-                        if (l == 0) { // Top Layer
-                            water_loss_pot = 0.0f;
-                            if (nblayers_soil > 1) { // Prevents out-of-bounds access if there is only 1 layer
-                                water_gain_pot = water_height_upward[l][d] / layer_thickness[l];
-                            }
-                        } else if (l < nblayers_soil - 1) { // Intermediate Layers
-                            water_gain_pot = water_height_upward[l][d] / layer_thickness[l];
-                            water_loss_pot = water_height_upward[l-1][d] / layer_thickness[l];
-                        } else { // l == nblayers_soil - 1 (Deepest Layer)
-                            water_gain_pot = 0.0f;
-                            water_loss_pot = water_height_upward[l-1][d] / layer_thickness[l];
+                        // Special case for the WT layer:
+                        // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
+                        // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
+
+                        if (layer_depth[l] > WTD) {
+                            donor_capacity[l] = INFINITY;
+                            // WT layer is saturated → no receiving capacity
+                            receiv_capacity[l] = 0.0f;
                         }
-
-                        // Determine actual water transfer considering physical limits
-                        float actual_gain = std::min({water_gain_pot, max_gain, water_loss_pot});
-                        float actual_loss = actual_gain; // In a closed system, gain in one layer is loss in another
-
-
-                        cout << std::fixed << std::setprecision(15);
-                        cout << "Layer " << l << " - Max Gain: " << max_upper << ", Current SWC: " << current_SWC_upper << endl;
-                        cout << "Layer " << l+1 << " - Max Loss: " << min_lower << ", Current SWC: " << current_SWC_lower << endl; 
-                    
+                
                     }
 
+                    // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
 
-                // --- Step 5: Distribute water change across layers ---
-                // // This section calculates the net change in water content for each layer
-                // // by balancing the inflow and outflow from capillary rise.
+                    float voxel_area = LH * LH * sites_per_dcell; // m²
+                    vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
 
+                    for (int l = 0; l < nblayers_soil -1; l++){
+                        // Always limited by the layer above (receiver), that's why volume of the top layer is considered
+                        float vol_top = layer_thickness[l] * voxel_area;   // m³ (camada l)
 
-                // // Configure print formatting for better readability
-                // cout << "\n--- Upward flux due to capillarity " << " ---" << endl;
-                // cout << setfill('-') << setw(80) << "" << setfill(' ') << endl; 
-                // cout << left // Aligns the text to the left
-                //         << setw(8) << "Layer"
-                //         << setw(15) << "Position"
-                //         << setw(15) << "Water gain"
-                //         << setw(15) << "Water loss"
-                //         << setw(15) << "Delta water"
-                //         << "Obs: " << endl;
-                //         cout << setfill('-') << setw(80) << "" << setfill(' ') << endl;
-                // cout << fixed << setprecision(6);
+                        // between the layers, there is a potential flux
+                        float potential_flux =  std::max(0.0f, water_height_upward[l][d]/layer_thickness[l]); // seu potencial
+                        float potential_flux_vol = potential_flux * vol_top; // m³
 
-                //     for (int l = 0; l < nblayers_soil; l++) {
-                //         float water_gain_pot = 0.0f; // Potential gain
-                //         float water_loss_pot = 0.0f; // Potential loss
-                //         float final_delta = 0.0f;
-                //         string obs = ""; // String for observations/notes in the table
+                        float pot_flux_restricted = std::min(
+                            potential_flux_vol,
+                            std::min(receiv_capacity[l], donor_capacity[l+1]));
 
-                //         // Calculate POTENTIAL gains and losses based on position ---
+                        // Water change (if positivo, it is the receiver, if negative it is the donor)
+                        water_change_vol[l] += pot_flux_restricted;
 
-                //         if (l == 0) { // Top Layer
-                //             water_loss_pot = 0.0f;
-                //             if (nblayers_soil > 1) { // Prevents out-of-bounds access if there is only 1 layer
-                //                 water_gain_pot = water_height_upward[l][d] / layer_thickness[l];
-                //             }
-                //         } else if (l < nblayers_soil - 1) { // Intermediate Layers
-                //             water_gain_pot = water_height_upward[l][d] / layer_thickness[l];
-                //             water_loss_pot = water_height_upward[l-1][d] / layer_thickness[l];
-                //         } else { // l == nblayers_soil - 1 (Deepest Layer)
-                //             water_gain_pot = 0.0f;
-                //             water_loss_pot = water_height_upward[l-1][d] / layer_thickness[l];
-                //         }
+                        // A camada de baixo (índice l+1) PERDE a água.
+                        water_change_vol[l+1] -= pot_flux_restricted;
+                    }
 
-                //         // Check the layer's state and set the FINAL change ---
+                    for (int l = 0; l < nblayers_soil; l++){
+                        cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
 
-                //         if (layer_depth[l] > WTD) {
-                //             // The layer is SATURATED (it's part of the water table).
-                //             // The net change due to capillarity is zero.
-                //             final_delta = 0.0f;
-                //             obs = "WT, saturated"; // Add a clear note
-                //             cout << "potential water loss" << water_loss_pot << endl;
-                //         } else {
-                //             // The layer is UNSATURATED.
-                //             // The net change is the difference between potential gain and loss.
-                //             final_delta = water_gain_pot - water_loss_pot;
-                //         }
-                        
-                //         // Assign the final value to your results array
-                //         water_change_cap[l][d] = final_delta;
+                        SWC3D[l][d] += water_change_vol[l];
+                        if (water_change_vol[l]>0.0f){
+                            cout << "Layer " << l << " receives " << water_change_vol[l] << " m³ of water" << endl;
+                        } else if (water_change_vol[l]<0.0f){
+                            cout << "Layer " << l << " donates " << -water_change_vol[l] << " m³ of water" << endl;
+                        } else {
+                            cout << "Layer " << l << " has no water change" << endl;
+                        }
+                        cout << "Layer " << l << " Max_SWC " << Max_SWC[l] << endl;
+                        cout << "Layer " << l << " Min_SWC " << Min_SWC[l] << endl;
+                        cout << "Layer " << l << " Receiver capacity " << receiv_capacity[l] << endl;
+                        cout << "Layer " << l << " Donor capacity " << donor_capacity[l] << endl;
 
-                //         // --- Print the table  ---
-                        
-                //         cout << left << setw(8) << l;
-                        
-                //         if (l == 0) cout << setw(15) << "Top";
-                //         else if (l < nblayers_soil - 1) cout << setw(15) << "Intermediate";
-                //         else cout << setw(15) << "Deep";
+                        cout << "Layer " << l << " SWC after update " << SWC3D[l][d] << endl;
 
-                //         // For consistency, if the layer is WT, we can show gain/loss as 0
-                //         if (obs == "WT, saturated") {
-                //             cout << setw(15) << 0.0f << setw(15) << 0.0f;
-                //         } else {
-                //             cout << setw(15) << water_gain_pot << setw(15) << water_loss_pot;
-                //         }
-                        
-                //         cout << setw(15) << final_delta << obs << endl;
-                    //}
-
-                       
-                    
+                    }
+                    // // Finally, update the SWC3D of each layer based on the water changes calculated above
+                    // for (int l = 0; l < nblayers_soil; l++){
+                    //     SWC3D[l][d] += water_change_vol[l];                    
+                    // }
+                 
                 } // end if (_CAPILLARY_RISE==1) 
             
-            }
-            // END of the BUCKET MODEL.
+            }// END of the BUCKET MODEL.
             
             // Update of soil water potential field
             for (int d=0; d<nbdcells; d++) {
