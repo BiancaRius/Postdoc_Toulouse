@@ -7759,7 +7759,6 @@ if (_WATER_RETENTION_CURVE==1) {
                         // If both conductivities are zero, the harmonic mean is also zero
                         if (sum_k > 1e-9f){
                             Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-                            // Use este formato para imprimir e depurar
                             //cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
                             // Define precision
@@ -7826,7 +7825,7 @@ if (_WATER_RETENTION_CURVE==1) {
 		            for (int l = 0; l<nblayers_soil; l++){
 			
                         // Maximum water storage capacity of a layer(l)
-                        max_cap[l] = Max_SWC[l];
+                        max_cap[l] = FC_SWC[l];
                         // Min water store capacity of the same layer (l)
                         min_cap[l] = Min_SWC[l];
 
@@ -7847,7 +7846,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
 
                         if (layer_depth[l] > WTD) {
-                           donor_capacity[l] = INFINITY;
+                            donor_capacity[l] = INFINITY;
                             // WT layer is saturated → no receiving capacity
                             receiv_capacity[l] = 0.0f;
                         }
