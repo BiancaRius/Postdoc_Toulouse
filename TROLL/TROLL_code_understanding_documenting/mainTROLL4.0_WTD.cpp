@@ -7471,9 +7471,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 // NOTE: under the assumption of a flat terrain and no lateral fluxes, as it is assumed here for a first implementation, the order with which dcells are visited during the loop does not matter. With topography, we will need to visit the soil voxels (ie. dcells*layer) from highest to lowest elevation so that run-off from highest voxels contribute to the water flux entering the lowest ones.
                 //  to be investigated: does the order in which transpiration and evaporation are retrieved from the soil affect the overall outcome? which one should be retrieved first?
                 
-                
-
-                
+                   
                 // Water uptake through tree transpiration
                 float w_uptake=0.0;
                 for (int l=0; l<nblayers_soil; l++) {
@@ -7849,7 +7847,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
 
                         if (layer_depth[l] > WTD) {
-                            donor_capacity[l] = INFINITY;
+                           donor_capacity[l] = INFINITY;
                             // WT layer is saturated → no receiving capacity
                             receiv_capacity[l] = 0.0f;
                         }
@@ -7866,43 +7864,25 @@ if (_WATER_RETENTION_CURVE==1) {
                         float vol_top = layer_thickness[l] * voxel_area;   // m³ (camada l)
 
                         // between the layers, there is a potential flux
-                        float potential_flux =  std::max(0.0f, water_height_upward[l][d]/layer_thickness[l]); // seu potencial
+                        float potential_flux =  std::max(0.0f, water_height_upward[l][d]/layer_thickness[l]); 
                         float potential_flux_vol = potential_flux * vol_top; // m³
 
                         float pot_flux_restricted = std::min(
                             potential_flux_vol,
                             std::min(receiv_capacity[l], donor_capacity[l+1]));
 
-                        // Water change (if positivo, it is the receiver, if negative it is the donor)
+                        // Water change (if positive, it is the receiver, if negative it is the donor)
                         water_change_vol[l] += pot_flux_restricted;
 
-                        // A camada de baixo (índice l+1) PERDE a água.
+                        // the lower later (l+1) lose water 
                         water_change_vol[l+1] -= pot_flux_restricted;
                     }
 
                     for (int l = 0; l < nblayers_soil; l++){
-                        cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
+                    //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
 
                         SWC3D[l][d] += water_change_vol[l];
-                        if (water_change_vol[l]>0.0f){
-                            cout << "Layer " << l << " receives " << water_change_vol[l] << " m³ of water" << endl;
-                        } else if (water_change_vol[l]<0.0f){
-                            cout << "Layer " << l << " donates " << -water_change_vol[l] << " m³ of water" << endl;
-                        } else {
-                            cout << "Layer " << l << " has no water change" << endl;
-                        }
-                        cout << "Layer " << l << " Max_SWC " << Max_SWC[l] << endl;
-                        cout << "Layer " << l << " Min_SWC " << Min_SWC[l] << endl;
-                        cout << "Layer " << l << " Receiver capacity " << receiv_capacity[l] << endl;
-                        cout << "Layer " << l << " Donor capacity " << donor_capacity[l] << endl;
-
-                        cout << "Layer " << l << " SWC after update " << SWC3D[l][d] << endl;
-
                     }
-                    // // Finally, update the SWC3D of each layer based on the water changes calculated above
-                    // for (int l = 0; l < nblayers_soil; l++){
-                    //     SWC3D[l][d] += water_change_vol[l];                    
-                    // }
                  
                 } // end if (_CAPILLARY_RISE==1) 
             
