@@ -7612,22 +7612,22 @@ if (_WATER_RETENTION_CURVE==1) {
     * - `nblayers_soil`: total number of soil layers.
     * - The loop increments through each soil layer `l` from 0 to `nblayers_soil - 1`
     */
-                if (_WATER_TABLE == 1){
+                // if (_WATER_TABLE == 1){
 
-                    /// Considering water table depth
-                    int l=0; // layer counter
-                    while((l<nblayers_soil)) {
-                        // cout << "layer bucket model  " << l << endl;
-                        //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water the soil layer can hold
-                            if(layer_depth[l]>WTD){
-                                SWC3D[l][d] = Max_SWC[l];
-                                // cout << "> wtd - layer :  " << l << endl;
-                                // cout << " SWC " << SWC3D[l][d] << endl;
-                            }
+                //     /// Considering water table depth
+                //     int l=0; // layer counter
+                //     while((l<nblayers_soil)) {
+                //         // cout << "layer bucket model  " << l << endl;
+                //         //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water the soil layer can hold
+                //             if(layer_depth[l]>WTD){
+                //                 SWC3D[l][d] = Max_SWC[l];
+                //                 // cout << "> wtd - layer :  " << l << endl;
+                //                 // cout << " SWC " << SWC3D[l][d] << endl;
+                //             }
 
-                        l++;
-                    }
-                }
+                //         l++;
+                //     }
+                // }
                 // end of water table consideration
 
 /**
@@ -7759,6 +7759,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         // If both conductivities are zero, the harmonic mean is also zero
                         if (sum_k > 1e-9f){
                             Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                            // Use este formato para imprimir e depurar
                             //cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
                             // Define precision
@@ -7845,11 +7846,11 @@ if (_WATER_RETENTION_CURVE==1) {
                         // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
 
-                        if (layer_depth[l] > WTD) {
-                            donor_capacity[l] = INFINITY;
+                        // if (layer_depth[l] > WTD) {
+                        //    donor_capacity[l] = INFINITY;
                             // WT layer is saturated → no receiving capacity
-                            receiv_capacity[l] = 0.0f;
-                        }
+                            // receiv_capacity[l] = 0.0f;
+                        // }
                 
                     }
 
@@ -7881,6 +7882,11 @@ if (_WATER_RETENTION_CURVE==1) {
                     //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
 
                         SWC3D[l][d] += water_change_vol[l];
+                        if (layer_depth[l] > WTD) {
+                        
+                            SWC3D[l][d] = Max_SWC[l]; // if the layer is below the water table, it is always saturated
+
+                        }
                     }
                  
                 } // end if (_CAPILLARY_RISE==1) 

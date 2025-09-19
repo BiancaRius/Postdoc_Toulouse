@@ -9,20 +9,34 @@ library(gridExtra)
 library(dplyr)
 library(patchwork)
 
-# -------------------------------------------
-# Comparação 2 cenários: SWC_NOTupdated vs SWC_updated
-# Usa os mesmos grupos de variáveis do script anterior
-# -------------------------------------------
-
-library(ggplot2)
-library(dplyr)
-library(patchwork)
-library(readr)
 
 # ---- 1) Caminhos dos dois cenários ----
+#scenario_paths <- list(
+  #maximum of water in the layer = max_SWC
+ # max_maxswc = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_max_swc/",
+  #maximum of water in the layer = field_capacity
+  #max_fc = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity/"
+#)
+
+#scenario_paths <- list(
+  #maximum of water in the layer = max_SWC
+#max_maxswc = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_max_swc/",
+#maximum of water in the layer = field_capacity, donor capacity = infinity for WT, cseedrain = 1
+#max_fc = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_infinity/"
+#)
+
+#scenario_paths <- list(
+  ##maximum of water in the layer = field_capacity, donor capacity = not infinity for WT, cseedrain = 1
+ # max_fc_notinf = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity",
+  #maximum of water in the layer = field_capacity, donor capacity = infinity for WT, cseedrain = 1
+  #max_fc = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_infinity/"
+#)
+
 scenario_paths <- list(
-  swc_not_updated = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/",
-  swc_updated     = "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/"
+#maximum of water in the layer = field_capacity, donor capacity = not infinity for WT, cseedrain = 1
+  max_fc_notinf = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity",
+#maximum of water in the layer = field_capacity, donor capacity = not infinity for WT, cseedrain = 1, wt = max_SWC commented
+  max_fc_notinf_wt = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity_wt/"
 )
 
 # ---- 2) Grupos de variáveis e mapeamento p/ arquivo ----
@@ -75,8 +89,8 @@ plot_variable_two_scenarios <- function(variable, paths, file_type) {
   }
   
   # Paleta fixa por cenário
-  scen_labels <- c(swc_not_updated = "SWC NOT updated", swc_updated = "SWC updated")
-  scen_colors <- c("SWC NOT updated" = "firebrick", "SWC updated" = "steelblue")
+  scen_labels <- c(max_fc_notinf = "max = fc not inf", max_fc_notinf_wt = "max = fc not inf wt")
+  scen_colors <- c("max = fc not inf" = "white", "max = fc not inf wt " = "purple")
   
   all_data <- all_data %>%
     mutate(scenario = factor(scenario, levels = names(scen_labels), labels = unname(scen_labels)))
@@ -141,14 +155,6 @@ plot_results_two_scenarios(plot_all = FALSE, selected_variable = "SWC_3")
 plot_results_two_scenarios(plot_all = FALSE, selected_variable = "SWC_4")
 
 
-
-plot_results(plot_all = FALSE, selected_variable = "SWC_1", by_WTD = FALSE)
-
-plot_results(plot_all = FALSE, selected_variable = "SWC_2", by_WTD = FALSE)
-
-plot_results(plot_all = FALSE, selected_variable = "SWC_3", by_WTD = FALSE)
-
-plot_results(plot_all = FALSE, selected_variable = "SWC_4", by_WTD = FALSE)
 
 
 # Todos os gráficos, salvando em PDF
