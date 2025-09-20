@@ -32,12 +32,20 @@ library(patchwork)
   #max_fc = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_infinity/"
 #)
 
-scenario_paths <- list(
+#scenario_paths <- list(
 #maximum of water in the layer = field_capacity, donor capacity = not infinity for WT, cseedrain = 1
-  max_fc_notinf = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity",
+  #max_fc_notinf = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity",
 #maximum of water in the layer = field_capacity, donor capacity = not infinity for WT, cseedrain = 1, wt = max_SWC commented
-  max_fc_notinf_wt = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity_wt/"
+  #max_fc_notinf_wt = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity_wt/"
+#)
+
+scenario_paths <- list(
+  #maximum of water in the layer = field_capacity, donor capacity = not infinity for WT, cseedrain = 1, wt = max_SWC commented 
+  max_fc_notinf = "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity_wt/",
+  #maximum of water in the layer = field_capacity, donor capacity = not infinity for WT, cseedrain = 1, wt = max_SWC commented and wt = max_SWC after capillarity
+  max_fc_notinf_wt= "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/deep_WTD_capON/SWC_updated/max_eq_field_capacity_don_notinfinity_wt_max_swc"
 )
+
 
 # ---- 2) Grupos de variáveis e mapeamento p/ arquivo ----
 biogeochemical_vars   <- c("npp", "gpp", "agb", "sum1", "sum10", "sum30", "ba", "ba10", "litterfall")
@@ -90,7 +98,7 @@ plot_variable_two_scenarios <- function(variable, paths, file_type) {
   
   # Paleta fixa por cenário
   scen_labels <- c(max_fc_notinf = "max = fc not inf", max_fc_notinf_wt = "max = fc not inf wt")
-  scen_colors <- c("max = fc not inf" = "white", "max = fc not inf wt " = "purple")
+  scen_colors <- c("max = fc not inf" = "blue", "max = fc not inf wt" = "purple")
   
   all_data <- all_data %>%
     mutate(scenario = factor(scenario, levels = names(scen_labels), labels = unname(scen_labels)))

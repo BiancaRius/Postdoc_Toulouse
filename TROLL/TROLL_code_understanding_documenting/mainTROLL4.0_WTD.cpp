@@ -5702,6 +5702,30 @@ if (_WATER_RETENTION_CURVE==1) {
                     cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl ;
                 }
 
+                /// Layer geometry - Used in water flow calculations //BR
+
+                    // Computes the vertical position of each layer's center 
+                    // Cummulative depth is set from surface (initialized at 0.0 = soil surface (z_reference)), i.e., the reference datum for z is already embedded here //BR
+                
+                for (int l=0; l<nblayers_soil; l++) {
+                    layer_center_z[l] = - (cumulative_depth + (layer_thickness[l] / 2.0)); // layer center z will always be negative (standard for z in soil physics)
+                }
+                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
+                    // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
+                    // delta_z_face should be negative, as z decreases with depth
+                    for (int l=0; l<nblayers_soil-1; l++) {
+                        delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
+
+                        // Sanity checks for delta_z_face    
+                        if (delta_z_face[l] >= 0.0f) {
+                            cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
+                        }
+                        if (fabs(delta_z_face[l]) < 1e-6f) {
+                            cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
+                        }
+                    }   
+
+
                 // Compute soil water characteristics
                 // (added in the header but kept in here) in this version, all soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input for each layer. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this could be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data (here %clay, %silt, %sand) made using a new function of RconTROLL (and not here)
                 // (added in the header but kept in here) Sat_SWC and Res_SWC are here computed according Tomasella & Hodnett 1998 from soil texture information (see Table 2 in Marthews et al. 2014)
@@ -7662,42 +7686,8 @@ if (_WATER_RETENTION_CURVE==1) {
  */
 
                 if (_CAPILLARY_RISE==1) { // BR     
-                
-                // --- Step 1: Calculate layer geometry ---
-                // This section computes the vertical position of each layer's center and the
-                // distance between adjacent layer centers. 
                     
-                    float cum_depth_surface = 0.0; // cummulative depth from surface; initialized at 0.0 = soil surface (z_reference), i.e., the reference datum for z is already embedded here //BR
-                    vector<float> layer_thickness(nblayers_soil, 0.0f);; // thickness of each soil layer (m) //BR
-                    
-                    for (int l=0; l<nblayers_soil; l++) {
-                   
-                        float layer_depth_current = layer_depth[l];
-                        layer_thickness[l] = layer_depth_current - cum_depth_surface;
-                    
-                        layer_center_z[l] = - (cum_depth_surface + (layer_thickness[l] / 2.0));
-                    
-                        cum_depth_surface = layer_depth_current;
-                    
-                        //cout << "l= " << l << " layer center z = " << layer_center_z[l] << " layer depth = " << layer_depth[l] << " layer thickness = " << layer_thickness << endl;
-                    }
-
-                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
-                    // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
-                    // delta_z_face should be negative, as z decreases with depth
-                    for (int l=0; l<nblayers_soil-1; l++) {
-                        delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
-
-                        // Sanity checks for delta_z_face    
-                        if (delta_z_face[l] >= 0.0f) {
-                            cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
-                        }
-                        if (fabs(delta_z_face[l]) < 1e-6f) {
-                            cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
-                        }
-                    }   
-                    
-                // --- Step 2: Calculate soil hydraulic properties for capillary rise ---
+                // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
                 // Computes relative soil water content, soil water potential (phi), and hydraulic 
                 // conductivity (Ks) based on the chosen water retention model.
                     for (int l=0; l<nblayers_soil; l++) {
@@ -7845,6 +7835,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         // Special case for the WT layer:
                         // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
+                        // In theory, using a psi =0 for this layer would be more correct
 
                         // if (layer_depth[l] > WTD) {
                         //    donor_capacity[l] = INFINITY;
