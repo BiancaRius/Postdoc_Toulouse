@@ -5692,6 +5692,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 
                 // Memory allocation and depth calculation
                 if(NULL==(layer_depth=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl;
+                if(NULL==(layer_center_z=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl;
+
                 float cumulative_depth=0.0;
                 
                 /// @brief Compute cumulative depth for each soil layer
@@ -5699,32 +5701,20 @@ if (_WATER_RETENTION_CURVE==1) {
                     cumulative_depth+=layer_thickness[l];
                     layer_depth[l]=cumulative_depth;
                     cout << "print in read input soil " << endl;
-                    cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl ;
+                    cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl;
+
+                    // Calculate layer geometry ---
+                    // This section computes the vertical position of each layer's center and the
+                    // distance between adjacent layer centers.
+
+                    layer_center_z[l] = cumulative_depth; 
+
+                   // layer_center_z[l] = - (cumulative_depth - (layer_thickness[l] / 2.0));
+
+                    cout << l << "  layer center z READ INPUT SOIL= " << layer_center_z[l] << endl;
+
+ 
                 }
-
-                /// Layer geometry - Used in water flow calculations //BR
-
-                    // Computes the vertical position of each layer's center 
-                    // Cummulative depth is set from surface (initialized at 0.0 = soil surface (z_reference)), i.e., the reference datum for z is already embedded here //BR
-                
-                for (int l=0; l<nblayers_soil; l++) {
-                    layer_center_z[l] = - (cumulative_depth + (layer_thickness[l] / 2.0)); // layer center z will always be negative (standard for z in soil physics)
-                }
-                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
-                    // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
-                    // delta_z_face should be negative, as z decreases with depth
-                    for (int l=0; l<nblayers_soil-1; l++) {
-                        delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
-
-                        // Sanity checks for delta_z_face    
-                        if (delta_z_face[l] >= 0.0f) {
-                            cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
-                        }
-                        if (fabs(delta_z_face[l]) < 1e-6f) {
-                            cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
-                        }
-                    }   
-
 
                 // Compute soil water characteristics
                 // (added in the header but kept in here) in this version, all soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input for each layer. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this could be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data (here %clay, %silt, %sand) made using a new function of RconTROLL (and not here)
@@ -7090,7 +7080,6 @@ if (_WATER_RETENTION_CURVE==1) {
             // Variables for capillarity
             if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
-            if(NULL==(layer_center_z = new float[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(delta_z_face = new float[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
@@ -7110,7 +7099,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
 
-                layer_center_z[l] = 0.0; //BR
 
                 for(int dcell=0; dcell<nbdcells; dcell++) {
                     //SWC3D[l][dcell]=Max_SWC[l];
@@ -7675,7 +7663,6 @@ if (_WATER_RETENTION_CURVE==1) {
  * @param a_vgm, b_vgm, c_vgm, m_vgm Parameters for the van Genuchten-Mualem model.
  * @param phi_e, b Parameters for the Brooks & Corey-Mualem model.
  * @param Ksat A vector of saturated hydraulic conductivity for each layer [m/s].
- * @param layer_center_z A vector to store the calculated z-coordinate of each layer's center [m].
  * @param delta_z_face A vector to store the vertical distance between adjacent layer centers [m].
  * @param soil_phi3D_cap A 3D array to store the calculated soil water potential [MPa].
  * @param Ks_cap A 3D array to store the calculated unsaturated hydraulic conductivity [m/s].
@@ -7686,8 +7673,43 @@ if (_WATER_RETENTION_CURVE==1) {
  */
 
                 if (_CAPILLARY_RISE==1) { // BR     
+                
+                // --- Step 1: Calculate layer geometry ---
+                // This section computes the vertical position of each layer's center and the
+                // distance between adjacent layer centers. 
                     
-                // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
+                    float cum_depth_surface = 0.0; // cummulative depth from surface; initialized at 0.0 = soil surface (z_reference), i.e., the reference datum for z is already embedded here //BR
+                    vector<float> layer_thickness(nblayers_soil, 0.0f);; // thickness of each soil layer (m) //BR
+                    
+                    for (int l=0; l<nblayers_soil; l++) {
+                   
+                        float layer_depth_current = layer_depth[l];
+                        layer_thickness[l] = layer_depth_current - cum_depth_surface;
+                    
+                        layer_center_z[l] = - (cum_depth_surface + (layer_thickness[l] / 2.0));
+                    
+                        cum_depth_surface = layer_depth_current;
+                    
+                        
+                        cout << "layer thickness" << l << " = " << layer_thickness[l] << "cum depth surface " << cum_depth_surface << endl;
+                    }
+
+                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
+                    // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
+                    // delta_z_face should be negative, as z decreases with depth
+                    for (int l=0; l<nblayers_soil-1; l++) {
+                        delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
+
+                        // Sanity checks for delta_z_face    
+                        if (delta_z_face[l] >= 0.0f) {
+                            cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
+                        }
+                        if (fabs(delta_z_face[l]) < 1e-6f) {
+                            cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
+                        }
+                    }   
+                    
+                // --- Step 2: Calculate soil hydraulic properties for capillary rise ---
                 // Computes relative soil water content, soil water potential (phi), and hydraulic 
                 // conductivity (Ks) based on the chosen water retention model.
                     for (int l=0; l<nblayers_soil; l++) {
@@ -7835,7 +7857,6 @@ if (_WATER_RETENTION_CURVE==1) {
                         // Special case for the WT layer:
                         // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
-                        // In theory, using a psi =0 for this layer would be more correct
 
                         // if (layer_depth[l] > WTD) {
                         //    donor_capacity[l] = INFINITY;
@@ -7869,16 +7890,16 @@ if (_WATER_RETENTION_CURVE==1) {
                         water_change_vol[l+1] -= pot_flux_restricted;
                     }
 
-                    for (int l = 0; l < nblayers_soil; l++){
+                    //for (int l = 0; l < nblayers_soil; l++){
                     //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
 
-                        SWC3D[l][d] += water_change_vol[l];
-                        if (layer_depth[l] > WTD) {
+                        //SWC3D[l][d] += water_change_vol[l];
+                        //if (layer_depth[l] > WTD) {
                         
-                            SWC3D[l][d] = Max_SWC[l]; // if the layer is below the water table, it is always saturated
+                          //  SWC3D[l][d] = Max_SWC[l]; // if the layer is below the water table, it is always saturated
 
-                        }
-                    }
+//                        }
+  //                  }
                  
                 } // end if (_CAPILLARY_RISE==1) 
             
@@ -10900,7 +10921,6 @@ if (_WATER_RETENTION_CURVE==1) {
             delete [] SPECIES_GERM;
 #ifdef WATER
             delete [] site_DCELL;
-            delete [] layer_center_z; // BR
             delete [] delta_z_face; // BR
             
 
