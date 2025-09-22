@@ -399,9 +399,11 @@ unsigned short *Thurt[3];  //!<  Global vector:Treefall field
 #ifdef WATER
 int nblayers_soil; //!< Global variable: number of soil layers (for water module)
 float *layer_depth(0); //!< Global vector: depth of each layer (m) !!!UPDATE
-float WTD;
+float WTD; //!< Global variable: water table depth (m); if WATER_TABLE is not defined, WTD is set to a very large value (e.g. 1000 m) so that the water table has no effect on soil moisture
 float *layer_center_z(0); //!< Global vector: z (datum value) for each layer in its center (m) -- used in the implementation of water capillary rise // BR addition
 float *delta_z_face(0); //!< Global vector: the center-to-center distance between adjacent layers 𝑙 and l+1. -- used in the implementation of water capillary rise // BR addition
+float *layer_thickness_global(0); //!< Global vector: thickness of each layer (m) -- used in the implementation of water capillary rise // BR addition
+
 
 // soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this should be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils, and comments in the code). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data made using a new function of RconTROLL, if unearthed.
 // since soil layers (silt, clay, sand) are only needed locally, they are now coded as vectors
@@ -5692,7 +5694,10 @@ if (_WATER_RETENTION_CURVE==1) {
                 
                 // Memory allocation and depth calculation
                 if(NULL==(layer_depth=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl;
-                if(NULL==(layer_center_z=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl;
+                
+                if(NULL==(layer_center_z=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl; // BR 
+                if(NULL==(delta_z_face=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl; // BR
+                if(NULL==(layer_thickness_global=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl; // BR
 
                 float cumulative_depth=0.0;
                 
@@ -5703,18 +5708,33 @@ if (_WATER_RETENTION_CURVE==1) {
                     cout << "print in read input soil " << endl;
                     cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl;
 
-                    // Calculate layer geometry ---
+                    // Calculate layer geometry --- // To be used in the soil water flow calculations // BR
                     // This section computes the vertical position of each layer's center and the
                     // distance between adjacent layer centers.
-
-                    layer_center_z[l] = cumulative_depth; 
-
-                   // layer_center_z[l] = - (cumulative_depth - (layer_thickness[l] / 2.0));
-
-                    cout << l << "  layer center z READ INPUT SOIL= " << layer_center_z[l] << endl;
-
+                    layer_center_z[l] = -(cumulative_depth - layer_thickness[l] / 2.0f);
  
+                    cout << l << "  layer center z = " << layer_center_z[l] << endl;
+                    layer_thickness_global[l] = layer_thickness[l];
                 }
+
+                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
+                    // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
+                    // delta_z_face should be negative, as z decreases with depth
+                for (int l=0; l<nblayers_soil-1; l++) {
+                    delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
+
+                        // Sanity checks for delta_z_face    
+                    if (delta_z_face[l] >= 0.0f) {
+                        cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
+                    }
+                    if (fabs(delta_z_face[l]) < 1e-6f) {
+                    cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
+                    }
+                    
+                    cout << l << "  delta z face READ INPUT SOIL= " << delta_z_face[l] << endl;
+
+                }   
+
 
                 // Compute soil water characteristics
                 // (added in the header but kept in here) in this version, all soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input for each layer. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this could be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data (here %clay, %silt, %sand) made using a new function of RconTROLL (and not here)
@@ -7080,7 +7100,6 @@ if (_WATER_RETENTION_CURVE==1) {
             // Variables for capillarity
             if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
-            if(NULL==(delta_z_face = new float[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
             if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
@@ -7126,7 +7145,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(water_height_upward[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    delta_z_face[l] = 0.0; //BR
                 for (int dcell=0; dcell<nbdcells; dcell++) {
                     Ks_cap_harmonic[l][dcell] = 0.0; //BR
                     q_cap[l][dcell] = 0.0; //BR
@@ -7673,43 +7691,9 @@ if (_WATER_RETENTION_CURVE==1) {
  */
 
                 if (_CAPILLARY_RISE==1) { // BR     
-                
-                // --- Step 1: Calculate layer geometry ---
-                // This section computes the vertical position of each layer's center and the
-                // distance between adjacent layer centers. 
-                    
-                    float cum_depth_surface = 0.0; // cummulative depth from surface; initialized at 0.0 = soil surface (z_reference), i.e., the reference datum for z is already embedded here //BR
-                    vector<float> layer_thickness(nblayers_soil, 0.0f);; // thickness of each soil layer (m) //BR
-                    
-                    for (int l=0; l<nblayers_soil; l++) {
-                   
-                        float layer_depth_current = layer_depth[l];
-                        layer_thickness[l] = layer_depth_current - cum_depth_surface;
-                    
-                        layer_center_z[l] = - (cum_depth_surface + (layer_thickness[l] / 2.0));
-                    
-                        cum_depth_surface = layer_depth_current;
-                    
-                        
-                        cout << "layer thickness" << l << " = " << layer_thickness[l] << "cum depth surface " << cum_depth_surface << endl;
-                    }
 
-                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
-                    // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
-                    // delta_z_face should be negative, as z decreases with depth
-                    for (int l=0; l<nblayers_soil-1; l++) {
-                        delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
 
-                        // Sanity checks for delta_z_face    
-                        if (delta_z_face[l] >= 0.0f) {
-                            cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
-                        }
-                        if (fabs(delta_z_face[l]) < 1e-6f) {
-                            cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
-                        }
-                    }   
-                    
-                // --- Step 2: Calculate soil hydraulic properties for capillary rise ---
+                // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
                 // Computes relative soil water content, soil water potential (phi), and hydraulic 
                 // conductivity (Ks) based on the chosen water retention model.
                     for (int l=0; l<nblayers_soil; l++) {
@@ -7771,7 +7755,6 @@ if (_WATER_RETENTION_CURVE==1) {
                         // If both conductivities are zero, the harmonic mean is also zero
                         if (sum_k > 1e-9f){
                             Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-                            // Use este formato para imprimir e depurar
                             //cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
                             // Define precision
@@ -7873,10 +7856,10 @@ if (_WATER_RETENTION_CURVE==1) {
 
                     for (int l = 0; l < nblayers_soil -1; l++){
                         // Always limited by the layer above (receiver), that's why volume of the top layer is considered
-                        float vol_top = layer_thickness[l] * voxel_area;   // m³ (camada l)
+                        float vol_top = layer_thickness_global[l] * voxel_area;   // m³ (camada l)
 
                         // between the layers, there is a potential flux
-                        float potential_flux =  std::max(0.0f, water_height_upward[l][d]/layer_thickness[l]); 
+                        float potential_flux =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
                         float potential_flux_vol = potential_flux * vol_top; // m³
 
                         float pot_flux_restricted = std::min(
