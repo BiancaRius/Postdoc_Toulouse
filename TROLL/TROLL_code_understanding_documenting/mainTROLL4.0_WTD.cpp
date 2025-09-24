@@ -7121,8 +7121,18 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 for(int dcell=0; dcell<nbdcells; dcell++) {
                     //SWC3D[l][dcell]=Max_SWC[l];
-                    SWC3D[l][dcell]=FC_SWC[l];
-                    SWC3D_cap[l][dcell]=FC_SWC[l]; //BR
+                    SWC3D[l][dcell]=FC_SWC[l]; // BR
+                    
+                    if (_WATER_TABLE == 1){ // If the water table is activated
+
+                    // Here the layers correspondent to the water table depth (WTD) are filled as its maximum
+                    // The others, are filled at field capacity (FC) //BR
+                        if (layer_depth[l] > WTD) {
+                            SWC3D[l][dcell]     = Max_SWC[l];     
+                            SWC3D_cap[l][dcell] = Max_SWC[l];     
+                        }
+                    }
+
                     soil_phi3D[l][dcell]=0.0;
                     soil_phi3D_cap[l][dcell]=0.0; //BR
                     water_change_cap[l][dcell]=0.0; //BR
@@ -7458,7 +7468,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     TopWindSpeed_DCELL[d]=1.204/log(16.67*((MeteoStation_Height/Canopy_height_DCELL[d])-0.8)); // WS is the timestep windspeed at a height=MeteoStation_Height, and TopWindSpeed_DCELL is the wind speed computed at a height=Canopy_height_DCELL[d], according to the model of Monteith & Unsworth 2008 (see Rau et al's TROLL manuscript), with d=0.8H and z0=0.06H; 16.67~1/0.06, 1.204=log(0.2/0.06).
                 } else TopWindSpeed_DCELL[d]=exp(alphaInoue*(1-MeteoStation_Height/Canopy_height_DCELL[d]));
                 if (Canopy_height_DCELL[d]==0) {
-                    // cout << "in UpdateField: d=" << d << "; Canopyheight_DCELL[d]=" << Canopy_height_DCELL[d] << "; HSum_DCELL[d]=" << HSum_DCELL[d] << "; TopWindSpeed_DCELL[d]=" << TopWindSpeed_DCELL[d] << endl;
+                    cout << "in UpdateField: d=" << d << "; Canopyheight_DCELL[d]=" << Canopy_height_DCELL[d] << "; HSum_DCELL[d]=" << HSum_DCELL[d] << "; TopWindSpeed_DCELL[d]=" << TopWindSpeed_DCELL[d] << endl;
                 }
 #else
                if (Canopy_height_DCELL[d]<=MeteoStation_Height) {
@@ -7503,7 +7513,7 @@ if (_WATER_RETENTION_CURVE==1) {
             vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
             vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
 		    vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
-            
+
             for (int d=0; d<nbdcells; d++) {
                 //****   BUCKET MODEL in each dcell   ****
                 // the unit used for water volume throughout the bucket model is m3.
@@ -7710,43 +7720,37 @@ if (_WATER_RETENTION_CURVE==1) {
                         // Intermediate relative humidity for capillary rise calculation
                         float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
-if (_WATER_RETENTION_CURVE==1) {
-                        if(theta_w_cap == 0) {
-                            theta_w_cap = 0.001; // following the below rule added by SS //BR
-                            cout << "Warning theta_w_cap = 0 " << endl ;
+                        // Special condition for layers below the water table
+                        if (layer_depth[l] > WTD) {         //BR
+                            soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
+                            theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
+                            Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
+                            continue;                      //BR: if the layer is below the water table, it is saturated, no need to compute soil hydraulic properties for capillary rise
                         }
+
+                        // Prevent division by zero or negative values                    
+                        if(theta_w_cap <= 1e-6f) { //BR: update from 0 to <= 1e-6f
+                            theta_w_cap = 0.001; // following the below rule added by SS //BR
+                            // cout << "Warning theta_w_cap = 0 " << endl ;
+                        }
+
+if (_WATER_RETENTION_CURVE==1) {
                         soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
 
                         float inter_cap = 1-pow((1-pow(theta_w_cap, b_vgm[l])),m_vgm[l]);
                         Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 0.5)*inter_cap*inter_cap; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                         
 
-                        if (layer_depth[l] > WTD) { //BR
-                            soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
-                            theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
-                            Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
-                        }
                         // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 
 
 } else if (_WATER_RETENTION_CURVE==0) {
-                        if(theta_w_cap == 0) {
-                            theta_w_cap = 0.001; // following the below rule added by SS //BR
-                            cout << "Warning theta_w_cap = 0 " << endl ;
-                        }
 
                         soil_phi3D_cap[l][d]=phi_e[l]*pow(theta_w_cap, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
                         Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
                         KsPhi[l][d]=Ksat[l]*phi_e[l]*pow(theta_w_cap, 2.5+b[l]); //Ks times soil_phi3D, computed directly as the exact power of theta.
                         //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
                         // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
-
-
-                        if (layer_depth[l] > WTD) { //BR
-                            soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
-                            theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
-                            Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
-                        }
 
                         // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
@@ -7815,16 +7819,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 // --- Step 5: Evaluate the capacities of the layers to donate or receive water ---
                 // Establish physical boundaries for the layers. 
                 // Each layer has two INDEPENDENT physical limits (in m^3): its receiver capacity and its donor capacity. These limits are used to constrain the actual water transfer between layers.
-
-                    // creates vectors for auxiliary variables needed in the loop
-                    vector<float> max_cap(nblayers_soil, 0.0f);       // maximum capacity of the layer (m^3)
-                    vector<float> min_cap(nblayers_soil, 0.0f);       // minimum capacity of the layer (m^3)
-                    vector<float> current_SWC(nblayers_soil, 0.0f);    // current status of SWC in the layer (m^3)
-                    vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
-                    vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
-                    vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
-		            vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
-
                 
                 // loop to set the capacities of each layer
 		            for (int l = 0; l<nblayers_soil; l++){
@@ -7850,19 +7844,18 @@ if (_WATER_RETENTION_CURVE==1) {
                         // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
 
-                        // if (layer_depth[l] > WTD) {
-                        //    donor_capacity[l] = INFINITY;
+                        if (layer_depth[l] > WTD) {
+                           donor_capacity[l] = INFINITY;
                             // WT layer is saturated → no receiving capacity
-                            // receiv_capacity[l] = 0.0f;
-                        // }
+                            receiv_capacity[l] = 0.0f;
+                        }
                 
                     }
 
                     // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
-
                     float voxel_area = LH * LH * sites_per_dcell; // m²
                     vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
-
+                    water_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
                     for (int l = 0; l < nblayers_soil -1; l++){
                         // Always limited by the layer above (receiver), that's why volume of the top layer is considered
                         float vol_top = layer_thickness_global[l] * voxel_area;   // m³ (camada l)
@@ -7880,18 +7873,31 @@ if (_WATER_RETENTION_CURVE==1) {
 
                         // the lower later (l+1) lose water 
                         water_change_vol[l+1] -= pot_flux_restricted;
+
+                        if (layer_depth[l] > WTD) {
+                            // water_change_vol[l] += 0.0f; // WT layer cannot receive water
+                            
+                            cout << "             " << endl;
+                            
+                            cout << "Layer " << l << " is below WTD. water change vol: "<< water_change_vol[l] << endl;
+                            cout << "             " << endl;
+                            cout << "             " << endl;
+
+                            cout << "Layer " << l+1 << " is above WTD. water change vol: "<< water_change_vol[l+1] << endl;
+                            cout << "             " << endl;
+                            cout << "             " << endl;
+
+                        }
+
+
                     }
 
-                    //for (int l = 0; l < nblayers_soil; l++){
+                    for (int l = 0; l < nblayers_soil; l++){
                     //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
-
-                        //SWC3D[l][d] += water_change_vol[l];
-                        //if (layer_depth[l] > WTD) {
-                        
-                          //  SWC3D[l][d] = Max_SWC[l]; // if the layer is below the water table, it is always saturated
-
-//                        }
-  //                  }
+                        if (layer_depth[l] > WTD) continue; //BR: if the layer is below the water table, it is saturated, no need to update SWC3D
+                        SWC3D[l][d] += water_change_vol[l];
+                    }
+                    // INCLUDE:  Checking sanity of updated SWC3D after capillary rise //BR
                  
                 } // end if (_CAPILLARY_RISE==1) 
             
