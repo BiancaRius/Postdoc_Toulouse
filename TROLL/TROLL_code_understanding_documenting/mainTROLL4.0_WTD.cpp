@@ -7458,7 +7458,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     TopWindSpeed_DCELL[d]=1.204/log(16.67*((MeteoStation_Height/Canopy_height_DCELL[d])-0.8)); // WS is the timestep windspeed at a height=MeteoStation_Height, and TopWindSpeed_DCELL is the wind speed computed at a height=Canopy_height_DCELL[d], according to the model of Monteith & Unsworth 2008 (see Rau et al's TROLL manuscript), with d=0.8H and z0=0.06H; 16.67~1/0.06, 1.204=log(0.2/0.06).
                 } else TopWindSpeed_DCELL[d]=exp(alphaInoue*(1-MeteoStation_Height/Canopy_height_DCELL[d]));
                 if (Canopy_height_DCELL[d]==0) {
-                    cout << "in UpdateField: d=" << d << "; Canopyheight_DCELL[d]=" << Canopy_height_DCELL[d] << "; HSum_DCELL[d]=" << HSum_DCELL[d] << "; TopWindSpeed_DCELL[d]=" << TopWindSpeed_DCELL[d] << endl;
+                    // cout << "in UpdateField: d=" << d << "; Canopyheight_DCELL[d]=" << Canopy_height_DCELL[d] << "; HSum_DCELL[d]=" << HSum_DCELL[d] << "; TopWindSpeed_DCELL[d]=" << TopWindSpeed_DCELL[d] << endl;
                 }
 #else
                if (Canopy_height_DCELL[d]<=MeteoStation_Height) {
@@ -7494,6 +7494,15 @@ if (_WATER_RETENTION_CURVE==1) {
             //**  Evolution of belowground hydraulic fields: Soil bucket model
             
             //for(int site=0;site<sites;site++) T[site].Water_uptake(); // Update of Transpiration: tree water uptake, each tree will deplete soil water content through its transpiration. Now made ate the end of the evolution loop so that the outputs for water uptake match the others (otherwise lag of one timestep)
+            
+            // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
+            vector<float> max_cap(nblayers_soil, 0.0f);       // maximum capacity of the layer (m^3)
+            vector<float> min_cap(nblayers_soil, 0.0f);       // minimum capacity of the layer (m^3)
+            vector<float> current_SWC(nblayers_soil, 0.0f);    // current status of SWC in the layer (m^3)
+            vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
+            vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
+            vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
+		    vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
             
             for (int d=0; d<nbdcells; d++) {
                 //****   BUCKET MODEL in each dcell   ****
