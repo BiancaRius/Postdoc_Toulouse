@@ -7098,32 +7098,42 @@ if (_WATER_RETENTION_CURVE==1) {
             if(NULL==(Transpiration=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
 
             // Variables for capillarity
-            if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
-            if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR  
+            if (_CAPILLARY_RISE == 1){
+                if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
+                if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR  
+            }
 
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-                if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-                if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(water_change_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(Ks[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-                if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(KsPhi[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
 
+                if (_CAPILLARY_RISE == 1){ //BR
+                    if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
+                    if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(water_change_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                }
 
                 for(int dcell=0; dcell<nbdcells; dcell++) {
                     //SWC3D[l][dcell]=Max_SWC[l];
                     SWC3D[l][dcell]=FC_SWC[l];
-
                     cout << "layer: " << l << " SWC3D initialized at FC: " << SWC3D[l][dcell] << endl; 
+
+
+                    if (_CAPILLARY_RISE == 1) {//BR
+                        SWC3D_cap[l][dcell]=FC_SWC[l];
+                        cout << "layer: " << l << " SWC3D_cap initialized at FC: " << SWC3D_cap[l][dcell] << endl; 
+                    }
+
                     
                     if (_WATER_TABLE == 1){ // If the water table is activated
 
@@ -7131,40 +7141,51 @@ if (_WATER_RETENTION_CURVE==1) {
                     // The others, are filled at field capacity (FC) //BR
                         if (layer_depth[l] > WTD) {
                             cout << "layer " << l << " is water table. " << " Depth " << layer_depth[l] << " WTD set as " << WTD << endl;
-                            SWC3D[l][dcell]     = Max_SWC[l];     
-                            SWC3D_cap[l][dcell] = Max_SWC[l];
-
+                            SWC3D[l][dcell]     = Max_SWC[l]; 
                             cout << "Initialisation of SWC " << endl;
-                            cout << "Layer " << l << " SWC3D " << SWC3D[l][dcell] << " SWC3D_cap " << SWC3D_cap[l][dcell] << endl;     
+                            cout << "Layer " << l << " SWC3D " << SWC3D[l][dcell] << endl; 
+
+                            if (_CAPILLARY_RISE == 1){ // If capillarity and WT is activated
+                                SWC3D_cap[l][dcell] = Max_SWC[l];
+
+                                cout << "Initialisation of SWC_cap" << endl;
+                                cout << "Layer " << l << " SWC3D_cap " << SWC3D_cap[l][dcell] << endl;     
+                            }
                         }
                     }
 
                     soil_phi3D[l][dcell]=0.0;
-                    soil_phi3D_cap[l][dcell]=0.0; //BR
-                    water_change_cap[l][dcell]=0.0; //BR
                     Ks[l][dcell]=0.0;
-                    Ks_cap[l][dcell]=0.0; //BR
                     KsPhi[l][dcell]=0.0;
                     //KsPhi2[l][dcell]=0.0;
                     Transpiration[l][dcell]=0.0;
+
+                    if (_CAPILLARY_RISE == 1){ //BR
+                        soil_phi3D_cap[l][dcell]=0.0; //BR
+                        water_change_cap[l][dcell]=0.0; //BR
+                        Ks_cap[l][dcell]=0.0; //BR
+                    }
+
                     if (SWC3D[l][dcell]<=0.0) {
                         cout << "Soil water content <=0.0  " << SWC3D[l][dcell] << "\t" <<Max_SWC[l] << "\n";
                     }
-                     if (SWC3D_cap[l][dcell]<=0.0) {
-                        //cout << "Soil water content capillarity <=0.0  " << SWC3D_cap[l][dcell] << "\t" <<Max_SWC[l] << "\n";
+                    if (SWC3D_cap[l][dcell]<=0.0) {
+                        cout << "Soil water content capillarity <=0.0  " << SWC3D_cap[l][dcell] << "\t" <<Max_SWC[l] << "\n";
                     }
                 }
             }
 
             // Loop for variables that only exists at the interface of soil layers
-            for(int l=0;l<nblayers_soil-1;l++) {
-                    if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(water_height_upward[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                for (int dcell=0; dcell<nbdcells; dcell++) {
-                    Ks_cap_harmonic[l][dcell] = 0.0; //BR
-                    q_cap[l][dcell] = 0.0; //BR
-                    water_height_upward[l][dcell] = 0.0; //BR
+            if (_CAPILLARY_RISE == 1) {//BR
+                for(int l=0;l<nblayers_soil-1;l++) {
+                        if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(water_height_upward[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    for (int dcell=0; dcell<nbdcells; dcell++) {
+                        Ks_cap_harmonic[l][dcell] = 0.0; //BR
+                        q_cap[l][dcell] = 0.0; //BR
+                        water_height_upward[l][dcell] = 0.0; //BR
+                    }
                 }
             }
 
@@ -7511,14 +7532,15 @@ if (_WATER_RETENTION_CURVE==1) {
             
             //for(int site=0;site<sites;site++) T[site].Water_uptake(); // Update of Transpiration: tree water uptake, each tree will deplete soil water content through its transpiration. Now made ate the end of the evolution loop so that the outputs for water uptake match the others (otherwise lag of one timestep)
             
-            // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
+                // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
             vector<float> max_cap(nblayers_soil, 0.0f);       // maximum capacity of the layer (m^3)
             vector<float> min_cap(nblayers_soil, 0.0f);       // minimum capacity of the layer (m^3)
             vector<float> current_SWC(nblayers_soil, 0.0f);    // current status of SWC in the layer (m^3)
             vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
             vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
             vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
-		    vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
+            vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
+            
 
             for (int d=0; d<nbdcells; d++) {
                 //****   BUCKET MODEL in each dcell   ****
@@ -7654,16 +7676,16 @@ if (_WATER_RETENTION_CURVE==1) {
                 // Leakage
                 Leakage[d]=in;
 
-                if (_WATER_TABLE == 1){
-                    for (int l=0; l<nblayers_soil; l++) {
-                        if (layer_depth[l] > WTD) {
-                            cout << "layer " << l << " is water table. After leakage. "  << endl;
-                            cout << "check if SWC corrresponds to the initialisation : " << endl;
-                            cout << "SWC3D[l][d] " << SWC3D[l][d] << " Max_SWC[l] " << Max_SWC[l] << endl;
-                            cout << "SWC3D_cap[l][d] " << SWC3D_cap[l][d] << " Max_SWC[l] " << Max_SWC[l] << endl;    
-                        }
-                    }
-                } // end of WTD check after leakage
+                // if (_WATER_TABLE == 1){
+                //     for (int l=0; l<nblayers_soil; l++) {
+                //         if (layer_depth[l] > WTD) {
+                //             cout << "layer " << l << " is water table. After leakage. "  << endl;
+                //             cout << "check if SWC corrresponds to the initialisation : " << endl;
+                //             cout << "SWC3D[l][d] " << SWC3D[l][d] << " Max_SWC[l] " << Max_SWC[l] << endl;
+                //             cout << "SWC3D_cap[l][d] " << SWC3D_cap[l][d] << " Max_SWC[l] " << Max_SWC[l] << endl;    
+                //         }
+                //     }
+                // } // end of WTD check after leakage
 
     /**  @brief Applies water table depth effect on soil water content (SWC) if the bucket model is enabled.
     *If the water table model (_WATER_TABLE) is enabled (== 1), this block updates the soil water content
@@ -7677,9 +7699,8 @@ if (_WATER_RETENTION_CURVE==1) {
     * - `nblayers_soil`: total number of soil layers.
     * - The loop increments through each soil layer `l` from 0 to `nblayers_soil - 1`
     */
+                /// Considering water table depth
                 if (_WATER_TABLE == 1){
-
-                    /// Considering water table depth
                     int l=0; // layer counter
                     while((l<nblayers_soil)) {
                         // cout << "layer bucket model  " << l << endl;
@@ -7912,10 +7933,13 @@ if (_WATER_RETENTION_CURVE==1) {
 
                     }
 
-                    // for (int l = 0; l < nblayers_soil; l++){
+                    for (int l = 0; l < nblayers_soil; l++){
+                        SWC3D[l][d] += water_change_vol[l];
+                    }
+
                     // //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
                     //     if (layer_depth[l] > WTD) continue; //BR: if the layer is below the water table, it is saturated, no need to update SWC3D
-                    //     SWC3D[l][d] += water_change_vol[l];
+                        // SWC3D[l][d] += water_change_vol[l];
                     // }
                     // INCLUDE:  Checking sanity of updated SWC3D after capillary rise //BR
                  
