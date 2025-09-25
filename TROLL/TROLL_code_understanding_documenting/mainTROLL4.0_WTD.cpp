@@ -7121,15 +7121,19 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 for(int dcell=0; dcell<nbdcells; dcell++) {
                     //SWC3D[l][dcell]=Max_SWC[l];
-                    SWC3D[l][dcell]=FC_SWC[l]; // BR
+                    SWC3D[l][dcell]=FC_SWC[l];
                     
                     if (_WATER_TABLE == 1){ // If the water table is activated
 
                     // Here the layers correspondent to the water table depth (WTD) are filled as its maximum
                     // The others, are filled at field capacity (FC) //BR
                         if (layer_depth[l] > WTD) {
+                            cout << "layer " << l << " is water table. " << " Depth " << layer_depth[l] << " WTD set as " << WTD << endl;
                             SWC3D[l][dcell]     = Max_SWC[l];     
-                            SWC3D_cap[l][dcell] = Max_SWC[l];     
+                            SWC3D_cap[l][dcell] = Max_SWC[l];
+
+                            cout << "Initialisation of SWC " << endl;
+                            cout << "Layer " << l << " SWC3D " << SWC3D[l][dcell] << " SWC3D_cap " << SWC3D_cap[l][dcell] << endl;     
                         }
                     }
 
@@ -7648,6 +7652,17 @@ if (_WATER_RETENTION_CURVE==1) {
                 // Leakage
                 Leakage[d]=in;
 
+                if (_WATER_TABLE == 1){
+
+                    for (int l=0; l<nblayers_soil; l++) {
+                        if (layer_depth[l] > WTD) {
+                            cout << "layer " << l << " is water table. After leakage. "  << endl;
+                            cout << "check if SWC corrresponds to the initialisation : " << endl;
+                            cout << "SWC3D[l][d] " << SWC3D[l][d] << " Max_SWC[l] " << Max_SWC[l] << endl;
+                            cout << "SWC3D_cap[l][d] " << SWC3D_cap[l][d] << " Max_SWC[l] " << Max_SWC[l] << endl;    
+                        }
+                    }
+                } // end of WTD check after leakage
 
     /**  @brief Applies water table depth effect on soil water content (SWC) if the bucket model is enabled.
     *If the water table model (_WATER_TABLE) is enabled (== 1), this block updates the soil water content
