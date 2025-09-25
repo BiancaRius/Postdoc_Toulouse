@@ -1,21 +1,23 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "TROLL debug",
-        "type": "lldb",
-        "request": "launch",
-        "program": "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/TROLL_nowtd_redprec70.out",
-        "args": [ "-mParacou_input_climate.txt",
-                "-iParacou_input_global.txt",
-                "-pParacou_input_pedology.txt",
-                "-sParacou_input_species.txt",
-                "-dParacou_input_daily.txt"],
-        "stopAtEntry": false,
-        "cwd": "${workspaceFolder}",
-        "environment": [],
-        "externalConsole": true,
-        "preLaunchTask": "build"
-      }
-    ]
-  }
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "TROLL debug",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/TROLL_test_print.out",
+      "cwd": "${workspaceFolder}/TROLL/TROLL_code_understanding_documenting",
+      "args": [
+        "-mParacou_input_climate.txt",
+        "-iParacou_input_global.txt",
+        "-pParacou_input_pedology.txt",
+        "-sParacou_input_species.txt",
+        "-dParacou_input_daily.txt"
+      ],
+      "stopAtEntry": false,
+      "environment": [],
+      "externalConsole": true,
+      "preLaunchTask": "build"
+    }
+  ]
+}
