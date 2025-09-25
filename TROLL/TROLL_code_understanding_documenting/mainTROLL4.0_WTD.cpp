@@ -7655,7 +7655,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 Leakage[d]=in;
 
                 if (_WATER_TABLE == 1){
-
                     for (int l=0; l<nblayers_soil; l++) {
                         if (layer_depth[l] > WTD) {
                             cout << "layer " << l << " is water table. After leakage. "  << endl;
@@ -7678,22 +7677,22 @@ if (_WATER_RETENTION_CURVE==1) {
     * - `nblayers_soil`: total number of soil layers.
     * - The loop increments through each soil layer `l` from 0 to `nblayers_soil - 1`
     */
-                // if (_WATER_TABLE == 1){
+                if (_WATER_TABLE == 1){
 
-                //     /// Considering water table depth
-                //     int l=0; // layer counter
-                //     while((l<nblayers_soil)) {
-                //         // cout << "layer bucket model  " << l << endl;
-                //         //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water the soil layer can hold
-                //             if(layer_depth[l]>WTD){
-                //                 SWC3D[l][d] = Max_SWC[l];
-                //                 // cout << "> wtd - layer :  " << l << endl;
-                //                 // cout << " SWC " << SWC3D[l][d] << endl;
-                //             }
+                    /// Considering water table depth
+                    int l=0; // layer counter
+                    while((l<nblayers_soil)) {
+                        // cout << "layer bucket model  " << l << endl;
+                        //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water the soil layer can hold
+                            if(layer_depth[l]>WTD){
+                                SWC3D[l][d] = Max_SWC[l];
+                                // cout << "> wtd - layer :  " << l << endl;
+                                // cout << " SWC " << SWC3D[l][d] << endl;
+                            }
 
-                //         l++;
-                //     }
-                // }
+                        l++;
+                    }
+                }
                 // end of water table consideration
 
 /**
@@ -7737,12 +7736,15 @@ if (_WATER_RETENTION_CURVE==1) {
                         // Intermediate relative humidity for capillary rise calculation
                         float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
-                        // Special condition for layers below the water table
-                        if (layer_depth[l] > WTD) {         //BR
-                            soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
-                            theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
-                            Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
-                            continue;                      //BR: if the layer is below the water table, it is saturated, no need to compute soil hydraulic properties for capillary rise
+
+                            // Special condition for layers below the water table
+                        if (_WATER_TABLE == 1) {  // BR: only if the water table model is activated
+                            if (layer_depth[l] > WTD) {         //BR
+                                soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
+                                theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
+                                Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
+                                continue;                      //BR: if the layer is below the water table, it is saturated, no need to compute soil hydraulic properties for capillary rise
+                            }
                         }
 
                         // Prevent division by zero or negative values                    
@@ -7860,11 +7862,12 @@ if (_WATER_RETENTION_CURVE==1) {
                         // Special case for the WT layer:
                         // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
-
-                        if (layer_depth[l] > WTD) {
-                           donor_capacity[l] = INFINITY;
-                            // WT layer is saturated → no receiving capacity
-                            receiv_capacity[l] = 0.0f;
+                        if (_WATER_TABLE == 1) {  // BR: only if the water table model is activated
+                            if (layer_depth[l] > WTD) {
+                            donor_capacity[l] = INFINITY;
+                                // WT layer is saturated → no receiving capacity
+                                receiv_capacity[l] = 0.0f;
+                            }
                         }
                 
                     }
@@ -7891,29 +7894,29 @@ if (_WATER_RETENTION_CURVE==1) {
                         // the lower later (l+1) lose water 
                         water_change_vol[l+1] -= pot_flux_restricted;
 
-                        if (layer_depth[l] > WTD) {
+                        // if (layer_depth[l] > WTD) {
                             // water_change_vol[l] += 0.0f; // WT layer cannot receive water
                             
-                            cout << "             " << endl;
+                            // cout << "             " << endl;
                             
-                            cout << "Layer " << l << " is below WTD. water change vol: "<< water_change_vol[l] << endl;
-                            cout << "             " << endl;
-                            cout << "             " << endl;
+                            // cout << "Layer " << l << " is below WTD. water change vol: "<< water_change_vol[l] << endl;
+                            // cout << "             " << endl;
+                            // cout << "             " << endl;
 
-                            cout << "Layer " << l+1 << " is above WTD. water change vol: "<< water_change_vol[l+1] << endl;
-                            cout << "             " << endl;
-                            cout << "             " << endl;
+                            // cout << "Layer " << l+1 << " is above WTD. water change vol: "<< water_change_vol[l+1] << endl;
+                            // cout << "             " << endl;
+                            // cout << "             " << endl;
 
-                        }
+                        // }
 
 
                     }
 
-                    for (int l = 0; l < nblayers_soil; l++){
-                    //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
-                        if (layer_depth[l] > WTD) continue; //BR: if the layer is below the water table, it is saturated, no need to update SWC3D
-                        SWC3D[l][d] += water_change_vol[l];
-                    }
+                    // for (int l = 0; l < nblayers_soil; l++){
+                    // //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
+                    //     if (layer_depth[l] > WTD) continue; //BR: if the layer is below the water table, it is saturated, no need to update SWC3D
+                    //     SWC3D[l][d] += water_change_vol[l];
+                    // }
                     // INCLUDE:  Checking sanity of updated SWC3D after capillary rise //BR
                  
                 } // end if (_CAPILLARY_RISE==1) 
