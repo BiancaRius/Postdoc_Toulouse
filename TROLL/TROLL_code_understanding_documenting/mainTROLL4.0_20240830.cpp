@@ -54,7 +54,7 @@
 #undef CHECK_CARBON      //!< new in v.2.5: DIAGNOSTIC TOOL, checking of carbon budgets, could potentially be extended for nutrient budget checking in the future. The idea is to keep track of carbon stocks and carbon fluxes every timestep to see whether there are any deviations from expectations - to do so, differences between stocks are computed at each timestep, and can be compared to the gross and net assimilation of carbon
 #define FULL_CLIMATE
 #undef MIP_Lichstein //!< includes specific developments and outputs needed for the MIP experiment led by Jeremy Lichstein.
-#define WATER_TABLE_DEPTH
+
 
 
 // LIBRAIRIES
@@ -118,8 +118,6 @@ using namespace std;
 #define MeteoStation_Height 55.0 //!< Height of the meteo station where the input climate data are taken from. Here supposed to be above the canopy.
 
 char buffer[256], inputfile[256], inputfile_daytimevar[256], inputfile_climate[256], inputfile_soil[256], outputinfo[256],inputfile_inventory[256], inputfile_pointcloud[256], *bufi(0), *bufi_daytimevar(0), *bufi_climate(0), *bufi_soil(0), *buf(0), *bufi_data(0), *bufi_pointcloud(0); //!< Global variable: character strings used to read file names, or other features
-
-
 #ifdef WATER
 char inputfile_SWC[256], *bufi_dataSWC(0);
 
@@ -163,16 +161,12 @@ bool _FromInventory;      //!< User control: if defined, an additional input fil
 bool _sapwood;         //!< User control: two ways of parameterising sapwood density: constant thickness (0), Fyllas, but with lower limit (1)
 bool _seedsadditional; //!< User control: excess carbon into seeds? no/yes=(0/1)
 bool _LL_parameterization;   //!< User control: two ways for parameterising leaf lifespan: empirical (derived by Sylvain Schmitt, TODO: from which data?), Kikuzawa model (0,1)
-bool _WATER_TABLE; // !< User control: if _WATER_TABLE == 1, the water table depth is activated, then the soil layer below the depth (WTD variable in global parameters) are always saturated //BR
-bool _CAPILLARY_RISE; // !< User control: if _CAPILLARY_RISE == 1, the capillary rise is activated, then the soil moisture in the layer below can rise to the above layer depending on the soil water potential gradient between the two layers //BR
-
 
 int _LA_regulation;     //!< User control: updated v.3.1: potentially three ways of parameterising leaf dynamic allocation, but currently using only two ways: no regulation (0), never exceed LAImax, i.e. the maximum LAI under full sunlight (1), adjust LAI to the current light environment (2). To switch between option 1 and 2, only one line is necessary in CalcLAmax()
 int _OUTPUT_pointcloud;  //!<User control: ATTENTION! At the moment assumes a little-endian system (most personal computers, but not necessarily server systems), because LAS fles are in little-endian! If == 1, creates a point cloud from a simplified ALS simulation;
 
 int _SOIL_LAYER_WEIGHT; // !< User control: three ways of computing the fraction of transpiration supplied by each soil layer in individual tree total transpiration, and to weight the tree average water potential in the root zone. (0: root biomass only, 1: relative root-to soil conductance, 2: relative estimated maximal transpiration as in Duursma & Medlyn 2012).
 int _WATER_RETENTION_CURVE; // !< User control: different water retention curves can be used. So far two are have been implemented: either brooks & Corey (0), either van Genuchten-Mualem (1). To each wtare retention cirve option is associated a different set of pedo-transfer functions, see Table 2 (texture-based Tomasella & Hodnett 1998
-
 
 // GLOBAL PARAMETERS OF THE SIMULATION
 int sites;      //!< Global variable: number of pixels in the scene (cols*rows)
@@ -399,11 +393,6 @@ unsigned short *Thurt[3];  //!<  Global vector:Treefall field
 #ifdef WATER
 int nblayers_soil; //!< Global variable: number of soil layers (for water module)
 float *layer_depth(0); //!< Global vector: depth of each layer (m) !!!UPDATE
-float WTD; //!< Global variable: water table depth (m); if WATER_TABLE is not defined, WTD is set to a very large value (e.g. 1000 m) so that the water table has no effect on soil moisture
-float *layer_center_z(0); //!< Global vector: z (datum value) for each layer in its center (m) -- used in the implementation of water capillary rise // BR addition
-float *delta_z_face(0); //!< Global vector: the center-to-center distance between adjacent layers 𝑙 and l+1. -- used in the implementation of water capillary rise // BR addition
-float *layer_thickness_global(0); //!< Global vector: thickness of each layer (m) -- used in the implementation of water capillary rise // BR addition
-
 
 // soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this should be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils, and comments in the code). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data made using a new function of RconTROLL, if unearthed.
 // since soil layers (silt, clay, sand) are only needed locally, they are now coded as vectors
@@ -422,16 +411,9 @@ float *c_vgm(0);            //!< Global vector: parameter for the van Genuchten_
 float *m_vgm(0);            //!< Global vector: parameter for the van Genuchten_mualem soil water retention curves
 float *phi_e(0);            //!< Global vector: parameter for the Campbell-Mualem soil water retention curves (possible update: replace with a Genuchten parameter)
 float *b(0);                //!< Global vector: parameter for the Campbell-Mualem soil water retention curves (possible update: replace with a Genuchten parameter)
-float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL) 
+float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL)
 float **soil_phi3D(0);      //!< Global 3D field: soil water potential (in MPa) in each soil voxel (layer * DCELL)
-float **soil_phi3D_cap(0);  //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in capillary rise //BR
-float **SWC3D_cap(0);       //!<Global 3D field: intermediate soil water content in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
-float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
-float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
-float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
-float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
-float **water_change_cap(0); //!<Global 3D field: the change of soil water content due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -1952,7 +1934,7 @@ void Tree::Water_availability() {
         t_root_biomass[l]=total_root_biomass*(shallow_bound-deep_bound);            // this is the root biomass in layer l, computed from the integration of the root biomass exponential profile in this layer, following Arora & Boer 2003. This also corresponds to the shape of cumulative root fraction used by Jackson et al. 1996 Oecologia, who gathered a large global database of root distributions with this equation. It was thus used in many models, e.g. Duursma & Medlyn 2012; Xu et al. 2016.
         //t_soil_layer_weight[l]=t_root_biomass[l]*10.0/(-log(sqrt(PI*t_root_biomass[l]*10.0)*0.001)); // this soil layer weight integrates the soil-to-root conductance into account (as in de Kauwe et al. 2015; Duursma & Medlyn 2012)
         
-        if(t_LA > 0.0){         
+        if(t_LA > 0.0){
 
 if (_WATER_RETENTION_CURVE==1) {
             if (_SOIL_LAYER_WEIGHT==0) { // soil layer weights as a function of root biomass in each layer only (cf. M1 in de Kauwe et al 2015)
@@ -3366,32 +3348,14 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 #ifdef WATER
                 float leafarea_toprounding=0.0; //newIM
                 float MeanDCELLHeight=Canopy_height_DCELL[site_DCELL[t_site]];
-
-                /// It avoids MeanDCELLHeight to be too small or 0, otherwise the value convHratio used as an index for LookUp_Wind is out of the boounderies             
-                /// MeanDCELLHeight = max(1.0f, MeanDCELLHeight); // BR addition
 #endif
-                // if (crown_above_top < h_stop || crown_above_top < 0 || h_stop < 0 || crown_above_top >= nbHbins) {
-                //     std::cerr << "[ERRO LOOP] crown_above_top=" << crown_above_top
-                //     << ", h_stop=" << h_stop
-                //     << ", t_height=" << t_height
-                //     << ", t_CD=" << t_CD
-                //     << std::endl;
-                // }
-
+                
                 for(int h = crown_above_top; h >= h_stop ; h--) {
                     float PPFD = 0.0, VPD = 0.0, Tmp = 0.0, leafarea_layer = 0;
 #ifdef WATER
                     float PPFD_incident = 0.0, ExtinctLW=0.0;
                     //float W=WS*exp(-0.5*LAI_DCELL[h][site_DCELL[t_site]]); // computation of wind speed, which is here assumed to declined exponentially with the cumulative LAI within a given neighborhood (here taken as the tree's dcell) (see equation B11 in Medvigy et al. 2009; see Leuning et al. 1995 PCE equ. E2). We could alternatively used the aerodynamic momentum transfer model (Monteith and Unsworth 2008) using Lorey'sheight (see E-Ping's second manuscript) -- to be discussed. // to be computed with a lookup table maybe, and within Fluxh probably.
-                    
-                    //int convHratio= int(iHaccuracy*h/MeanDCELLHeight); BR - new calculation below (to avoid convHration index out of the boundaries to access LookUp_Wind the following equations)
-                    int convHratio = min(int(nbHbins-1), int(iHaccuracy*h/MeanDCELLHeight)); // BR addition
-
-                    /// Verifying the error with memory allocation /// BR - to be taken out of the code
-                    if (convHratio < 0 || convHratio >= 2000) {
-                        printf("ERROR -- convHratio out of the boundary: h = %.2f, MeanDCELLHeight = %.2f, convHratio = %d\n", h, MeanDCELLHeight, convHratio);
-                    }
-
+                    int convHratio= int(iHaccuracy*h/MeanDCELLHeight);
                     float W=TopWindSpeed_DCELL[site_DCELL[t_site]]*LookUp_Wind[convHratio];
                     if (W<=0) {
                         cout << " Wind=" << W << " h=" << h << " MeanDCELLHeight=" << MeanDCELLHeight <<" convHratio=" << convHratio << " LookUp_Wind[convHratio]=" << LookUp_Wind[convHratio] << endl;
@@ -4448,7 +4412,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             canopy_environment_cumulated[4] += PPFD_voxel_incident * dens;
             canopy_environment_cumulated[5] += ExtinctLW_voxel * dens;
 #endif
-            
+        
             
             //if (canopy_environment_cumulated[1]<=0 || dens < 0.05 || absorb_delta < 0.05) {
             // cout << "Warning in GetCanopyEnvironment, PPFD <=0; PPFD_voxel=" << PPFD_voxel << "; dens=" << dens << endl;
@@ -4505,38 +4469,24 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
         //###########     MAIN PROGRAM    ###########
         //###########################################
         //###########################################
-        
+
 /**
  * @brief The main entry point of the TROLL model.
  *
  * This function initializes model parameters, processes command-line arguments,
  * and starts the simulation loop for the TROLL vegetation model.
  *
- * @param argc The number of command-line arguments passed to the program.
- * @param argv An array of strings (character pointers) containing the command-line arguments.
+ * @param argc The number of command-line arguments.
+ * @param argv An array of command-line argument strings.
  * @return An integer indicating the success or failure of the program.
- */
+ */        
+        
         int main(int argc,char *argv[]) {
             
         
             //!*********************
             //!** Initializations **
             //!*********************
-
-/**
- * @brief Initializes the MPI environment if MPI support is enabled.
- *
- * This block of code handles the initialization and ranks of the MPI processes.
- * 
- * - If MPI is defined:
- *   - `MPI_Init(&argc, &argv);` initializes the MPI environment.
- *   - `MPI_Comm_rank(MPI_COMM_WORLD, &p_rank);` retrieves the rank (ID) of the current process within the communicator.
- *   - `MPI_Comm_size(MPI_COMM_WORLD, &size);` retrieves the total number of processes in the communicator.
- *
- * - If MPI is not defined:
- *   - The program runs in a single-process mode, where `mpi_rank` is set to 0 and `mpi_size` is set to 1, indicating that only one process is active.
- */
-
 #ifdef MPI   // Lookup processor number / total number of processors
             MPI_Init(&argc,&argv);
             MPI_Comm_rank(MPI_COMM_WORLD,&p_rank);
@@ -4581,24 +4531,18 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                             break;
                         case 'n':
                             easympi_rank=atoi(argv[argn]+2); // new v.2.2
-
+                            
                     }
                 }
             }
             
-            if (bufi == NULL) {
-                fprintf(stderr, "ERROR: bufi is NULL at iteration X\n");
-            } else {
-                fprintf(stderr, "bufi = %s\n", bufi);
-            }   
-
-            // input files (assigns file names) 
+            
+            // input files
             sprintf(inputfile,"%s",bufi);
             sprintf(inputfile_daytimevar,"%s",bufi_daytimevar);
             sprintf(inputfile_climate,"%s",bufi_climate);
             sprintf(inputfile_soil,"%s",bufi_soil);
             sprintf(inputfile_species,"%s",bufi_species);
-
             
             if(_OUTPUT_pointcloud){
                 sprintf(inputfile_pointcloud,"%s",bufi_pointcloud); // v.3.1.6
@@ -4611,15 +4555,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 #endif
             }
             
-/**
- * @brief Reads inputs from the general input file and initializes parameters.
- * 
- * This function is responsible for reading configuration and parameter settings
- * from the specified input file. It performs the following actions:
- * - Reads values for various simulation parameters, including environmental and model-specific variables.
- * - Initializes derived parameters based on the input values.
- * - Validates input data and prepares for the simulation run.
- */ 
             // v.3.1: removed par output, because no single parameter sheet provided anymore (in future all separate parameter sheets could be provided as outputs as well
             ReadInputGeneral(); // v.3.1 has to be done before initialisation of random number generators (_NONRANDOM)
             
@@ -4665,8 +4600,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 #ifdef WATER
             cout << "Atmospheric pressure is: " << PRESS << endl;
 #endif
-            if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD = " << WTD << endl;
-            if(_CAPILLARY_RISE == 1) cout << "Activated Module: CAPILLARY RISE = " << endl;
+            
             if(_GPPcrown == 1) cout << "Activated Module: FastGPP" << endl;
             if(_BASICTREEFALL == 1) cout << "Activated Module: BASICTREEFALL" << endl;
             if(_NDD == 1) cout << "Activated Module: NDD" << endl;
@@ -4870,8 +4804,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 SetParameter(parameter_name, parameter_value, SWtoPPFD, 0.0f, 5.0f, 2.29f, quiet);
             } else if(parameter_name == "klight"){
                 SetParameter(parameter_name, parameter_value, klight, 0.0f, 1.0f, 0.5f, quiet);
-            } else if(parameter_name == "WTD"){
-                SetParameter(parameter_name, parameter_value, WTD, 0.0f, 100.0f, 3.0f, quiet);
             } else if(parameter_name == "absorptance_leaves"){
                 SetParameter(parameter_name, parameter_value, absorptance_leaves, 0.0f, 1.0f, 0.9f, quiet);
             } else if(parameter_name == "theta"){
@@ -4985,10 +4917,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 SetParameter(parameter_name, parameter_value, _WATER_RETENTION_CURVE, 0, 1, 0, quiet);
             } else if(parameter_name == "_NONRANDOM"){
                 SetParameter(parameter_name, parameter_value, _NONRANDOM, bool(0), bool(1), bool(1), quiet);
-            } else if(parameter_name == "_WATER_TABLE"){
-                SetParameter(parameter_name, parameter_value, _WATER_TABLE, bool(0), bool(1), bool(0), quiet); //BR
-            } else if(parameter_name == "_CAPILLARY_RISE"){
-                SetParameter(parameter_name, parameter_value, _CAPILLARY_RISE, bool(0), bool(1), bool(0), quiet); //BR
             } else if(parameter_name == "_GPPcrown"){
                 SetParameter(parameter_name, parameter_value, _GPPcrown, bool(0), bool(1), bool(0), quiet);
             } else if(parameter_name == "_BASICTREEFALL"){
@@ -5077,8 +5005,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             fstream In(inputfile, ios::in);
             if(In){
 #ifdef WATER
-                string parameter_names[74] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta","WTD", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_WATER_TABLE","_CAPILLARY_RISE","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
-                int nb_parameters = 74;
+                string parameter_names[71] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
+                int nb_parameters = 71;
 #else
                 string parameter_names[61] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_NONRANDOM","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","extent_visual"};
                 int nb_parameters = 61;
@@ -5603,69 +5531,33 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
         //! Global function: This function reads inputs from the soil input file
         //! - in v.3.0, all soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input for each layer. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this could be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data (here %clay, %silt, %sand) made using a new function of RconTROLL (and not here)
         //! - Sat_SWC and Res_SWC are here computed according Tomasella & Hodnett 1998 from soil texture information (see Table 2 in Marthews et al. 2014)
-        /*!
-        * \brief Reads soil input data from a specified file.
-        *
-        * This function reads various soil parameters from the input soil file and computes
-        * saturation soil water content (Sat_SWC) and residual soil water content (Res_SWC)
-        * based on soil texture data (%clay, %silt, %sand). It also computes additional 
-        * properties if provided, such as soil pH, organic content, dry bulk density, 
-        * and cation exchange capacity. If no local soil data is available, these parameters 
-        * should be sourced from global maps and databases.
-        * 
-        * In version 3.0, soil parameters (Sat_SWC, Res_SWC) are computed using the 
-        * formulas by Hodnett & Tomasella (2002) and Tomasella & Hodnett (1998) based on
-        * the input soil texture data. Refer to Table 2 in Marthews et al. (2014) for more 
-        * details regarding the tropical soils.
-        *
-        * \note It is recommended to standardize the input file to include soil parameters 
-        * (Sat_SWC, Res_SWC) directly to enhance usability.
-        *
-        * \warning Ensure that the input file format is correct; otherwise, unexpected behavior 
-        * may occur during data reading.
-        *
-        * \return void
-        *
-        * \exception std::ios_base::failure If the file cannot be opened for reading.
-        * \callgraph
-        */
         void ReadInputSoil(){
             cout << endl << "Reading in file: " << inputfile_soil << endl;
-
-            /// @brief Open the soil input file for reading
             fstream InSoil(inputfile_soil, ios::in);
             
             if(InSoil){
                 InSoil.getline(buffer,256,'\n');
-
-                // Soil property vectors
                 vector<float> layer_thickness, proportion_Silt, proportion_Clay, proportion_Sand; // in m, %, %,%
                 vector<float> SOC, DBD, pH, CEC; //soil organic content, provided in %; dry bulk density, in g cm-3; pH; cation exchange capacity, in cmol kg-1
- 
-                // Reserve space for vectors
                 SOC.reserve(20);
                 DBD.reserve(20);
                 pH.reserve(20);
                 CEC.reserve(20);
+
                 layer_thickness.reserve(20);
                 proportion_Silt.reserve(20);
                 proportion_Clay.reserve(20);
                 proportion_Sand.reserve(20);
-
-                // Initializes the variable that will count the number of soil layers
                 nblayers_soil = 0;
                 
                 // we go through all lines in the input file
                 string line;
                 while(getline(InSoil, line)){
                     istringstream linestream(line);
-
-// Read different sets of variables depending on _WATER_RETENTION_CURVE flag                    
+                    
 if (_WATER_RETENTION_CURVE==1) {
                     float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current, SOC_current, DBD_current, pH_current, CEC_current;
                     linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current >> SOC_current >> DBD_current >> pH_current >> CEC_current;
-                    
-                    /// @brief Store the read values into respective vectors
                     layer_thickness.push_back(thickness_current);
                     proportion_Silt.push_back(proportion_Silt_current);
                     proportion_Clay.push_back(proportion_Clay_current);
@@ -5675,13 +5567,9 @@ if (_WATER_RETENTION_CURVE==1) {
                     DBD.push_back(DBD_current);
                     pH.push_back(pH_current);
                     CEC.push_back(CEC_current);
-
-                    
 } else if (_WATER_RETENTION_CURVE==0) {
                     float thickness_current, proportion_Silt_current, proportion_Clay_current, proportion_Sand_current;
                     linestream >> thickness_current >> proportion_Silt_current >> proportion_Clay_current >> proportion_Sand_current;
-
-                    /// @brief Store the read values into respective vectors
                     layer_thickness.push_back(thickness_current);
                     proportion_Silt.push_back(proportion_Silt_current);
                     proportion_Clay.push_back(proportion_Clay_current);
@@ -5692,51 +5580,12 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
                 cout << "Read in: " << nblayers_soil << " soil layers" << endl;
                 
-                // Memory allocation and depth calculation
                 if(NULL==(layer_depth=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl;
-                
-                if(NULL==(layer_center_z=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl; // BR 
-                if(NULL==(delta_z_face=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl; // BR
-                if(NULL==(layer_thickness_global=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc layer_depth" << endl; // BR
-
                 float cumulative_depth=0.0;
-                
-                /// @brief Compute cumulative depth for each soil layer
                 for (int l=0; l<nblayers_soil; l++) {
                     cumulative_depth+=layer_thickness[l];
                     layer_depth[l]=cumulative_depth;
-                    cout << "print in read input soil " << endl;
-                    cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl;
-
-                    // Calculate layer geometry --- // To be used in the soil water flow calculations // BR
-                    // This section computes the vertical position of each layer's center and the
-                    // distance between adjacent layer centers.
-                    layer_center_z[l] = -(cumulative_depth - layer_thickness[l] / 2.0f);
- 
-                    cout << l << "  layer center z = " << layer_center_z[l] << endl;
-                    layer_thickness_global[l] = layer_thickness[l];
                 }
-
-                    // Calculating delta z (m) between two adjacent soil layers (l and l+1) //BR
-                    // As we have 5 layers, we have 4 faces between layers, so delta_z_face has nblayers_soil - 1 elements
-                    // delta_z_face should be negative, as z decreases with depth
-                for (int l=0; l<nblayers_soil-1; l++) {
-                    delta_z_face[l] = layer_center_z[l+1] - layer_center_z[l];
-
-                        // Sanity checks for delta_z_face    
-                    if (delta_z_face[l] >= 0.0f) {
-                        cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
-                    }
-                    if (fabs(delta_z_face[l]) < 1e-6f) {
-                    cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
-                    }
-                    
-                    cout << l << "  delta z face READ INPUT SOIL= " << delta_z_face[l] << endl;
-
-                }   
-
-
-                // Compute soil water characteristics
                 // (added in the header but kept in here) in this version, all soil parameters (Sat_SWC, Res_SWC) are computed from soil texture data (%clay, %silt, %sand) provided in input for each layer. If additional information is available from the field (soil pH, organic content, dry bulk density, cation exchange capacity), this could be also provided in input and used to refine the computation of these soil parameters (see Table 2 in Marthews et al. 2014 Geoscientific Model Development and Hodnett & Tomasella 2002 Geoderma -- for tropical soils). Alternatively, if no local field soil data is available, these soil parameters (Sat_SWC, Res_SWC) should be drawn from global maps and databases --see Marthews et al. 2014, and directly provided in input. ==> ccl: to standardize the input file, the soil parameters (Sat_SWC, Res_SWC) should probably be provided in input, and the computation of those properties from the available local data (here %clay, %silt, %sand) made using a new function of RconTROLL (and not here)
                 // (added in the header but kept in here) Sat_SWC and Res_SWC are here computed according Tomasella & Hodnett 1998 from soil texture information (see Table 2 in Marthews et al. 2014)
                 if(NULL==(Sat_SWC=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc Sat_SW" << endl;
@@ -5747,45 +5596,30 @@ if (_WATER_RETENTION_CURVE==1) {
                 for (int l=0; l<nblayers_soil; l++) {
                     
 if (_WATER_RETENTION_CURVE==1) {
-                    /// @brief Compute saturation soil water content using Hodnett & Tomasella 2002 formula
                     Sat_SWC[l] = 0.01*(81.799+(0.099*proportion_Clay[l])-(31.42*DBD[l])+(0.018*CEC[l])+(0.451*pH[l])-(0.0005*proportion_Sand[l]*proportion_Clay[l]));  // this is the Hodnett & Tomasella 2002 tropical pedotransfer function, as reported in Table 2 of Marthews et al. 2014. in m3.m-3
-
 } else if (_WATER_RETENTION_CURVE==0) {
-                    /// @brief Compute saturation soil water content using Tomasella & Hodnett 1998 formula
                     Sat_SWC[l]= 0.01*(40.61+(0.165*proportion_Silt[l])+(0.162*proportion_Clay[l])+(0.00137*proportion_Silt[l]*proportion_Silt[l])+(0.000018*proportion_Silt[l]*proportion_Silt[l]*proportion_Clay[l])); // this is the Tomasella & Hodnett 1998 tropical texture-based pedotransfer function, as reported in Table 2 of Marthews et al. 2014. in m3.m-3
 }
                     Max_SWC[l]=Sat_SWC[l]*sites_per_dcell*LH*LH*layer_thickness[l]; // in m3
                     cout << "layer " << l << " Vol=" << sites_per_dcell*LH*LH*layer_thickness[l]<< " m3; Sat_SWC =" << Sat_SWC[l] << " MAX_SWC =" << Max_SWC[l] << " m3." << endl;
-                
-                    cout << "layer " << l << "  Max SWC!!!! = " << Max_SWC[l] << endl;
-
                 }
-
                 
-                // Compute saturated hydraulic conductivity
                 if(NULL==(Ksat=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc Ksat" << endl;
                 for (int l=0; l<nblayers_soil; l++) {
-                    /// @brief Compute hydraulic conductivity using Cosby et al. 1984 equation
                     Ksat[l]=0.007055556*pow(10,(-0.60-(0.0064*proportion_Clay[l])+(0.0126*proportion_Sand[l]))); // according to Cosby et al. 1984 (the only expression of k_sat reported in Table 2 of Marthews et al. 2014). k_sat is here in mm/s or equivalently in kg/m2/s.
                     cout << "layer " << l << " Ksat=" << Ksat[l] <<"mm/s or kg/m2/s  "<< Ksat[l]*9.8/18 << endl;
                 }
                 
-                // Compute residual soil water content
                 if(NULL==(Res_SWC=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc Res_SW" << endl;
                 if(NULL==(Min_SWC=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc Max_SW" << endl;
                 
-                // Loop through each soil layer
                 for (int l=0; l<nblayers_soil; l++) {
                     
 if (_WATER_RETENTION_CURVE==1) {
-                    /// @brief Compute residual soil water content using Hodnett & Tomasella 2002 formula                    
                     Res_SWC[l]= 0.01*(22.733-(0.164*proportion_Sand[l])+(0.235*CEC[l])-(0.831*pH[l])+(0.0018*proportion_Clay[l]*proportion_Clay[l])+(0.0026*proportion_Sand[l]*proportion_Clay[l])); // this is the Hodnett & Tomasella 2002 tropical pedotransfer function, as reported in Table 2 of Marthews et al. 2014. in m3.m-3
-
 } if (_WATER_RETENTION_CURVE==0) {
-                    /// @brief Compute residual soil water content using Tomasella & Hodnett 1998 formula
                     Res_SWC[l]= 0.01*fmaxf(0.0,(-2.094+(0.047*proportion_Silt[l])+(0.431*proportion_Clay[l])-(0.00827*proportion_Silt[l]*proportion_Clay[l]))); // this is the Tomasella & Hodnett 1998 tropical texture-based pedotransfer function, as reported in Table 2 of Marthews et al. 2014.
 }
-                    /// @brief Computes minimum soil water content in cubic meters
                     Min_SWC[l]=Res_SWC[l]*sites_per_dcell*LH*LH*layer_thickness[l]; //in m3
 
                     cout << "layer " << l << " Vol=" << sites_per_dcell*LH*LH*layer_thickness[l] << "m3; Res=" << Res_SWC[l]<<  " MIN_SWC =" << Min_SWC[l] << " m3" << endl;
@@ -5798,52 +5632,27 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(m_vgm=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc m_vgm" << endl;
 
                 for (int l=0; l<nblayers_soil; l++) {
-                    /** 
-                     * @brief Computes the alpha parameter for the van Genuchten-Mualem model 
-                     * @details This calculation follows the Hodnett & Tomasella (2002) approach,
-                     * as referenced in Table 2 of Marthews et al. (2014).
-                     */
+
                     float alpha=1000*exp((-2.294-(3.526*proportion_Silt[l])+(2.440*(0.1*SOC[l]))-(0.076*CEC[l])-(11.331*pH[l])+(0.019*proportion_Silt[l]*proportion_Silt[l]))*0.01); // this is the alpha parameter of the van Genuchten-Mualem model, in MPa-1 (ie after already dividing by rho*g, following Hodnett & Tomasella 2002, see Table 2 in Marthews et al. 2014
                     a_vgm[l]=-1.0/alpha;
-                    
-                    /** @brief Computes the n, m, b, and c parameters for the van Genuchten-Mualem model */
                     float n_vgm=exp((62.986-(0.833*proportion_Clay[l])-(0.529*(SOC[l]*0.1))+(0.593*pH[l])+(0.007*proportion_Clay[l]*proportion_Clay[l])-(0.014*proportion_Sand[l]*proportion_Silt[l]))*0.01);    // this is the n parameter of the van Genuchten-Mualem model, dimensionless, following Hodnett & Tomasella 2002, see Table 2 in Marthews et al. 2014
                     m_vgm[l]=1.0-1.0/n_vgm;
                     b_vgm[l]=1.0/m_vgm[l];
                     c_vgm[l]=1.0-m_vgm[l];
                     
-                    /** 
-                     * @brief Computes soil water content at field capacity (FC) 
-                     * @details Uses a standard approach from Marthews et al. (2014),
-                     * considering FC at -10 kPa instead of -33 kPa.
-                     */
                     FC_SWC[l]=(Res_SWC[l] + (Sat_SWC[l]-Res_SWC[l])*pow((pow(0.01*alpha, 1/c_vgm[l])+1),-(1/b_vgm[l])))*sites_per_dcell*LH*LH*layer_thickness[l]; // this is the layer water content at field capacity, in m3. As in Marthews et al. 2014 (cf. note in Table 2), we used Phi at FC=-10kPa and not -33kPa, following Marshall et al., 1996; Townend et al., 2001; Tomasella and Hodnett, 2004)
                     
                     cout << "layer " << l << " alpha=" << alpha << "\t" << "n_vgm=" << n_vgm << " FC_SWC=" << FC_SWC[l] << endl;
                 }
-
-/** @brief Computes water retention parameters using Tomasella & Hodnett (1998) formula */
 } else if (_WATER_RETENTION_CURVE==0) {
                 if(NULL==(phi_e=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc phi_e" << endl;
                 if(NULL==(b=new float[nblayers_soil])) cerr<<"!!! Mem_Alloc b" << endl;
-                
                 for (int l=0; l<nblayers_soil; l++) {
-                    /**
-                     * @brief Computes air-entry potential (phi_e) using Tomasella & Hodnett (1998)
-                     * @details Formula derived from Marthews et al. (2014), based on tropical soils.
-                     */
                     phi_e[l]=-0.001*(0.285+(0.000733*proportion_Silt[l]*proportion_Silt[l])-(0.00013*proportion_Silt[l]*proportion_Clay[l])+(0.0000036*proportion_Silt[l]*proportion_Silt[l]*proportion_Clay[l])); // according to Tomasella & Hodnett 1998 tropical texture-based pedotransfer function, as reported in Table 2 of Marthews et al. 2014. phi_e is here in MPa.
-                    
-                    /** @brief Computes parameter b for the water retention curve */
                     b[l]=exp(1.197+(0.00417*proportion_Silt[l])-(0.0045*proportion_Clay[l])+(0.000894*proportion_Silt[l]*proportion_Clay[l])-(0.00001*proportion_Silt[l]*proportion_Silt[l]*proportion_Clay[l])); // according to Tomasella & Hodnett 1998 tropical texture-based pedotransfer function, as reported in Table 2 of Marthews et al. 2014.
-                    
                     //phi_e[l]=-0.00000001*pow(10.0,(2.17-(0.0063*proportion_Clay[l])-(0.0158*proportion_Sand[l])))*(1000*9.80665); // according to Cosby et al. 1984, non -tropical and texture-based but widely used, as reported in Table 2 in Marthews et al. 2014. In MPa.
                     //b[l]=3.10+0.157*proportion_Clay[l]-0.003*proportion_Sand[l]; // according to Cosby et al. 1984, non -tropical and texture-based but widely used, as reported in Table 2 in Marthews et al. 2014. Dimensionless.
                     
-                    /** 
-                     * @brief Computes soil water content at field capacity (FC)
-                     * @details Uses Marthews et al. (2014) approach, considering FC at -10 kPa.
-                     */
                     FC_SWC[l]=(Res_SWC[l] + (Sat_SWC[l]-Res_SWC[l])*pow(-0.01/phi_e[l],-(1/b[l])))*sites_per_dcell*LH*LH*layer_thickness[l]; // this is the layer water content at filed capacity, in m3. As in Marthews et al. 2014 (cf. note in Table 2), we used Phi at FC=-10kPa and not -33kPa, following Marshall et al., 1996; Townend et al., 2001; Tomasella and Hodnett, 2004)
                     
                     
@@ -5859,7 +5668,6 @@ if (_WATER_RETENTION_CURVE==1) {
             cout << endl;
         }
 #endif
-
         
         //! Global function: initialise intraspecific variables
         void InitialiseIntraspecific(){
@@ -6553,9 +6361,7 @@ if (_WATER_RETENTION_CURVE==1) {
 #ifdef WATER
             ReadInputSoil();
 #endif
-
-
-
+            
             //** Initialization of trees **
             //*****************************
             T.reserve(sites);
@@ -7091,83 +6897,31 @@ if (_WATER_RETENTION_CURVE==1) {
             
 #ifdef WATER
             if(NULL==(SWC3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
-            if(NULL==(soil_phi3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";                                  
+            if(NULL==(soil_phi3D=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(Ks=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(KsPhi=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             //if (NULL==(KsPhi2=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(Transpiration=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
-
-            // Variables for capillarity
-            if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
-            if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-            if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR  
-
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-                if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-                if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(water_change_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(Ks[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-                if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(KsPhi[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-
-
                 for(int dcell=0; dcell<nbdcells; dcell++) {
                     //SWC3D[l][dcell]=Max_SWC[l];
                     SWC3D[l][dcell]=FC_SWC[l];
-
-                    cout << "layer: " << l << " SWC3D initialized at FC: " << SWC3D[l][dcell] << endl; 
-                    
-                    if (_WATER_TABLE == 1){ // If the water table is activated
-
-                    // Here the layers correspondent to the water table depth (WTD) are filled as its maximum
-                    // The others, are filled at field capacity (FC) //BR
-                        if (layer_depth[l] > WTD) {
-                            cout << "layer " << l << " is water table. " << " Depth " << layer_depth[l] << " WTD set as " << WTD << endl;
-                            SWC3D[l][dcell]     = Max_SWC[l];     
-                            SWC3D_cap[l][dcell] = Max_SWC[l];
-
-                            cout << "Initialisation of SWC " << endl;
-                            cout << "Layer " << l << " SWC3D " << SWC3D[l][dcell] << " SWC3D_cap " << SWC3D_cap[l][dcell] << endl;     
-                        }
-                    }
-
                     soil_phi3D[l][dcell]=0.0;
-                    soil_phi3D_cap[l][dcell]=0.0; //BR
-                    water_change_cap[l][dcell]=0.0; //BR
                     Ks[l][dcell]=0.0;
-                    Ks_cap[l][dcell]=0.0; //BR
                     KsPhi[l][dcell]=0.0;
                     //KsPhi2[l][dcell]=0.0;
                     Transpiration[l][dcell]=0.0;
                     if (SWC3D[l][dcell]<=0.0) {
-                        cout << "Soil water content <=0.0  " << SWC3D[l][dcell] << "\t" <<Max_SWC[l] << "\n";
-                    }
-                     if (SWC3D_cap[l][dcell]<=0.0) {
-                        //cout << "Soil water content capillarity <=0.0  " << SWC3D_cap[l][dcell] << "\t" <<Max_SWC[l] << "\n";
+                        cout <<SWC3D[l][dcell] << "\t" <<Max_SWC[l] << "\n";
                     }
                 }
             }
-
-            // Loop for variables that only exists at the interface of soil layers
-            for(int l=0;l<nblayers_soil-1;l++) {
-                    if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(water_height_upward[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                for (int dcell=0; dcell<nbdcells; dcell++) {
-                    Ks_cap_harmonic[l][dcell] = 0.0; //BR
-                    q_cap[l][dcell] = 0.0; //BR
-                    water_height_upward[l][dcell] = 0.0; //BR
-                }
-            }
-
             if(NULL==(LAI_DCELL=new float*[HEIGHT+1]))
                 cerr<<"!!! Mem_Alloc\n";
             for(int h=0;h<(HEIGHT+1);h++) {
@@ -7335,28 +7089,14 @@ if (_WATER_RETENTION_CURVE==1) {
         void UpdateField() {
             
 #ifdef FULL_CLIMATE
-
-    /**
-    * @brief Assigns daily climate variables.
-    *
-    * This code snippet assigns values from daily climate data arrays to individual variables.
-    * The modulo operator (%) is used to cycle through the daily data.
-    *
-    * @param iter      The current iteration number.
-    * @param nbdays    The total number of days in the climate data cycle.
-    */            
+            
             tnight=NightTemperature[iter%nbdays];
             precip=Rainfall[iter%nbdays];
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[iter%nbdays];
             VPDDailyMean=DailyMeanVapourPressureDeficit[iter%nbdays];
-
-            // cout << "regular prec :  " << precip << endl;
-            // Applying reduced precipitation for tests with WTD
-            //precip *= 0.3;
-            //cout << "reduced prec :  " << precip << endl;
-           
+            
 #else
             tnight=NightTemperature[iter%iterperyear];
             precip=Rainfall[iter%iterperyear];
@@ -7511,22 +7251,15 @@ if (_WATER_RETENTION_CURVE==1) {
             
             //for(int site=0;site<sites;site++) T[site].Water_uptake(); // Update of Transpiration: tree water uptake, each tree will deplete soil water content through its transpiration. Now made ate the end of the evolution loop so that the outputs for water uptake match the others (otherwise lag of one timestep)
             
-            // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
-            vector<float> max_cap(nblayers_soil, 0.0f);       // maximum capacity of the layer (m^3)
-            vector<float> min_cap(nblayers_soil, 0.0f);       // minimum capacity of the layer (m^3)
-            vector<float> current_SWC(nblayers_soil, 0.0f);    // current status of SWC in the layer (m^3)
-            vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
-            vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
-            vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
-		    vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
-
             for (int d=0; d<nbdcells; d++) {
                 //****   BUCKET MODEL in each dcell   ****
                 // the unit used for water volume throughout the bucket model is m3.
                 // NOTE: under the assumption of a flat terrain and no lateral fluxes, as it is assumed here for a first implementation, the order with which dcells are visited during the loop does not matter. With topography, we will need to visit the soil voxels (ie. dcells*layer) from highest to lowest elevation so that run-off from highest voxels contribute to the water flux entering the lowest ones.
                 //  to be investigated: does the order in which transpiration and evaporation are retrieved from the soil affect the overall outcome? which one should be retrieved first?
                 
-                   
+                
+
+                
                 // Water uptake through tree transpiration
                 float w_uptake=0.0;
                 for (int l=0; l<nblayers_soil; l++) {
@@ -7589,7 +7322,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 SWC3D[0][d]-=Evaporation[d];
                 
                 // Refilling by rainfall
-
+                
                 Interception[d]=fminf(precip, 0.2*LAI_DCELL[0][d]);      // This is the amount of rainfall - in mm, as rainfall -, intercepted by vegetation cover, following the approach used in Liang et al. 1994 Journal of Geophysical Reserach, and also used by Laio et al. 2001 Advances in Water Resources and Fischer et al. 2014 Environmental Modelling & Software (FORMIX3, Madagascar). More complex approach can be used however - see eg. Gutierrez et al. 2014 Plos One (FORMIND, Chili), or Wagner et al. 2011 AFM (Paracou)
                 Throughfall[d]=precip-Interception[d];
                 Throughfall[d]*=sites_per_dcell*LH*LH*0.001; // to convert in absolute amount of water entering the soil voxel in m3
@@ -7623,7 +7356,6 @@ if (_WATER_RETENTION_CURVE==1) {
                         l++;
                     }
                 }*/
-
                 if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
@@ -7631,9 +7363,9 @@ if (_WATER_RETENTION_CURVE==1) {
                             in-=(FC_SWC[l]-SWC3D[l][d]);
                             SWC3D[l][d]=FC_SWC[l];
                             if(isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<=0) {
-                                    cout << "incorrect SWC3D, Min/Max_SWC" << endl;
-                                    cout <<Max_SWC[l] << endl;
-                            } 
+                                cout << "incorrect SWC3D, Min/Max_SWC" << endl;
+                                cout <<Max_SWC[l] << endl;
+                            }
                         }
                         else{
                             SWC3D[l][d]+=in;
@@ -7649,282 +7381,16 @@ if (_WATER_RETENTION_CURVE==1) {
                 else{ //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
                     Runoff[d]=Throughfall[d];
                 }
-
-
                 // Leakage
                 Leakage[d]=in;
-
-                if (_WATER_TABLE == 1){
-
-                    for (int l=0; l<nblayers_soil; l++) {
-                        if (layer_depth[l] > WTD) {
-                            cout << "layer " << l << " is water table. After leakage. "  << endl;
-                            cout << "check if SWC corrresponds to the initialisation : " << endl;
-                            cout << "SWC3D[l][d] " << SWC3D[l][d] << " Max_SWC[l] " << Max_SWC[l] << endl;
-                            cout << "SWC3D_cap[l][d] " << SWC3D_cap[l][d] << " Max_SWC[l] " << Max_SWC[l] << endl;    
-                        }
-                    }
-                } // end of WTD check after leakage
-
-    /**  @brief Applies water table depth effect on soil water content (SWC) if the bucket model is enabled.
-    *If the water table model (_WATER_TABLE) is enabled (== 1), this block updates the soil water content
-    *(SWC3D) in each soil layer. For layers located below the water table depth (WTD), the soil water
-    *content is set to its maximum (Max_SWC).
-    * @details
-    * - `layer_depth[l] > WTD`: if the depth of the soil layer is below the water table,
-    *   the layer is considered saturated and assigned its maximum water holding capacity.
-    * - `SWC3D[l][d]`: 3D matrix representing soil water content per layer `l` and day `d`.
-    * - `Max_SWC[l]`: maximum soil water content for each layer.
-    * - `nblayers_soil`: total number of soil layers.
-    * - The loop increments through each soil layer `l` from 0 to `nblayers_soil - 1`
-    */
-                // if (_WATER_TABLE == 1){
-
-                //     /// Considering water table depth
-                //     int l=0; // layer counter
-                //     while((l<nblayers_soil)) {
-                //         // cout << "layer bucket model  " << l << endl;
-                //         //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water the soil layer can hold
-                //             if(layer_depth[l]>WTD){
-                //                 SWC3D[l][d] = Max_SWC[l];
-                //                 // cout << "> wtd - layer :  " << l << endl;
-                //                 // cout << " SWC " << SWC3D[l][d] << endl;
-                //             }
-
-                //         l++;
-                //     }
-                // }
-                // end of water table consideration
-
-/**
- * @brief Manages calculations for capillary rise within the soil profile.
- *
- * This function calculates key variables necessary for modeling upward water movement 
- * (capillary rise) between soil layers. It determines layer properties like thickness 
- * and elevation, then uses either the van Genuchten-Mualem or Brooks & Corey-Mualem 
- * models to compute soil hydraulic properties. Finally, it calculates the water flux 
- * and the resulting change in water content for each layer.
- *
- * The code uses the soil surface as the reference datum ($z=0.0$), with depth increasing
- * downwards (negative $z$ values).
- *
- * @param nblayers_soil Number of soil layers.
- * @param layer_depth A vector containing the depth to the bottom of each layer from the soil surface [m].
- * @param WTD Water table depth from the soil surface [m].
- * @param SWC3D A 3D array of soil water content for each layer.
- * @param Min_SWC A vector of minimum soil water content for each layer.
- * @param Max_SWC A vector of maximum soil water content for each layer.
- * @param a_vgm, b_vgm, c_vgm, m_vgm Parameters for the van Genuchten-Mualem model.
- * @param phi_e, b Parameters for the Brooks & Corey-Mualem model.
- * @param Ksat A vector of saturated hydraulic conductivity for each layer [m/s].
- * @param delta_z_face A vector to store the vertical distance between adjacent layer centers [m].
- * @param soil_phi3D_cap A 3D array to store the calculated soil water potential [MPa].
- * @param Ks_cap A 3D array to store the calculated unsaturated hydraulic conductivity [m/s].
- * @param Ks_cap_harmonic A 3D array to store the harmonic mean of hydraulic conductivity between layers [m/s].
- * @param q_cap A 3D array to store the upward capillary flux between layers [m/s].
- * @param water_height_upward A 3D array to store the height of water moved upward during the timestep [m].
- * @param water_change_cap A 3D array to store the change in water content due to capillary rise.
- */
-
-                if (_CAPILLARY_RISE==1) { // BR     
-
-
-                // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
-                // Computes relative soil water content, soil water potential (phi), and hydraulic 
-                // conductivity (Ks) based on the chosen water retention model.
-                    for (int l=0; l<nblayers_soil; l++) {
-
-                        // Intermediate relative humidity for capillary rise calculation
-                        float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
-
-                        // Special condition for layers below the water table
-                        if (layer_depth[l] > WTD) {         //BR
-                            soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
-                            theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
-                            Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
-                            continue;                      //BR: if the layer is below the water table, it is saturated, no need to compute soil hydraulic properties for capillary rise
-                        }
-
-                        // Prevent division by zero or negative values                    
-                        if(theta_w_cap <= 1e-6f) { //BR: update from 0 to <= 1e-6f
-                            theta_w_cap = 0.001; // following the below rule added by SS //BR
-                            // cout << "Warning theta_w_cap = 0 " << endl ;
-                        }
-
-if (_WATER_RETENTION_CURVE==1) {
-                        soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
-
-                        float inter_cap = 1-pow((1-pow(theta_w_cap, b_vgm[l])),m_vgm[l]);
-                        Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 0.5)*inter_cap*inter_cap; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
-                        
-
-                        // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
-
-
-} else if (_WATER_RETENTION_CURVE==0) {
-
-                        soil_phi3D_cap[l][d]=phi_e[l]*pow(theta_w_cap, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
-                        Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
-                        KsPhi[l][d]=Ksat[l]*phi_e[l]*pow(theta_w_cap, 2.5+b[l]); //Ks times soil_phi3D, computed directly as the exact power of theta.
-                        //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
-                        // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
-
-                        // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
-}
-                    } 
-
-                // --- Step 3: Calculate harmonic mean of hydraulic conductivity ---
-                // The harmonic mean is used to find the effective conductivity at the interface between layers.
-                    for (int l=0; l<nblayers_soil-1; l++) {
-                        float k1 = Ks_cap[l][d];
-                        float k2 = Ks_cap[l+1][d];
-
-                        float sum_k = k1 + k2;
-
-                        // Check for division by zero to avoid errors 
-                        // If both conductivities are zero, the harmonic mean is also zero
-                        if (sum_k > 1e-9f){
-                            Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-                            //cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
-
-                            // Define precision
-                            cout << std::fixed << std::setprecision(15);
-
-                            //cout << "Ks_cap_harmonic at layer " << l << " and " << l+1 << " is " << Ks_cap_harmonic[l][d] << endl;
-                            //cout << "Ks_cap at layer " << l << " is " << Ks_cap[l][d] << endl;
-                            //cout << "Ks_cap at layer " << l+1 << " is " << Ks_cap[l+1][d] << endl;
-                        } else {
-                            Ks_cap_harmonic[l][d] = 0.0f;
-                            cerr << "Warning Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
-                        }
-
-                    }
-
-                // --- Step 4: Calculate capillary flux ---
-                // The flux is computed using Darcy's Law, considering only upward movement.
-                    for (int l=0; l<nblayers_soil-1; l++) {
-
-                        // Difference in soil water potential (phi) between adjacent layers [MPa]
-                        float delta_phi_MPa = soil_phi3D_cap[l+1][d] - soil_phi3D_cap[l][d]; // Delta phi between two adjacent layers l and l+1 [MPa]
-                        float delta_phi_Pa = delta_phi_MPa * 1e6f; // Convert Delta phi from MPa to Pa
-
-                        cout << std::fixed << std::setprecision(15);
-                        //cout << "Delta phi between layers " << l+1 << " and " << l << " is " << delta_phi_MPa << " MPa or " << delta_phi_Pa << " Pa" << endl;
-
-                        float water_density = 1000.0f; // Density of water [kg/m3]
-                        float gravity = 9.81f; // Acceleration due to gravity [m/s2]
-
-                        // Calculate flux using a modified Darcy's Law. Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
-                        q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
-                           (delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1));
-                        // cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
-
-                        // Calculate the total height of water [m] moved during the timestep in the interface of layers.
-                        // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
-                        // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
-                        const float delta_t_sec = 86400.0f;
-                        
-                        if (q_cap[l][d] > 0.0f) { // Upward flux only
-                            water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward during the timestep [m]
-                        } else {
-                            water_height_upward[l][d] = 0.0f; // No downward flux considered
-                        }
-
-                        // cout << "Height of water moved upward during the timestep at interface between layers " << l << " and " << l+1 << " is " << water_height_upward[l][d] << " m" << endl;   
-                    }
-
-                // --- Step 5: Evaluate the capacities of the layers to donate or receive water ---
-                // Establish physical boundaries for the layers. 
-                // Each layer has two INDEPENDENT physical limits (in m^3): its receiver capacity and its donor capacity. These limits are used to constrain the actual water transfer between layers.
-                
-                // loop to set the capacities of each layer
-		            for (int l = 0; l<nblayers_soil; l++){
-			
-                        // Maximum water storage capacity of a layer(l)
-                        max_cap[l] = FC_SWC[l];
-                        // Min water store capacity of the same layer (l)
-                        min_cap[l] = Min_SWC[l];
-
-                        // Current status of SWC in the layer
-                        current_SWC[l] = SWC3D[l][d];
-
-                        // Maximum gains and losses
-                        max_gain[l] = max_cap[l] - current_SWC[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold
-                        max_loss[l] = current_SWC[l] - min_cap[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
-
-                        // Receiver capacity: cannot exceed saturation
-                        receiv_capacity[l] = max(0.0f, max_gain[l]); 
-                        // Donor capacity: cannot go below residual
-                        donor_capacity[l] = max(0.0f, max_loss[l]);
-
-                        // Special case for the WT layer:
-                        // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
-                        // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
-
-                        if (layer_depth[l] > WTD) {
-                           donor_capacity[l] = INFINITY;
-                            // WT layer is saturated → no receiving capacity
-                            receiv_capacity[l] = 0.0f;
-                        }
-                
-                    }
-
-                    // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
-                    float voxel_area = LH * LH * sites_per_dcell; // m²
-                    vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
-                    water_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
-                    for (int l = 0; l < nblayers_soil -1; l++){
-                        // Always limited by the layer above (receiver), that's why volume of the top layer is considered
-                        float vol_top = layer_thickness_global[l] * voxel_area;   // m³ (camada l)
-
-                        // between the layers, there is a potential flux
-                        float potential_flux =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
-                        float potential_flux_vol = potential_flux * vol_top; // m³
-
-                        float pot_flux_restricted = std::min(
-                            potential_flux_vol,
-                            std::min(receiv_capacity[l], donor_capacity[l+1]));
-
-                        // Water change (if positive, it is the receiver, if negative it is the donor)
-                        water_change_vol[l] += pot_flux_restricted;
-
-                        // the lower later (l+1) lose water 
-                        water_change_vol[l+1] -= pot_flux_restricted;
-
-                        if (layer_depth[l] > WTD) {
-                            // water_change_vol[l] += 0.0f; // WT layer cannot receive water
-                            
-                            cout << "             " << endl;
-                            
-                            cout << "Layer " << l << " is below WTD. water change vol: "<< water_change_vol[l] << endl;
-                            cout << "             " << endl;
-                            cout << "             " << endl;
-
-                            cout << "Layer " << l+1 << " is above WTD. water change vol: "<< water_change_vol[l+1] << endl;
-                            cout << "             " << endl;
-                            cout << "             " << endl;
-
-                        }
-
-
-                    }
-
-                    for (int l = 0; l < nblayers_soil; l++){
-                    //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
-                        if (layer_depth[l] > WTD) continue; //BR: if the layer is below the water table, it is saturated, no need to update SWC3D
-                        SWC3D[l][d] += water_change_vol[l];
-                    }
-                    // INCLUDE:  Checking sanity of updated SWC3D after capillary rise //BR
-                 
-                } // end if (_CAPILLARY_RISE==1) 
-            
-            }// END of the BUCKET MODEL.
+            }
+            // END of the BUCKET MODEL.
             
             // Update of soil water potential field
             for (int d=0; d<nbdcells; d++) {
                 for (int l=0; l<nblayers_soil; l++) {
                     //soil_phi3D[l][d]=phi_e[l]*pow((SWC3D[l][d]/Max_SWC[l]), -b[l]);
-                    // cout << "layer: "<< l<< "Current status of SWC3D: " << SWC3D[l][d] << endl; 
+                    
                     float theta_w=(SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);
                     
 if (_WATER_RETENTION_CURVE==1) {
@@ -7936,8 +7402,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     float inter= 1-pow((1-pow(theta_w, b_vgm[l])),m_vgm[l]);
                     Ks[l][d]=Ksat[l]*pow(theta_w, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     
-                    //cout << "Outside bucket model" << " layer " << l <<  "\t" << "theta_w - theta_cap=  "<< theta_w << "\t" << "soil_phi= " << soil_phi3D[l][d] - soil_phi3D_cap[l][d] << "\t" << "Ks= "<< Ks[l][d] - Ks_cap[l][d] << endl;
-
                     if (isnan(soil_phi3D[l][d]) || isnan(Ks[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
                         cout << "In bucket model, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " Ks[l][d]=" << Ks[l][d] << endl ;
                     
@@ -8379,7 +7843,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 float soilWC=0.0;
                 for (int d=0; d<nbdcells;d++) {
                     soilWC+=SWC3D[l][d]; // in m3
-                    // cout << "layer OUTPUT  " << l << " soilWC " << soilWC << " SWC3D " << SWC3D[l][d] << endl; 
                 }
                 float layer_depth_current = layer_depth[l];
                 float layer_thickness = layer_depth_current - layer_depth_previous;
@@ -10936,9 +10399,6 @@ if (_WATER_RETENTION_CURVE==1) {
             delete [] SPECIES_GERM;
 #ifdef WATER
             delete [] site_DCELL;
-            delete [] delta_z_face; // BR
-            
-
 #endif
             for(int site=0; site < sites; site++) delete [] SPECIES_SEEDS[site];
             delete [] SPECIES_SEEDS;
@@ -11003,3 +10463,4 @@ if (_WATER_RETENTION_CURVE==1) {
         }
         
         
+

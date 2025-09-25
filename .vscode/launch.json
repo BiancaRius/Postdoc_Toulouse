@@ -5,7 +5,7 @@
       "name": "TROLL debug",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/build/TROLL_test_print.out",
+      "program": "${workspaceFolder}/build/TROLL_wt_cap_off.out",
       "cwd": "${workspaceFolder}/TROLL/TROLL_code_understanding_documenting",
       "args": [
         "-mParacou_input_climate.txt",
