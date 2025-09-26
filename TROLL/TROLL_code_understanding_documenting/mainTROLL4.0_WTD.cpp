@@ -7885,7 +7885,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
                         if (_WATER_TABLE == 1) {  // BR: only if the water table model is activated
                             if (layer_depth[l] > WTD) {
-                            donor_capacity[l] = INFINITY;
+                                donor_capacity[l] = INFINITY;
                                 // WT layer is saturated → no receiving capacity
                                 receiv_capacity[l] = 0.0f;
                             }
