@@ -17,7 +17,7 @@ main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_under
 
 # Example: you can add 2, 3, 5, ... scenarios.
 # If you do NOT name them, the script will use folder names as labels.
-scenario_paths <- c("wtOn_capOff")
+scenario_paths <- c("wtOff_capOn")
 
 # ========== 2) Variable groups and corresponding input file types ==========
 biogeochemical_vars   <- c("npp", "gpp", "agb", "sum1", "sum10", "sum30", "ba", "ba10", "litterfall")
