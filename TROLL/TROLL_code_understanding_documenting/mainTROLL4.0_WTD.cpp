@@ -7825,7 +7825,8 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // --- Step 4: Calculate capillary flux ---
                 // The flux is computed using Darcy's Law, considering only upward movement.
-                    for (int l=0; l<nblayers_soil-1; l++) {
+                    //for (int l=0; l = nblayers_soil-1; l>0; l--) { // from top to bottom
+                    for (int l = nblayers_soil -2; l>0; l-- ){ // from bottom to top, starting from the second last layer (as the last layer is the bottom of the soil profile, no layer below it and no interface exists)
 
                         // Difference in soil water potential (phi) between adjacent layers [MPa]
                         float delta_phi_MPa = soil_phi3D_cap[l+1][d] - soil_phi3D_cap[l][d]; // Delta phi between two adjacent layers l and l+1 [MPa]
