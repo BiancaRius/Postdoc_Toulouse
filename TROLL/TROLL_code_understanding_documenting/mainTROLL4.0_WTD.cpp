@@ -7533,8 +7533,6 @@ if (_WATER_RETENTION_CURVE==1) {
             //for(int site=0;site<sites;site++) T[site].Water_uptake(); // Update of Transpiration: tree water uptake, each tree will deplete soil water content through its transpiration. Now made ate the end of the evolution loop so that the outputs for water uptake match the others (otherwise lag of one timestep)
             
                 // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
-            vector<float> max_cap(nblayers_soil, 0.0f);       // maximum capacity of the layer (m^3)
-            vector<float> min_cap(nblayers_soil, 0.0f);       // minimum capacity of the layer (m^3)
             vector<float> current_SWC(nblayers_soil, 0.0f);    // current status of SWC in the layer (m^3)
             vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
             vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
@@ -7796,7 +7794,7 @@ if (_WATER_RETENTION_CURVE==1) {
 }
                     } 
 
-                // --- Step 3: Calculate harmonic mean of hydraulic conductivity ---
+                // --- Step 2: Calculate harmonic mean of hydraulic conductivity ---
                 // The harmonic mean is used to find the effective conductivity at the interface between layers.
                     for (int l=0; l<nblayers_soil-1; l++) {
                         float k1 = Ks_cap[l][d];
@@ -7823,10 +7821,10 @@ if (_WATER_RETENTION_CURVE==1) {
 
                     }
 
-                // --- Step 4: Calculate capillary flux ---
+                // --- Step 3: Calculate capillary flux ---
                 // The flux is computed using Darcy's Law, considering only upward movement.
-                    //for (int l=0; l = nblayers_soil-1; l>0; l--) { // from top to bottom
-                    for (int l = nblayers_soil -2; l>=0; l-- ){ // from bottom to top, starting from the second last layer (as the last layer is the bottom of the soil profile, no layer below it and no interface exists)
+                    for (int l=0; l = nblayers_soil-1; l++) { // from top to bottom
+                    // for (int l = nblayers_soil -2; l>=0; l-- ){ // from bottom to top, starting from the second last layer (as the last layer is the bottom of the soil profile, no layer below it and no interface exists)
 
                         // Difference in soil water potential (phi) between adjacent layers [MPa]
                         float delta_phi_MPa = soil_phi3D_cap[l+1][d] - soil_phi3D_cap[l][d]; // Delta phi between two adjacent layers l and l+1 [MPa]
@@ -7857,24 +7855,20 @@ if (_WATER_RETENTION_CURVE==1) {
                         // cout << "Height of water moved upward during the timestep at interface between layers " << l << " and " << l+1 << " is " << water_height_upward[l][d] << " m" << endl;   
                     }
 
-                // --- Step 5: Evaluate the capacities of the layers to donate or receive water ---
+                // --- Step 4: Evaluate the capacities of the layers to donate or receive water ---
                 // Establish physical boundaries for the layers. 
                 // Each layer has two INDEPENDENT physical limits (in m^3): its receiver capacity and its donor capacity. These limits are used to constrain the actual water transfer between layers.
                 
                 // loop to set the capacities of each layer
 		            for (int l = 0; l<nblayers_soil; l++){
-			
-                        // Maximum water storage capacity of a layer(l)
-                        max_cap[l] = FC_SWC[l];
-                        // Min water store capacity of the same layer (l)
-                        min_cap[l] = Min_SWC[l];
 
                         // Current status of SWC in the layer
                         current_SWC[l] = SWC3D[l][d];
 
                         // Maximum gains and losses
-                        max_gain[l] = max_cap[l] - current_SWC[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold
-                        max_loss[l] = current_SWC[l] - min_cap[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
+                        max_gain[l] = FC_SWC[l] - current_SWC[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. Here, the maximum water storage capacity of a layer(l) == FC_SWC[l] not Max_SWC[l], as we consider that the layer can only receive water up to its field capacity, the rest will be drained by gravity and treated by the bucket model. 
+
+                        max_loss[l] = current_SWC[l] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
 
                         // Receiver capacity: cannot exceed saturation
                         receiv_capacity[l] = max(0.0f, max_gain[l]); 
