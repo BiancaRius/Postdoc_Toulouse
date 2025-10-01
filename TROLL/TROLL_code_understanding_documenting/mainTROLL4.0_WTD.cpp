@@ -54,7 +54,7 @@
 #undef CHECK_CARBON      //!< new in v.2.5: DIAGNOSTIC TOOL, checking of carbon budgets, could potentially be extended for nutrient budget checking in the future. The idea is to keep track of carbon stocks and carbon fluxes every timestep to see whether there are any deviations from expectations - to do so, differences between stocks are computed at each timestep, and can be compared to the gross and net assimilation of carbon
 #define FULL_CLIMATE
 #undef MIP_Lichstein //!< includes specific developments and outputs needed for the MIP experiment led by Jeremy Lichstein.
-#define WATER_TABLE_DEPTH
+#define VERTICAL_WATER_FLUX //!<if defined, vertical water fluxes between soil layers (interface l<->l+1) are computed and saved in a separate output file. Vertical water fluxeas are only calculated if _CAPILLARY_RISE == 1 // BR
 
 
 // LIBRAIRIES
@@ -132,6 +132,7 @@ fstream output_basic[4];            //!< Global variable:  default output stream
 fstream output_extended[9];         //!< Global variable:  extended TROLL outputs, preserved from previous versions, might need further clean-up
 fstream output_visual[2];           //!< Global variable: outputs for visualization/gif creation, new in v.3.1.2
 fstream output_pointcloud;          //!< Global variable: optional las file output, new in v.3.1.6
+
 #ifdef MIP_Lichstein
 fstream output_MIP_eco;
 fstream output_MIP_ind;
@@ -149,6 +150,11 @@ fstream output[40];//!< Global variable: output files
 #ifdef TRACK_INDIVIDUALS
 fstream output_track[3];            //!< Global variable: output streams for tracking of trees
 #endif
+
+#ifdef VERTICAL_WATER_FLUX // BR
+fstream output_vertical_flux;       //!< Global variable: output streams for vertical water fluxes between soil layers // BR
+#endif
+
 
 // USER CONTROLS. Options that can be turned on (1) or off (0). This comes at computational cost: where routines have to be called frequently, if-conditioning should be done as far outside the loop as possible (e.g. for DAYTIMELIGHT outside voxel loops) .Options are set below, but inclusion in parameter sheet needed (for control from R)
 bool _NONRANDOM;     //!< User control: If _NONRANDOM == 1, the seeds for the random number generators will be kept fixed at 1, for bug fixing
@@ -4767,6 +4773,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                     output_basic[3] << endl;
                 }
             }
+
             
             
             //***********************
@@ -6526,6 +6533,17 @@ if (_WATER_RETENTION_CURVE==1) {
                         output_track[2] << "site" << "\t" << "timeofyear_born" << "\t" << "Iter" << "\t" << "age" << "\t" << "seedstotal" << "\t" << "carbstarvtotal" << "\t" << "dbh" << "\t" << "height" << "\t" << "cr" << "\t" << "agb" << "\t" << "GPP" << "\t" << "NPP" << "\t" << "LAIabove_avg" << "\t" << "LAIabove_effavg" << "\t" << "GPPsquared" << "\t" << "NPPsquared" << "\t" << "LAIabovesquared_avg" << "\t" << "LAIabovesquared_effavg" << endl;
                     }
 #endif
+
+#ifdef VERTICAL_WATER_FLUX // BR
+                    sprintf(nnn,"%s_%i_vertical_water_flux.txt",buf, easympi_rank);
+                    output_vertical_flux.open(nnn, ios::out);
+                    output_vertical_flux << "iter\t"; //write header
+                    for(int l=0;l<nblayers_soil-1;l++) {
+                        output_vertical_flux << "interface_" << l << "_" << (l+1) << "\t";
+                    }
+                    output_vertical_flux << endl;  // end of header
+
+#endif
                 }
             }
 
@@ -7823,7 +7841,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // --- Step 3: Calculate capillary flux ---
                 // The flux is computed using Darcy's Law, considering only upward movement.
-                    for (int l=0; l = nblayers_soil-1; l++) { // from top to bottom
+                    for (int l=0; l<nblayers_soil-1; l++) { // from top to bottom
                     // for (int l = nblayers_soil -2; l>=0; l-- ){ // from bottom to top, starting from the second last layer (as the last layer is the bottom of the soil profile, no layer below it and no interface exists)
 
                         // Difference in soil water potential (phi) between adjacent layers [MPa]
@@ -7909,6 +7927,8 @@ if (_WATER_RETENTION_CURVE==1) {
 
                         // the lower later (l+1) lose water 
                         water_change_vol[l+1] -= pot_flux_restricted;
+
+                        
 
                         // if (layer_depth[l] > WTD) {
                             // water_change_vol[l] += 0.0f; // WT layer cannot receive water
@@ -8559,6 +8579,21 @@ if (_WATER_RETENTION_CURVE==1) {
             //     MPI_FLOAT,MPI_SUM,0,MPI_COMM_WORLD);
             //     MPI_Reduce(&S[spp].s_output_field[6],&S[spp].s_output_field[6],5,
             //     MPI_FLOAT,MPI_MAX,0,MPI_COMM_WORLD);
+#endif
+
+#ifdef VERTICAL_WATER_FLUX // BR
+            output_vertical_flux << iter << '\t';   
+            for(int l=0; l<nblayers_soil-1; l++) {
+                float test = 0.0;
+                for (int d=0; d<nbdcells;d++) {
+                    test += 0.1f;
+                    // cout << "layer OUTPUT vertical water interface_" << l << "_" << (l+1) << test << endl; 
+                }
+                output_vertical_flux << test << "\t";
+            }
+            output_vertical_flux << endl;
+   
+
 #endif
             cout.flush();
             
@@ -10947,8 +10982,12 @@ if (_WATER_RETENTION_CURVE==1) {
                 output_track[i].clear();
             }
 #endif
+
+#ifdef VERTICAL_WATER_FLUX // BR
+            output_vertical_flux.close();
+            output_vertical_flux.clear();
+#endif
         }
-        
         
         
         //!  Free dynamic memory
