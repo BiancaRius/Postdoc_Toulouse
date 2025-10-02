@@ -437,7 +437,7 @@ float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic con
 float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
 float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
-float **water_change_cap(0); //!<Global 3D field: the change of soil water content due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
+float **water_change_cap(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -6538,8 +6538,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     sprintf(nnn,"%s_%i_vertical_water_flux.txt",buf, easympi_rank);
                     output_vertical_flux.open(nnn, ios::out);
                     output_vertical_flux << "iter\t"; //write header
-                    for(int l=0;l<nblayers_soil-1;l++) {
-                        output_vertical_flux << "interface_" << l << "_" << (l+1) << "\t";
+                    for(int l=0;l<nblayers_soil;l++) {
+                        output_vertical_flux << "layer_" << l << "\t";
                     }
                     output_vertical_flux << endl;  // end of header
 
@@ -7905,7 +7905,10 @@ if (_WATER_RETENTION_CURVE==1) {
                         }
                 
                     }
-
+                    cout << "donor capacity layer 4: " << donor_capacity[4] << endl;
+                    cout << "receiv capacity layer 4: " << receiv_capacity[4] << endl;
+                    cout << endl;
+                    cout << endl;
                     // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
                     float voxel_area = LH * LH * sites_per_dcell; // m²
                     vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
@@ -7928,7 +7931,15 @@ if (_WATER_RETENTION_CURVE==1) {
                         // the lower later (l+1) lose water 
                         water_change_vol[l+1] -= pot_flux_restricted;
 
-                        
+                        // if (layer_depth[l+1] > WTD){
+                        //     if (fabs(water_change_vol[l+1]) > 1e-6f) {
+                        //         cout << "Error: layer " << l+1 << " is below WTD but has water change vol: "<< water_change_vol[l+1] << endl;
+                        //         cout << "layer_depth[l+1]: " << layer_depth[l+1] << "\t WTD: " << WTD << endl;
+                        //         cout << "donor_capacity[l+1]: " << donor_capacity[l+1] << "\t receiv_capacity[l]: " << receiv_capacity[l] << endl;
+                        //         cout << "water change vol l+1 WTD:  " << water_change_vol[l+1] << endl; 
+                        //         cout << endl;                      
+                        //     }
+                        // }
 
                         // if (layer_depth[l] > WTD) {
                             // water_change_vol[l] += 0.0f; // WT layer cannot receive water
@@ -7949,13 +7960,15 @@ if (_WATER_RETENTION_CURVE==1) {
                     }
 
                     for (int l = 0; l < nblayers_soil; l++){
+                        // water_change_cap[l][d] = water_change_vol[l];
                         SWC3D[l][d] += water_change_vol[l];
+                        // because water_change_vol don't lose water, it's water_change_vol should be == 0.0
+                        // if (layer_depth[l] > WTD && water_change_vol[l]!=0.0f) {
+                        //     cout << "Error: layer " << l << " is below WTD but has water change vol: "<< water_change_vol[l] << endl;
+                        // }                        
                     }
+                
 
-                    // //     cout << "Layer " << l << " SWC before update " << SWC3D[l][d] << endl;
-                    //     if (layer_depth[l] > WTD) continue; //BR: if the layer is below the water table, it is saturated, no need to update SWC3D
-                        // SWC3D[l][d] += water_change_vol[l];
-                    // }
                     // INCLUDE:  Checking sanity of updated SWC3D after capillary rise //BR
                  
                 } // end if (_CAPILLARY_RISE==1) 
@@ -7998,7 +8011,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
             }
 #endif
-        }
+        } // end of function UpdateField()
         
         //#############################
         // Global function: update SPECIES_SEEDS field
@@ -8583,13 +8596,13 @@ if (_WATER_RETENTION_CURVE==1) {
 
 #ifdef VERTICAL_WATER_FLUX // BR
             output_vertical_flux << iter << '\t';   
-            for(int l=0; l<nblayers_soil-1; l++) {
-                float test = 0.0;
-                for (int d=0; d<nbdcells;d++) {
-                    test += 0.1f;
-                    // cout << "layer OUTPUT vertical water interface_" << l << "_" << (l+1) << test << endl; 
+            for(int l=0; l<nblayers_soil; l++) {
+                float vertical_flux_vol = 0.0;
+                for (int d=0; d<nbdcells; d++) {
+                    vertical_flux_vol = water_change_cap[l][d]; // in m3
+                    // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
                 }
-                output_vertical_flux << test << "\t";
+                output_vertical_flux << vertical_flux_vol << "\t";
             }
             output_vertical_flux << endl;
    
