@@ -7901,14 +7901,16 @@ if (_WATER_RETENTION_CURVE==1) {
                                 donor_capacity[l] = INFINITY;
                                 // WT layer is saturated → no receiving capacity
                                 receiv_capacity[l] = 0.0f;
+                                // cout << "layer " << l << " is water table. donor capacity set to infinity, receiv capacity set to 0 "  << endl;
+                                // cout << "donor capacity layer " << l << ": " << donor_capacity[l] << endl;
+                                // cout << "receiver capacity layer " << l << ": " << receiv_capacity[l] << endl;
+                                // cout << endl;
                             }
                         }
                 
                     }
-                    cout << "donor capacity layer 4: " << donor_capacity[4] << endl;
-                    cout << "receiv capacity layer 4: " << receiv_capacity[4] << endl;
-                    cout << endl;
-                    cout << endl;
+
+
                     // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
                     float voxel_area = LH * LH * sites_per_dcell; // m²
                     vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
@@ -7930,17 +7932,21 @@ if (_WATER_RETENTION_CURVE==1) {
 
                         // the lower later (l+1) lose water 
                         water_change_vol[l+1] -= pot_flux_restricted;
+                        
+                        if (_WATER_TABLE == 1) {  // BR: only if the water table model is activated
 
-                        // if (layer_depth[l+1] > WTD){
-                        //     if (fabs(water_change_vol[l+1]) > 1e-6f) {
-                        //         cout << "Error: layer " << l+1 << " is below WTD but has water change vol: "<< water_change_vol[l+1] << endl;
-                        //         cout << "layer_depth[l+1]: " << layer_depth[l+1] << "\t WTD: " << WTD << endl;
-                        //         cout << "donor_capacity[l+1]: " << donor_capacity[l+1] << "\t receiv_capacity[l]: " << receiv_capacity[l] << endl;
-                        //         cout << "water change vol l+1 WTD:  " << water_change_vol[l+1] << endl; 
-                        //         cout << endl;                      
-                        //     }
-                        // }
+                            if (layer_depth[l+1] > WTD){
+                                water_change_vol[l+1] = 0.0f; // WT layer cannot lose water
 
+                                if (fabs(water_change_vol[l+1]) > 1e-6f) {
+                                    cout << "Error: layer " << l+1 << " is below WTD but has water change vol: "<< water_change_vol[l+1] << endl;
+                                    cout << "layer_depth[l+1]: " << layer_depth[l+1] << "\t WTD: " << WTD << endl;
+                                    cout << "donor_capacity[l+1]: " << donor_capacity[l+1] << "\t receiv_capacity[l]: " << receiv_capacity[l] << endl;
+                                    cout << "water change vol l+1 WTD:  " << water_change_vol[l+1] << endl; 
+                                    cout << endl;                      
+                                }
+                            }
+                        }
                         // if (layer_depth[l] > WTD) {
                             // water_change_vol[l] += 0.0f; // WT layer cannot receive water
                             
