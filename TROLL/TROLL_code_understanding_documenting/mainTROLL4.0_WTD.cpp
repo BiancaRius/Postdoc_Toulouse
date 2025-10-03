@@ -7943,7 +7943,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     }
 
                     for (int l = 0; l < nblayers_soil; l++){
-                        // water_change_cap[l][d] = water_change_vol[l];
+                        water_change_cap[l][d] = water_change_vol[l];
                         SWC3D[l][d] += water_change_vol[l];
 
                         if (_WATER_TABLE == 1) { // verify if SWC3D of WT layer is correct after capillary rise (should be = Max_SWC[l])
