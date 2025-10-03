@@ -7721,7 +7721,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     while((l<nblayers_soil)) {
                         // cout << "layer bucket model  " << l << endl;
                         //if the depth of the layer is higher than the wtd, the amount of water in the soil is = max of water the soil layer can hold
-                            if(layer_depth[l]>WTD){
+                            if(layer_depth[l] > WTD){
                                 SWC3D[l][d] = Max_SWC[l];
                                 // cout << "> wtd - layer :  " << l << endl;
                                 // cout << " SWC " << SWC3D[l][d] << endl;
@@ -7774,9 +7774,9 @@ if (_WATER_RETENTION_CURVE==1) {
                         float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
 
-                            // Special condition for layers below the water table
-                        if (_WATER_TABLE == 1) {  // BR: only if the water table model is activated
-                            if (layer_depth[l] > WTD) {         //BR
+                        // Special condition for layers below the water table // BR
+                        if (_WATER_TABLE == 1) { 
+                            if (layer_depth[l] > WTD) {        
                                 soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
                                 theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
                                 Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
@@ -7896,15 +7896,10 @@ if (_WATER_RETENTION_CURVE==1) {
                         // Special case for the WT layer:
                         // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
                         // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
-                        if (_WATER_TABLE == 1) {  // BR: only if the water table model is activated
+                        if (_WATER_TABLE == 1) {  // BR
                             if (layer_depth[l] > WTD) {
                                 donor_capacity[l] = INFINITY;
-                                // WT layer is saturated → no receiving capacity
                                 receiv_capacity[l] = 0.0f;
-                                // cout << "layer " << l << " is water table. donor capacity set to infinity, receiv capacity set to 0 "  << endl;
-                                // cout << "donor capacity layer " << l << ": " << donor_capacity[l] << endl;
-                                // cout << "receiver capacity layer " << l << ": " << receiv_capacity[l] << endl;
-                                // cout << endl;
                             }
                         }
                 
@@ -7933,45 +7928,29 @@ if (_WATER_RETENTION_CURVE==1) {
                         // the lower later (l+1) lose water 
                         water_change_vol[l+1] -= pot_flux_restricted;
                         
-                        if (_WATER_TABLE == 1) {  // BR: only if the water table model is activated
+                        if (_WATER_TABLE == 1) {  
 
                             if (layer_depth[l+1] > WTD){
-                                water_change_vol[l+1] = 0.0f; // WT layer cannot lose water
+                                water_change_vol[l+1] = 0.0f; // This reset is needed because donor_capacity of WT layer is set to infinity, so it can donate but as an infinity source of water, in practice, it shouldn't lose water
 
-                                if (fabs(water_change_vol[l+1]) > 1e-6f) {
-                                    cout << "Error: layer " << l+1 << " is below WTD but has water change vol: "<< water_change_vol[l+1] << endl;
-                                    cout << "layer_depth[l+1]: " << layer_depth[l+1] << "\t WTD: " << WTD << endl;
-                                    cout << "donor_capacity[l+1]: " << donor_capacity[l+1] << "\t receiv_capacity[l]: " << receiv_capacity[l] << endl;
-                                    cout << "water change vol l+1 WTD:  " << water_change_vol[l+1] << endl; 
-                                    cout << endl;                      
-                                }
+                                // if (fabs(water_change_vol[l+1]) > 1e-6f) {
+                                //     cout << "Warning: layer " << l+1 << " is below WTD but has water change vol: " << water_change_vol[l+1] << endl;
+                                //     cout << endl;                      
+                                // }
                             }
                         }
-                        // if (layer_depth[l] > WTD) {
-                            // water_change_vol[l] += 0.0f; // WT layer cannot receive water
-                            
-                            // cout << "             " << endl;
-                            
-                            // cout << "Layer " << l << " is below WTD. water change vol: "<< water_change_vol[l] << endl;
-                            // cout << "             " << endl;
-                            // cout << "             " << endl;
-
-                            // cout << "Layer " << l+1 << " is above WTD. water change vol: "<< water_change_vol[l+1] << endl;
-                            // cout << "             " << endl;
-                            // cout << "             " << endl;
-
-                        // }
-
 
                     }
 
                     for (int l = 0; l < nblayers_soil; l++){
                         // water_change_cap[l][d] = water_change_vol[l];
                         SWC3D[l][d] += water_change_vol[l];
-                        // because water_change_vol don't lose water, it's water_change_vol should be == 0.0
-                        // if (layer_depth[l] > WTD && water_change_vol[l]!=0.0f) {
-                        //     cout << "Error: layer " << l << " is below WTD but has water change vol: "<< water_change_vol[l] << endl;
-                        // }                        
+
+                        if (_WATER_TABLE == 1) { // verify if SWC3D of WT layer is correct after capillary rise (should be = Max_SWC[l])
+                            if (layer_depth[l] > WTD && SWC3D[l][d] != Max_SWC[l]) {
+                                cout << "Warning: layer " << l << " is below WTD but has incorrect SWC3D after capillary rise: "<< SWC3D[l][d] << " instead of " << Max_SWC[l] << endl;
+                            }
+                        }
                     }
                 
 
