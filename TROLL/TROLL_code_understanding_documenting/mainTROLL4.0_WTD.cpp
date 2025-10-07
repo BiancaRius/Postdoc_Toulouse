@@ -629,7 +629,7 @@ void FreeMem(void);
 void ExportPointcloud(float mean_beam, float sd_beam, float klaser, float transmittance_laser, fstream& output_pointcloud); //!<Global function: point cloud output, v.3.1.6; kept separately from other output functions, as we write to a dedicated external file format (.las)
 
 #ifdef VERTICAL_WATER_FLUX // BR
-void CapillaryRise(void); //!< Global function: Capillary rise implementation //BR    
+void CapillaryRise(int d); //!< Global function: Capillary rise implementation //BR    
 #endif
 
 // HELPER FUNCTIONS
@@ -7378,7 +7378,6 @@ if (_WATER_RETENTION_CURVE==1) {
         //! - This is an important function for TROLL -- Includes many of the operations
         //! - set the iteration environment -- nb: the current structure of code suppose that environment is periodic (a period = a year), if one wants to input a variable climate, with interannual variation and climate change along the simulation, a full climatic input needs to be input (ie number of columns=iter and not iterperyear) and change iterperyear by nbiter here.
         void UpdateField() {
-            CapillaryRise(); //BR
             
 #ifdef FULL_CLIMATE
 
@@ -7770,7 +7769,12 @@ if (_WATER_RETENTION_CURVE==1) {
  * @param water_upward_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
  *  */
 
-                if (_CAPILLARY_RISE==1) { // BR     
+                if (_CAPILLARY_RISE==1) { // BR
+                    for (int l=0; l<nblayers_soil; l++) {
+                        cout << "SWC3D befor func. Layer: " << l << endl;
+                        cout << SWC3D[l][d] << endl;
+                    }
+                    CapillaryRise(d);   
 
 
                 // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
@@ -8012,13 +8016,20 @@ if (_WATER_RETENTION_CURVE==1) {
         } // end of function UpdateField()
 
 #ifdef VERTICAL_WATER_FLUX // BR
-        void CapillaryRise(){ // BR
+        void CapillaryRise(int d){ // BR
                 // This function is now integrated within the bucket model in UpdateField()
-            cout << "Function CapillaryRise() << endl";
-            cout << "Function CapillaryRise() << endl";
+            cout << "Function CapillaryRise()" << endl;
             cout << endl;
             cout << endl;
+            
+            for (int l=0; l<nblayers_soil; l++) {
+                cout << "layer inside cap function  " << l << endl;
+                cout << SWC3D[l][d] << endl;
+            }
 
+
+            cout << endl;
+            cout << endl;
         }
 #endif
         
