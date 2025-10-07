@@ -7556,12 +7556,12 @@ if (_WATER_RETENTION_CURVE==1) {
             
             //for(int site=0;site<sites;site++) T[site].Water_uptake(); // Update of Transpiration: tree water uptake, each tree will deplete soil water content through its transpiration. Now made ate the end of the evolution loop so that the outputs for water uptake match the others (otherwise lag of one timestep)
             
-                // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
-            vector<float> current_SWC(nblayers_soil, 0.0f);    // current status of SWC in the layer (m^3)
-            vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
-            vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
-            vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
-            vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
+            // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
+            // vector<float> current_SWC(nblayers_soil, 0.0f);    // current status of SWC in the layer (m^3)
+            // vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
+            // vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
+            // vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
+            // vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
             
 
             for (int d=0; d<nbdcells; d++) {
@@ -8018,19 +8018,184 @@ if (_WATER_RETENTION_CURVE==1) {
 #ifdef VERTICAL_WATER_FLUX // BR
         void CapillaryRise(int d){ // BR
                 // This function is now integrated within the bucket model in UpdateField()
-            cout << "Function CapillaryRise()" << endl;
-            cout << endl;
-            cout << endl;
             
+            // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
+            // Computes relative soil water content, soil water potential (phi), and hydraulic 
+            // conductivity (Ks) based on the chosen water retention model.
             for (int l=0; l<nblayers_soil; l++) {
-                cout << "layer inside cap function  " << l << endl;
-                cout << SWC3D[l][d] << endl;
-            }
+
+                // Intermediate relative humidity for capillary rise calculation
+                float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
 
-            cout << endl;
-            cout << endl;
-        }
+                // Special condition for layers below the water table // BR
+                if (_WATER_TABLE == 1) { 
+                    if (layer_depth[l] > WTD) {        
+                        soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
+                        theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1                                       Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
+                    }                        
+                }
+
+                 // Prevent division by zero or negative values                    
+                if(theta_w_cap <= 1e-6f) { //BR: update from 0 to <= 1e-6f
+                    theta_w_cap = 0.001; // following the below rule added by SS //BR
+                    // cout << "Warning theta_w_cap = 0 " << endl ;
+                }
+
+if (_WATER_RETENTION_CURVE==1) {
+                soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+
+                float inter_cap = 1-pow((1-pow(theta_w_cap, b_vgm[l])),m_vgm[l]);
+                Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 0.5)*inter_cap*inter_cap; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+                // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
+
+
+} else if (_WATER_RETENTION_CURVE==0) {
+
+                soil_phi3D_cap[l][d]=phi_e[l]*pow(theta_w_cap, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                KsPhi[l][d]=Ksat[l]*phi_e[l]*pow(theta_w_cap, 2.5+b[l]); //Ks times soil_phi3D, computed directly as the exact power of theta.
+                //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
+                // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
+
+                // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
+}
+            } // End for layers (step 1)
+
+            
+            // --- Step 2: Calculate harmonic mean of hydraulic conductivity ---
+            // The harmonic mean is used to find the effective conductivity at the interface between layers.
+            for (int l=0; l<nblayers_soil-1; l++) {
+
+                float k1 = Ks_cap[l][d];
+                float k2 = Ks_cap[l+1][d];
+                float sum_k = k1 + k2;
+
+                // Check for division by zero to avoid errors 
+                // If both conductivities are zero, the harmonic mean is also zero
+                if (sum_k > 1e-9f){
+                    Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                    //cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
+
+                } else {
+                    Ks_cap_harmonic[l][d] = 0.0f;
+                    cerr << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
+                }
+
+            } // End for layers interface (step 2)
+
+            // --- Step 3: Calculate capillary flux between layer's interfaces---
+            // The flux is computed using Darcy's Law, considering only upward movement.
+            for (int l=0; l<nblayers_soil-1; l++) { // from top to bottom
+            // for (int l = nblayers_soil -2; l>=0; l-- ){ // from bottom to top, starting from the second last layer (as the last layer is the bottom of the soil profile, no layer below it and no interface exists)
+
+                // Difference in soil water potential (phi) between adjacent layers [MPa]
+                float delta_phi_MPa = soil_phi3D_cap[l+1][d] - soil_phi3D_cap[l][d]; // Delta phi between two adjacent layers l and l+1 [MPa]
+                float delta_phi_Pa = delta_phi_MPa * 1e6f; // Convert Delta phi from MPa to Pa
+
+                cout << std::fixed << std::setprecision(15);
+                //cout << "Delta phi between layers " << l+1 << " and " << l << " is " << delta_phi_MPa << " MPa or " << delta_phi_Pa << " Pa" << endl;
+
+                float water_density = 1000.0f; // Density of water [kg/m3]
+                float gravity = 9.81f; // Acceleration due to gravity [m/s2]
+
+                // Calculate flux using a modified Darcy's Law. Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
+                q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
+                    (delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1));
+                // cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
+
+                // Calculate the total height of water [m] moved during the timestep in the interface of layers.
+                // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
+                // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
+                const float delta_t_sec = 86400.0f;
+                if (q_cap[l][d] > 0.0f) { // Upward flux only
+                    water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward during the timestep [m]
+                } else {
+                    water_height_upward[l][d] = 0.0f; // No downward flux considered yet
+                }
+
+            } // End for layers interface (step 3)
+
+            // --- Step 4: Evaluate the capacities of the layers to donate or receive water ---
+            // Establish physical boundaries for the layers. 
+            // Each layer has two INDEPENDENT physical limits (in m^3): its receiver capacity and its donor capacity. These limits are used to constrain the actual water transfer between layers.
+            
+            // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
+            vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
+            vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
+            vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
+            vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
+
+            // loop to set the capacities of each layer
+            for (int l = 0; l<nblayers_soil; l++){
+
+                // Maximum gains and losses (SWC3D is the current status of SWC in the layer)
+                max_gain[l] = FC_SWC[l] - SWC3D[l][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. Here, the maximum water storage capacity of a layer(l) == FC_SWC[l] not Max_SWC[l], as we consider that the layer can only receive water up to its field capacity, the rest will be drained by gravity and treated by the bucket model. 
+
+                max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
+
+                // Receiver capacity: cannot exceed saturation
+                receiv_capacity[l] = max(0.0f, max_gain[l]); 
+                // Donor capacity: cannot go below residual
+                donor_capacity[l] = max(0.0f, max_loss[l]);
+
+                // Special case for the WT layer:
+                // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
+                // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
+                if (_WATER_TABLE == 1) {  // BR
+                    if (layer_depth[l] > WTD) {
+                        donor_capacity[l] = INFINITY;
+                        receiv_capacity[l] = 0.0f;
+                    }
+                }
+        
+            } // End for layers (step 4)
+
+            // --- Step 5: Calculate actual water transfer between layers ---
+            // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
+            float voxel_area = LH * LH * sites_per_dcell; // m²
+           
+            vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
+            water_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
+           
+            for (int l = 0; l < nblayers_soil -1; l++){
+                // Always limited by the layer above (receiver), that's why volume of the top layer is considered
+                float vol_top = layer_thickness_global[l] * voxel_area;   // m³ (camada l)
+
+                // between the layers, there is a potential transference of water, depending on the amount of water that moved upward during the timestep (water_height_upward), and the thickness of the layer where the water is coming from (layer l+1)
+                float potential_transfer =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
+                // Transforms the potential water transfer in volume of water
+                float vol_potential_transfer = potential_transfer * vol_top; // m³
+
+                // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
+                float vol_transfer_restricted = std::min(
+                    vol_potential_transfer,
+                    std::min(receiv_capacity[l], donor_capacity[l+1]));
+
+                // Water change (if positive, it is the receiver, if negative it is the donor)
+                water_change_vol[l] += vol_transfer_restricted;
+
+                // the lower later (l+1) lose water 
+                water_change_vol[l+1] -= vol_transfer_restricted;
+                
+                if (_WATER_TABLE == 1) {  
+
+                    if (layer_depth[l+1] > WTD){
+                        water_change_vol[l+1] = 0.0f; // This reset is needed because donor_capacity of WT layer is set to infinity, so it can donate but as an infinity source of water, in practice, it shouldn't lose water
+
+                        if (fabs(water_change_vol[l+1]) > 1e-6f) {
+                            cout << "Warning: layer " << l+1 << " is below WTD but has water change vol: " << water_change_vol[l+1] << endl;
+                            cout << endl;                      
+                        }
+                    }
+                }
+
+                // Creating the output for the volume of water transfered between layers
+                water_upward_vol[l][d] = vol_transfer_restricted; // for output purpose, the actual volume of water that moved upward between layers during the timestep (m³)
+            } // End for layers interface (step 5)
+
+        } // End CapillaryRise function
+
 #endif
         
         //#############################
