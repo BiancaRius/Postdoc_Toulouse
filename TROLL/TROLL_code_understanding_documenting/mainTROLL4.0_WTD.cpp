@@ -628,6 +628,10 @@ void FreeMem(void);
 
 void ExportPointcloud(float mean_beam, float sd_beam, float klaser, float transmittance_laser, fstream& output_pointcloud); //!<Global function: point cloud output, v.3.1.6; kept separately from other output functions, as we write to a dedicated external file format (.las)
 
+#ifdef VERTICAL_WATER_FLUX // BR
+void CapillaryRise(void); //!< Global function: Capillary rise implementation //BR    
+#endif
+
 // HELPER FUNCTIONS
 int GetTimeofyear();    //!< Helper function, new in v.3.1: converts current iteration into time of year, also works backwards (negative iterations)
 float CalcHeightBaseline(float &ah, float &hmax, float &dbh);   //!< Helper function: calculates mean predicted height from allometry
@@ -3514,10 +3518,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
     
     
     
-    
-    
-    
-    
     //####################################################
     // Leaf dynamics and C allocation, called by Tree::Growth
     //#####################################################
@@ -4232,7 +4232,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 }
             }
         }
-    }
+    }   
     
     // Global function: linear decrease of crown radius
     float GetRadiusSlope(float CR, float crown_extent, float crown_position){
@@ -7017,8 +7017,6 @@ if (_WATER_RETENTION_CURVE==1) {
         }
 
         
-        
-        
         //######################################
         // Global function: Field dynamic memory allocation
         //######################################
@@ -7380,6 +7378,7 @@ if (_WATER_RETENTION_CURVE==1) {
         //! - This is an important function for TROLL -- Includes many of the operations
         //! - set the iteration environment -- nb: the current structure of code suppose that environment is periodic (a period = a year), if one wants to input a variable climate, with interannual variation and climate change along the simulation, a full climatic input needs to be input (ie number of columns=iter and not iterperyear) and change iterperyear by nbiter here.
         void UpdateField() {
+            CapillaryRise(); //BR
             
 #ifdef FULL_CLIMATE
 
@@ -8011,6 +8010,17 @@ if (_WATER_RETENTION_CURVE==1) {
             }
 #endif
         } // end of function UpdateField()
+
+#ifdef VERTICAL_WATER_FLUX // BR
+        void CapillaryRise(){ // BR
+                // This function is now integrated within the bucket model in UpdateField()
+            cout << "Function CapillaryRise() << endl";
+            cout << "Function CapillaryRise() << endl";
+            cout << endl;
+            cout << endl;
+
+        }
+#endif
         
         //#############################
         // Global function: update SPECIES_SEEDS field
