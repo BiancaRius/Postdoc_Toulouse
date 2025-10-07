@@ -438,6 +438,7 @@ float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate s
 float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
 float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
 float **water_change_cap(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
+float **water_upward_vol(0); //!<Global 3D field: the volume [m3] of water that moved up due to capillarity between two layers (layer * DCELL) //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -6539,8 +6540,12 @@ if (_WATER_RETENTION_CURVE==1) {
                     output_vertical_flux.open(nnn, ios::out);
                     output_vertical_flux << "iter\t"; //write header
                     for(int l=0;l<nblayers_soil;l++) {
-                        output_vertical_flux << "layer_" << l << "\t";
+                        output_vertical_flux << "wcv_" << l << "\t"; // water change (volume) in each layer due to capillary rise
                     }
+                    for(int l=0;l<nblayers_soil-1;l++) {
+                        output_vertical_flux << "wupv_interface_" << l << "_" << (l+1) << "\t"; // amount of water (volume) moving up across the interface between layer l and l+1
+                    }
+
                     output_vertical_flux << endl;  // end of header
 
 #endif
@@ -7123,7 +7128,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR  
+                if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(water_upward_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
             }
 
             for(int l=0;l<nblayers_soil;l++) {
@@ -7199,10 +7205,12 @@ if (_WATER_RETENTION_CURVE==1) {
                         if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                         if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                         if(NULL==(water_height_upward[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(water_upward_vol[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     for (int dcell=0; dcell<nbdcells; dcell++) {
                         Ks_cap_harmonic[l][dcell] = 0.0; //BR
                         q_cap[l][dcell] = 0.0; //BR
                         water_height_upward[l][dcell] = 0.0; //BR
+                        water_upward_vol[l][dcell] = 0.0; //BR
                     }
                 }
             }
@@ -7760,7 +7768,8 @@ if (_WATER_RETENTION_CURVE==1) {
  * @param q_cap A 3D array to store the upward capillary flux between layers [m/s].
  * @param water_height_upward A 3D array to store the height of water moved upward during the timestep [m].
  * @param water_change_cap A 3D array to store the change in water content due to capillary rise.
- */
+ * @param water_upward_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
+ *  */
 
                 if (_CAPILLARY_RISE==1) { // BR     
 
@@ -7780,7 +7789,6 @@ if (_WATER_RETENTION_CURVE==1) {
                                 soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
                                 theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1           
                                 Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
-                                continue;                      //BR: if the layer is below the water table, it is saturated, no need to compute soil hydraulic properties for capillary rise
                             }
                         }
 
@@ -7914,19 +7922,21 @@ if (_WATER_RETENTION_CURVE==1) {
                         // Always limited by the layer above (receiver), that's why volume of the top layer is considered
                         float vol_top = layer_thickness_global[l] * voxel_area;   // m³ (camada l)
 
-                        // between the layers, there is a potential flux
-                        float potential_flux =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
-                        float potential_flux_vol = potential_flux * vol_top; // m³
+                        // between the layers, there is a potential transference of water, depending on the amount of water that moved upward during the timestep (water_height_upward), and the thickness of the layer where the water is coming from (layer l+1)
+                        float potential_transfer =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
+                        // Transforms the potential water transfer in volume of water
+                        float vol_potential_transfer = potential_transfer * vol_top; // m³
 
-                        float pot_flux_restricted = std::min(
-                            potential_flux_vol,
+                        // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
+                        float vol_transfer_restricted = std::min(
+                            vol_potential_transfer,
                             std::min(receiv_capacity[l], donor_capacity[l+1]));
 
                         // Water change (if positive, it is the receiver, if negative it is the donor)
-                        water_change_vol[l] += pot_flux_restricted;
+                        water_change_vol[l] += vol_transfer_restricted;
 
                         // the lower later (l+1) lose water 
-                        water_change_vol[l+1] -= pot_flux_restricted;
+                        water_change_vol[l+1] -= vol_transfer_restricted;
                         
                         if (_WATER_TABLE == 1) {  
 
@@ -7940,11 +7950,15 @@ if (_WATER_RETENTION_CURVE==1) {
                             }
                         }
 
+                        // Creating the output for the volume of water transfered between layers
+                        water_upward_vol[l][d] = vol_transfer_restricted; // for output purpose, the actual volume of water that moved upward between layers during the timestep (m³)
+
                     }
 
                     for (int l = 0; l < nblayers_soil; l++){
-                        water_change_cap[l][d] = water_change_vol[l];
-                        SWC3D[l][d] += water_change_vol[l];
+                        water_change_cap[l][d] = water_change_vol[l]; //for output purpose
+                        
+                        SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
 
                         if (_WATER_TABLE == 1) { // verify if SWC3D of WT layer is correct after capillary rise (should be = Max_SWC[l])
                             if (layer_depth[l] > WTD && SWC3D[l][d] != Max_SWC[l]) {
@@ -8582,16 +8596,24 @@ if (_WATER_RETENTION_CURVE==1) {
 #ifdef VERTICAL_WATER_FLUX // BR
             output_vertical_flux << iter << '\t';   
             for(int l=0; l<nblayers_soil; l++) {
-                float vertical_flux_vol = 0.0;
+                float water_change_cap_out = 0.0;
                 for (int d=0; d<nbdcells; d++) {
-                    vertical_flux_vol = water_change_cap[l][d]; // in m3
+                    water_change_cap_out = water_change_cap[l][d]; // in m3
                     // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
                 }
-                output_vertical_flux << vertical_flux_vol << "\t";
+                output_vertical_flux << water_change_cap_out << "\t";
             }
-            output_vertical_flux << endl;
-   
 
+            for(int l=0; l<nblayers_soil-1; l++) {
+                float water_upward_vol_out = 0.0;
+                for (int d=0; d<nbdcells; d++) {
+                    water_upward_vol_out = water_upward_vol[l][d]; // in m3
+                    // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
+                }
+                output_vertical_flux << water_upward_vol_out << "\t";
+            }
+
+            output_vertical_flux << endl;
 #endif
             cout.flush();
             
