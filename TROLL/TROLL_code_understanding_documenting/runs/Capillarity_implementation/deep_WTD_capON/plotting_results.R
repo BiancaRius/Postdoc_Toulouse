@@ -17,7 +17,7 @@ main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_under
 
 # Example: you can add 2, 3, 5, ... scenarios.
 # If you do NOT name them, the script will use folder names as labels.
-scenario_paths <- c("wtOff_capOn_loopInvert")
+scenario_paths <- c("wtOn_capOn_output")
 
 # ========== 2) Variable groups and corresponding input file types ==========
 biogeochemical_vars   <- c("npp", "gpp", "agb", "sum1", "sum10", "sum30", "ba", "ba10", "litterfall")
@@ -25,13 +25,17 @@ soil_water_content    <- c("SWC_0", "SWC_1", "SWC_2", "SWC_3", "SWC_4")
 soil_water_potential  <- c("SWP_0", "SWP_1", "SWP_2", "SWP_3", "SWP_4")
 transpiration_layers  <- c("transpiration_0", "transpiration_1", "transpiration_2", "transpiration_3", "transpiration_4")
 water_flux_vars       <- c("precipitation", "interception", "throughfall", "runoff", "leak", "evaporation")
+water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4")
+water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4")
 
 variable_groups <- list(
   biogeochemical       = biogeochemical_vars,
   soil_water_content   = soil_water_content,
   soil_water_potential = soil_water_potential,
   transpiration_layers = transpiration_layers,
-  water_fluxes         = water_flux_vars
+  water_fluxes         = water_flux_vars,
+  water_change_volume  = water_change_volume,
+  water_upward_volume  = water_upward_volume
 )
 
 variable_file_map <- c(
@@ -39,7 +43,9 @@ variable_file_map <- c(
   soil_water_content   = "water_balance",
   soil_water_potential = "water_balance",
   transpiration_layers = "water_balance",
-  water_fluxes         = "water_balance"
+  water_fluxes         = "water_balance",
+  water_change_volume  = "vertical_water_flux",
+  water_upward_volume  = "vertical_water_flux"
 )
 
 # ========== 3) Helper functions ==========
@@ -235,3 +241,76 @@ print(p)
 
 # If you want to save the grid plot:
 # ggsave("SWC_grid_shared_yaxis.pdf", p, width = 12, height = 8)
+
+
+# ===== Upward fluxes: grid de todas as interfaces (Y compartilhado) =====
+plot_upward_flux_grid <- function(scenario_paths_vec = scenario_paths,
+                                  seed_colors = 123,
+                                  ncol = 2,
+                                  file_type = "vertical_water_flux",
+                                  ylabel = "Upward water volume (m³)") {
+  
+  labs <- scenario_labels(scenario_paths_vec)
+  dirs <- sapply(scenario_paths_vec, resolve_path, USE.NAMES = FALSE)
+  dfs  <- Map(function(d, lab) safe_read(d, file_type, lab), dirs, labs)
+  all_data <- dplyr::bind_rows(dfs[!sapply(dfs, is.null)])
+  
+  if (is.null(all_data) || nrow(all_data) == 0) {
+    stop("No valid data found for file type: ", file_type)
+  }
+  
+  # interfaces esperadas
+  wupv_vars_expected <- c("wupv_interface_0_1","wupv_interface_1_2",
+                          "wupv_interface_2_3","wupv_interface_3_4")
+  
+  wupv_vars <- intersect(wupv_vars_expected, names(all_data))
+  if (length(wupv_vars) == 0) {
+    stop("Nenhuma coluna wupv_interface_*_* encontrada em '", file_type, "'.")
+  } else if (length(wupv_vars) < length(wupv_vars_expected)) {
+    warning("Colunas faltando: ",
+            paste(setdiff(wupv_vars_expected, wupv_vars), collapse=", "))
+  }
+  
+  long_data <- all_data %>%
+    dplyr::select(iter, scenario, dplyr::all_of(wupv_vars)) %>%
+    tidyr::pivot_longer(cols = dplyr::all_of(wupv_vars),
+                        names_to = "variable", values_to = "value")
+  
+  # eixo Y compartilhado
+  y_limits <- range(long_data$value, na.rm = TRUE)
+  
+  # cores por cenário
+  if (!is.null(seed_colors)) set.seed(seed_colors)
+  scen_levels <- unique(long_data$scenario)
+  scen_colors <- setNames(
+    sample(grDevices::hcl.colors(n = max(length(scen_levels), 3), palette = "Dark 3"),
+           length(scen_levels)),
+    scen_levels
+  )
+  
+  plots <- lapply(wupv_vars, function(v) {
+    plot_data <- dplyr::filter(long_data, variable == v)
+    ggplot2::ggplot(plot_data, ggplot2::aes(x = iter, y = value, color = scenario)) +
+      ggplot2::geom_line(linewidth = 0.7, alpha = 0.9) +
+      ggplot2::scale_color_manual(values = scen_colors, name = NULL) +
+      ggplot2::scale_y_continuous(limits = y_limits) +
+      ggplot2::scale_x_continuous(
+        name = "Year",
+        breaks = seq(0, 10000, by = 365 * 3),
+        labels = function(x) floor(x / 365) + 1
+      ) +
+      ggplot2::labs(title = v, y = ylabel) +
+      ggplot2::theme_minimal(base_size = 11) +
+      ggplot2::theme(legend.position = "bottom")
+  })
+  
+  fig <- patchwork::wrap_plots(plots, ncol = ncol, guides = "collect") &
+    ggplot2::theme(legend.position = "bottom")
+  
+  fig
+}
+
+# Grid com todas as interfaces (0_1, 1_2, 2_3, 3_4)
+p_grid <- plot_upward_flux_grid(scenario_paths, seed_colors = 123, ncol = 2)
+print(p_grid)
+# ggsave("upward_flux_grid.pdf", p_grid, width = 12, height = 8)
