@@ -7758,14 +7758,7 @@ if (_WATER_RETENTION_CURVE==1) {
      *  */
 
                 if (_CAPILLARY_RISE==1) { // BR
-                    for (int l=0; l<nblayers_soil; l++) {
-                        cout << "SWC3D befor func. Layer: " << l << endl;
-                        cout << SWC3D[l][d] << endl;
-                    }
                     CapillaryRise(d);   
-
-
-                    // INCLUDE:  Checking sanity of updated SWC3D after capillary rise //BR
                  
                 } // end if (_CAPILLARY_RISE==1) 
             
@@ -7994,15 +7987,34 @@ if (_WATER_RETENTION_CURVE==1) {
                         
                 SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
 
-                if (_WATER_TABLE == 1) { // verify if SWC3D of WT layer is correct after capillary rise (should be = Max_SWC[l])
-                    if (layer_depth[l] > WTD && SWC3D[l][d] != Max_SWC[l]) {
-                        cout << "Warning: layer " << l << " is below WTD but has incorrect SWC3D after capillary rise: "<< SWC3D[l][d] << " instead of " << Max_SWC[l] << endl;
-                    }
-                }
             } // End for layers (step 6)
 
+            // --- Step 7: Sanity check for updated SWC3D ---
+            for (int l=0; l<nblayers_soil; l++) {    
+                if (_WATER_TABLE == 1) { // verify if SWC3D of WT layer is correct after capillary rise (should be = Max_SWC[l])
+                    if (layer_depth[l] > WTD && fabs(SWC3D[l][d] - Max_SWC[l]) > 1e-6f) {
+                        cout << "Warning: layer " << l 
+                                << " is below WTD but SWC3D != Max_SWC after capillary rise. "
+                                << "SWC3D=" << SWC3D[l][d] 
+                                << "  Expected=" << Max_SWC[l] << endl;
+                    }
 
-            // CHECK: FORCE THE LIMIT?
+                    if (layer_depth[l] < WTD && (SWC3D[l][d] > FC_SWC[l] || SWC3D[l][d] < Min_SWC[l])) {
+                        cout << "Warning: layer " << l 
+                                << " is above WTD but SWC3D out of bounds after capillary rise. "
+                                << "SWC3D=" << SWC3D[l][d]
+                                << "  Expected range=[" << Min_SWC[l] << ", " << FC_SWC[l] << "]" << endl;
+                    }
+                    
+                } else { // if water table model is not activated, just check if SWC3D is within Min and Max
+                    if (SWC3D[l][d] > FC_SWC[l] || SWC3D[l][d] < Min_SWC[l]) {
+                        cout << "Warning: layer " << l 
+                                << " has SWC3D out of range after capillary rise. "
+                                << "SWC3D=" << SWC3D[l][d]
+                                << "  Expected range=[" << Min_SWC[l] << ", " << FC_SWC[l] << "]" << endl;
+                    }
+                }
+            } // End for layers (step 7)
 
         } // End CapillaryRise function
 
