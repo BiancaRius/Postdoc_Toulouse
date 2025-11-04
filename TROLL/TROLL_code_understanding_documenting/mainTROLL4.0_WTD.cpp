@@ -7666,6 +7666,10 @@ if (_WATER_RETENTION_CURVE==1) {
                     }
                 }*/
 
+
+                // }
+
+
                 if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
@@ -7761,6 +7765,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     CapillaryRise(d);   
                  
                 } // end if (_CAPILLARY_RISE==1) 
+
+              
             
             }// END of the BUCKET MODEL.
             
