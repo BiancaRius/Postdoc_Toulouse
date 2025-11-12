@@ -18,6 +18,8 @@ main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_under
 # Example: you can add 2, 3, 5, ... scenarios.
 # If you do NOT name them, the script will use folder names as labels.
 scenario_paths <- c("wtOn_capOn_capFunction")
+#scenario_paths <- c("wtOn_capOn_vegetation_deepWT", "wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/deep_WTD/")
+#scenario_paths <- c("wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/shallow_WTD/")
 
 # ========== 2) Variable groups and corresponding input file types ==========
 biogeochemical_vars   <- c("npp", "gpp", "agb", "sum1", "sum10", "sum30", "ba", "ba10", "litterfall")
@@ -217,7 +219,7 @@ plot_SWC_grid <- function(scenario_paths_vec = scenario_paths,
         breaks = seq(0, 10000, by = 365 * 3),
         labels = function(x) floor(x / 365) + 1
       ) +
-      labs(title = v, y = "Soil Water Content") +
+      labs(title = v, y = "Soil Water Content (m3/m3)") +
       theme_minimal(base_size = 11) +
       theme(legend.position = "bottom")
   })
@@ -314,3 +316,172 @@ plot_upward_flux_grid <- function(scenario_paths_vec = scenario_paths,
 p_grid <- plot_upward_flux_grid(scenario_paths, seed_colors = 123, ncol = 2)
 print(p_grid)
 # ggsave("upward_flux_grid.pdf", p_grid, width = 12, height = 8)
+
+
+# =========================
+# 3.b) STABILITY DIAGNOSTICS
+# =========================
+
+# --- Utility: Load all data for a given file type across scenarios ---
+load_all_data <- function(scenario_paths_vec, file_type) {
+  labs <- scenario_labels(scenario_paths_vec)
+  dirs <- sapply(scenario_paths_vec, resolve_path, USE.NAMES = FALSE)
+  dfs  <- Map(function(d, lab) safe_read(d, file_type, lab), dirs, labs)
+  dplyr::bind_rows(dfs[!sapply(dfs, is.null)])
+}
+
+# -------- D1: Temporal variability (stability over time) --------
+# Computes per-layer and per-scenario metrics:
+# - sd_diff: standard deviation of time increments (x[t]-x[t-1])
+# - tv: total variation (sum of absolute changes)
+# - iqr: interquartile range (robust to outliers)
+temporal_variability <- function(df, var_prefix = c("SWC","SWP")) {
+  var_prefix <- match.arg(var_prefix)
+  vars <- grep(paste0("^", var_prefix, "_[0-9]+$"), names(df), value = TRUE)
+  if (length(vars) == 0) stop("No columns found matching ", var_prefix, "_*.")
+  
+  out <- lapply(vars, function(v) {
+    df |>
+      dplyr::group_by(scenario) |>
+      dplyr::arrange(iter, .by_group = TRUE) |>
+      dplyr::summarise(
+        variable = v,
+        sd_diff = stats::sd(diff(.data[[v]]), na.rm = TRUE),
+        tv      = sum(abs(diff(.data[[v]])), na.rm = TRUE),
+        iqr     = IQR(.data[[v]], na.rm = TRUE),
+        .groups = "drop"
+      )
+  })
+  dplyr::bind_rows(out) |>
+    dplyr::mutate(layer = as.integer(gsub(paste0(var_prefix, "_"), "", variable)))
+}
+
+# -------- D2: Vertical coherence (SWP monotonicity) --------
+# Checks how often the soil water potential profile violates monotonicity.
+# Expected (non-frozen soil): SWP becomes less negative with depth.
+vertical_coherence_swp <- function(df) {
+  swp_vars <- grep("^SWP_[0-9]+$", names(df), value = TRUE)
+  if (length(swp_vars) == 0) stop("No SWP_* columns found.")
+  swp_vars <- swp_vars[order(as.integer(gsub("SWP_", "", swp_vars)))]
+  
+  df |>
+    dplyr::select(iter, scenario, dplyr::all_of(swp_vars)) |>
+    tidyr::pivot_longer(cols = dplyr::all_of(swp_vars),
+                        names_to = "layer", values_to = "swp") |>
+    dplyr::mutate(layer = as.integer(gsub("SWP_", "", layer))) |>
+    dplyr::arrange(scenario, iter, layer) |>
+    dplyr::group_by(scenario, iter) |>
+    dplyr::summarise(
+      breaks = sum(diff(swp) < 0, na.rm = TRUE), # <0 means inversion
+      .groups = "drop"
+    ) |>
+    dplyr::group_by(scenario) |>
+    dplyr::summarise(
+      frac_timesteps_with_inversion = mean(breaks > 0, na.rm = TRUE),
+      avg_inversions_per_timestep = mean(breaks, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+# -------- D3: Water balance check --------
+# Compares changes in storage (ΔStorage) with input/output fluxes.
+# Uses available columns among: precipitation, interception, throughfall,
+# runoff, leak, evaporation, transpiration_*, wcv_*.
+water_balance_check <- function(df_wb, df_vf = NULL) {
+  has_wcv <- !is.null(df_vf) && any(grepl("^wcv_[0-9]+$", names(df_vf)))
+  
+  dat <- dplyr::left_join(
+    df_wb, if (has_wcv) dplyr::select(df_vf, dplyr::any_of(c("iter","scenario",
+                                                             grep("^wcv_[0-9]+$", names(df_vf), value=TRUE)))), 
+    by = c("iter","scenario")
+  )
+  
+  # Compute ΔStorage
+  wcv_cols <- grep("^wcv_[0-9]+$", names(dat), value = TRUE)
+  dat$delta_storage <- if (length(wcv_cols) > 0) {
+    rowSums(dat[, wcv_cols], na.rm = TRUE)
+  } else {
+    # fallback: estimate from SWC time differences
+    swc_cols <- grep("^SWC_[0-9]+$", names(dat), value = TRUE)
+    if (length(swc_cols) == 0) stop("No wcv_* or SWC_* to estimate storage change.")
+    dat <- dat |>
+      dplyr::group_by(scenario) |>
+      dplyr::arrange(iter, .by_group = TRUE) |>
+      dplyr::mutate(!!!rlang::set_names(
+        lapply(swc_cols, \(cname) c(NA, diff(.data[[cname]]))),
+        paste0("d_", swc_cols))) |>
+      dplyr::ungroup()
+    rowSums(dat[, grep("^d_SWC_[0-9]+$", names(dat), value = TRUE)], na.rm = TRUE)
+  }
+  
+  # Main fluxes
+  get <- function(nm) if (nm %in% names(dat)) dat[[nm]] else 0
+  P   <- get("precipitation")
+  I   <- get("interception")
+  TF  <- if ("throughfall" %in% names(dat)) dat$throughfall else (P - I)
+  Ev  <- get("evaporation")
+  Tr  <- rowSums(dat[, grep("^transpiration_[0-9]+$", names(dat), value = TRUE), drop = FALSE], na.rm = TRUE)
+  Qr  <- get("runoff")
+  Lk  <- get("leak")
+  
+  # Simple column water balance:
+  #  TF - (Ev + Tr + Qr + Lk) ≈ ΔStorage
+  resid <- TF - (Ev + Tr + Qr + Lk) - dat$delta_storage
+  
+  tibble::tibble(scenario = dat$scenario, resid = resid) |>
+    dplyr::group_by(scenario) |>
+    dplyr::summarise(
+      mean_error   = mean(resid, na.rm = TRUE),
+      mean_abs_error = mean(abs(resid), na.rm = TRUE),
+      p95_abs_error = quantile(abs(resid), 0.95, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+# -------- Master function: runs all diagnostics --------
+run_stability_diagnostics <- function(scenario_paths_vec = scenario_paths) {
+  wb  <- load_all_data(scenario_paths_vec, "water_balance")
+  vf  <- try(load_all_data(scenario_paths_vec, "vertical_water_flux"), silent = TRUE)
+  if (inherits(vf, "try-error")) vf <- NULL
+  
+  d1_swc <- temporal_variability(wb, var_prefix = "SWC")
+  d1_swp <- if (any(grepl("^SWP_[0-9]+$", names(wb)))) temporal_variability(wb, "SWP") else NULL
+  d2_swp <- if (any(grepl("^SWP_[0-9]+$", names(wb)))) vertical_coherence_swp(wb) else NULL
+  d3_bal <- try(water_balance_check(wb, vf), silent = TRUE)
+  if (inherits(d3_bal, "try-error")) d3_bal <- NULL
+  
+  list(
+    D1_temporal_variability_SWC = d1_swc,
+    D1_temporal_variability_SWP = d1_swp,
+    D2_vertical_coherence_SWP   = d2_swp,
+    D3_water_balance            = d3_bal
+  )
+}
+
+# -------- Quick visualization of D1 (bar plots per layer/scenario) --------
+plot_temporal_variability <- function(d1_table, metric = c("sd_diff","tv","iqr")) {
+  metric <- match.arg(metric)
+  ggplot(d1_table, aes(x = factor(layer), y = .data[[metric]], fill = scenario)) +
+    geom_col(position = position_dodge(width = 0.8)) +
+    labs(x = "Layer", y = metric, title = paste("Temporal variability (", metric, ")", sep="")) +
+    theme_minimal(base_size = 11) + theme(legend.position = "bottom")
+}
+
+
+# === Run diagnostics ===
+diag <- run_stability_diagnostics(scenario_paths)
+
+# 1) Temporal stability (SWC): smaller = more stable
+print(plot_temporal_variability(diag$D1_temporal_variability_SWC, metric = "sd_diff"))
+print(plot_temporal_variability(diag$D1_temporal_variability_SWC, metric = "tv"))
+
+# 2) Vertical coherence (SWP): fewer inversions = better physical consistency
+if (!is.null(diag$D2_vertical_coherence_SWP)) {
+  print(diag$D2_vertical_coherence_SWP)
+}
+
+# 3) Water balance: mean_error ~ 0 and small p95_abs_error = good conservation
+if (!is.null(diag$D3_water_balance)) {
+  print(diag$D3_water_balance)
+}
+

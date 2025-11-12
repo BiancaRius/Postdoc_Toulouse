@@ -171,7 +171,7 @@ bool _seedsadditional; //!< User control: excess carbon into seeds? no/yes=(0/1)
 bool _LL_parameterization;   //!< User control: two ways for parameterising leaf lifespan: empirical (derived by Sylvain Schmitt, TODO: from which data?), Kikuzawa model (0,1)
 bool _WATER_TABLE; // !< User control: if _WATER_TABLE == 1, the water table depth is activated, then the soil layer below the depth (WTD variable in global parameters) are always saturated //BR
 bool _CAPILLARY_RISE; // !< User control: if _CAPILLARY_RISE == 1, the capillary rise is activated, then the soil moisture in the layer below can rise to the above layer depending on the soil water potential gradient between the two layers //BR
-
+bool _UNIFIED_VERT_WATER_FLUX; // !< bool _UNIFIED_VERT_WATER_FLUX; // !< User control: if _UNIFIED_VERT_WATER_FLUX == 1, both upward and downward vertical water fluxes are computed using Darcy's law (based on the total head gradient, ψ + z). When active, the bucket-based percolation scheme between soil layers is disabled. When set to 0, downward fluxes still use the traditional bucket percolation, and only upward fluxes follow Darcy’s law (capillary rise) //BR
 
 int _LA_regulation;     //!< User control: updated v.3.1: potentially three ways of parameterising leaf dynamic allocation, but currently using only two ways: no regulation (0), never exceed LAImax, i.e. the maximum LAI under full sunlight (1), adjust LAI to the current light environment (2). To switch between option 1 and 2, only one line is necessary in CalcLAmax()
 int _OUTPUT_pointcloud;  //!<User control: ATTENTION! At the moment assumes a little-endian system (most personal computers, but not necessarily server systems), because LAS fles are in little-endian! If == 1, creates a point cloud from a simplified ALS simulation;
@@ -7669,7 +7669,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // }
 
-
+// if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux scheme is disabled, downward flux is considered using bucket model scheme //BR
                 if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
@@ -7692,13 +7692,43 @@ if (_WATER_RETENTION_CURVE==1) {
                         l++;
                     }
                 }
-                else{ //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
+                else { //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
                     Runoff[d]=Throughfall[d];
                 }
 
 
                 // Leakage
                 Leakage[d]=in;
+
+
+// } else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
+    
+//     // Maximum of water the layer 0 can absorb from throughfall
+//     max_gain[0] = FC_SWC[0] - SWC3D[0][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. Here, the maximum water storage capacity of a layer(l) == FC_SWC[l] not Max_SWC[l], as we consider that the layer can only receive water up to its field capacity, the rest will be drained by gravity and treated by the bucket model. 
+
+
+//     if(SWC3D[0][d]<Max_SWC[0]) {  // if the top soil layer is not saturated
+//         if(in>(FC_SWC[0]-SWC3D[0][d])) { // if the water from throughfall is higher than what is missing to attain the field capacity
+           
+//             SWC3D[0][d]=FC_SWC[0];       // the layer is saturated, i.e. SWC = FC
+        
+//         } else { // if the water from throughfall is lower than what is missing to attain the field capacity
+
+//             SWC3D[0][d]+=in; // all the throughfall enters the layer 0
+
+//         }
+
+//     }
+
+//     else { //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
+//          Runoff[d]=Throughfall[d];
+//     }
+
+// } //endif unified vert water flux
+
+
+
+
 
 
     /**  @brief Applies water table depth effect on soil water content (SWC) if the bucket model is enabled.
