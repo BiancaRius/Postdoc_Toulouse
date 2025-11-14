@@ -431,6 +431,7 @@ float *b(0);                //!< Global vector: parameter for the Campbell-Muale
 float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL) 
 float **soil_phi3D(0);      //!< Global 3D field: soil water potential (in MPa) in each soil voxel (layer * DCELL)
 float **soil_phi3D_cap(0);  //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in capillary rise //BR
+float **soil_phi3D_inf(0); //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in infiltration for the first layer //BR
 float **SWC3D_cap(0);       //!<Global 3D field: intermediate soil water content in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
 float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
@@ -7130,6 +7131,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(water_upward_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
             }
 
+
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(soil_phi3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7703,31 +7705,67 @@ if (_WATER_RETENTION_CURVE==1) {
 
 // } else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
     
-//     // Maximum of water the layer 0 can absorb from throughfall
-//     max_gain[0] = FC_SWC[0] - SWC3D[0][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. Here, the maximum water storage capacity of a layer(l) == FC_SWC[l] not Max_SWC[l], as we consider that the layer can only receive water up to its field capacity, the rest will be drained by gravity and treated by the bucket model. 
+            // Calculate soil hydraulic properties for the layer 0 in order to compute Infiltration
+                // Computes relative soil water content, soil water potential (phi), and hydraulic 
+                // conductivity (Ks) based on the chosen water retention model.
+    
+                float theta_w_inf=(SWC3D[0][d]-Min_SWC[0])/(Max_SWC[0]-Min_SWC[0]); // relative soil water content for infiltration calculation
+                
+                if(theta_w_inf == 0) {
+                        theta_w_inf = 0.001; // following SS addition for limit value //BR
+                        cout << "Warning theta_w = 0 " << endl ;
+                }
+
+                cout << "Infiltration calculation: dcell " << d << " theta_w_inf=" << theta_w_inf << endl ;
+                
+                //Initialize internal variables to calculate hydraulic potential for the first layer
+                float soil_phi3D_inf = 0.0;
+                float Ks_inf = 0.0;
+
+if (_WATER_RETENTION_CURVE==1) {
+                
+                soil_phi3D_inf = a_vgm[0]*pow((pow(theta_w_inf,-b_vgm[0])-1), c_vgm[0]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+                float inter = 1-pow((1-pow(theta_w_inf, b_vgm[0])),m_vgm[0]);
+                Ks_inf = Ksat[0]*pow(theta_w_inf, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+                    
+                if (isnan(soil_phi3D_inf) || isnan(Ks_inf) ||  (SWC3D[0][d]-Min_SWC[0])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
+                    cout << "In bucket model, first layer (layer 0) " << " dcell " << d << " theta_w=" << theta_w_inf << " SWC3D[0][d]-Min_SWC[0]=" << (SWC3D[0][d]-Min_SWC[0]) << " soil_phi3D[0][d]=" << soil_phi3D[0][d] << " Ksat=" << Ksat[0] << " Ks[0][d]=" << Ks[0][d] << endl ;
+                    
+                cout << "Infiltration calculation: dcell " << d << " soil_phi3D_inf=" << soil_phi3D_inf << " Ks_inf=" << Ks_inf << endl ;
+
+} else if (_WATER_RETENTION_CURVE==0) {
+                soil_phi3D_inf = phi_e[0]*pow(theta_w_inf, -b[0]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                Ks_inf = Ksat[0]*pow(theta_w_inf, 2.5+2*b[0]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                float KsPhi_inf = Ksat[0]*phi_e[0]*pow(theta_w_inf, 2.5+b[0]); //Ks times soil_phi3D, computed directly as the exact power of theta.
+            
+                if (isnan(soil_phi3D_inf) || isnan(Ks_inf) ||  isnan(KsPhi_inf) || (SWC3D[0][d]-Min_SWC[0])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
+                    cout << "In bucket model, first layer (layer 0) " << " dcell " << d << " theta_w=" << theta_w_inf << " SWC3D[0][d]-Min_SWC[0]=" << (SWC3D[0][d]-Min_SWC[0]) << " soil_phi3D[0][d]=" << soil_phi3D[0][d] << " Ksat=" << Ksat[0] << " phi_e=" << phi_e[0] <<" b[0]=" << b[0] << " KsPhi_inf=" << KsPhi[0][d] << " Ks[0][d]=" << Ks_inf << endl ;
+                    //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
+                    // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
+                    
+} // end of water retention curve choice
+    // // Maximum of water the layer 0 can absorb from throughfall
+    // max_gain[0] = FC_SWC[0] - SWC3D[0][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. Here, the maximum water storage capacity of a layer(l) == FC_SWC[l] not Max_SWC[l], as we consider that the layer can only receive water up to its field capacity, the rest will be drained by gravity and treated by the bucket model. 
 
 
-//     if(SWC3D[0][d]<Max_SWC[0]) {  // if the top soil layer is not saturated
-//         if(in>(FC_SWC[0]-SWC3D[0][d])) { // if the water from throughfall is higher than what is missing to attain the field capacity
+    // if(SWC3D[0][d]<Max_SWC[0]) {  // if the top soil layer is not saturated
+    //     if(in>(FC_SWC[0]-SWC3D[0][d])) { // if the water from throughfall is higher than what is missing to attain the field capacity
            
-//             SWC3D[0][d]=FC_SWC[0];       // the layer is saturated, i.e. SWC = FC
+    //         SWC3D[0][d]=FC_SWC[0];       // the layer is saturated, i.e. SWC = FC
         
-//         } else { // if the water from throughfall is lower than what is missing to attain the field capacity
+    //     } else { // if the water from throughfall is lower than what is missing to attain the field capacity
 
-//             SWC3D[0][d]+=in; // all the throughfall enters the layer 0
+    //         SWC3D[0][d]+=in; // all the throughfall enters the layer 0
 
-//         }
+    //     }
 
-//     }
+    // }
 
-//     else { //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
-//          Runoff[d]=Throughfall[d];
-//     }
+    // else { //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
+    //      Runoff[d]=Throughfall[d];
+    // }
 
 // } //endif unified vert water flux
-
-
-
 
 
 
