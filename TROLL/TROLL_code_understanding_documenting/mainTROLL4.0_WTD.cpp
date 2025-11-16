@@ -7791,14 +7791,36 @@ if (_WATER_RETENTION_CURVE==1) {
 
             // 5. Update soil water content of layer 0 after infiltration
                 SWC3D[0][d] += actual_infiltration;
-                Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
-                Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers.
+                // Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
+                // Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers.
                 in -= actual_infiltration; // remaining water after infiltration in the first layer
 
-                // only for testing purpose, to be removed later
+                // only for testing purpose, to be removed later, the water will percolate following bucket scheme in the layers below layer 0 (test to check the infiltration scheme)
+                    int l=1;
+                    while((l<nblayers_soil) && (in>0.0)) {
+                        if(in>(FC_SWC[l]-SWC3D[l][d])) {
+                            in-=(FC_SWC[l]-SWC3D[l][d]);
+                            SWC3D[l][d]=FC_SWC[l];
+                            if(isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<=0) {
+                                    cout << "incorrect SWC3D, Min/Max_SWC" << endl;
+                                    cout <<Max_SWC[l] << endl;
+                            } 
+                        }
+                        else{
+                            SWC3D[l][d]+=in;
+                            if (isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<0) {
+                                cout << "incorrect SWC3D, Min/Max_SWC" << endl;
+                                cout << Throughfall[d] << "\t" <<in <<"\t" <<  precip << "\t" << Interception[d] << "\t" << LAI_DCELL[0][d] << endl;
+                            }
+                            in=0.0;
+                        }
+                        l++;
+                    }
 
-                
-                
+                // Leakage
+                Leakage[d]=in;
+
+                // NOTE: in this test configuration, surface runoff is not explicitly computed here.
 
 } //endif unified vert water flux
 
