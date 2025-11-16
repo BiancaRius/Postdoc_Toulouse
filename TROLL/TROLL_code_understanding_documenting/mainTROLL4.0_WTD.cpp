@@ -439,6 +439,7 @@ float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s)
 float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
 float **water_change_cap(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
 float **water_upward_vol(0); //!<Global 3D field: the volume [m3] of water that moved up due to capillarity between two layers (layer * DCELL) //BR
+float **Infiltration(0); //!<Global 3D field: the volume [m3] of water that infiltrated into the first soil layer (layer * DCELL) //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -6545,7 +6546,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     for(int l=0;l<nblayers_soil-1;l++) {
                         output_vertical_flux << "wupv_interface_" << l << "_" << (l+1) << "\t"; // amount of water (volume) moving up across the interface between layer l and l+1
                     }
-
+                    output_vertical_flux << "infiltration_l_0" << "\t"; // amount of water (volume) infiltrating into the first soil layer from the surface (to compare the two different schemes of infiltration (bucket vs Darcy's))
                     output_vertical_flux << endl;  // end of header
 
 #endif
@@ -7130,6 +7131,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(water_upward_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
             }
 
+            // Variables for the unified vertical water movement
+            if(NULL==(Infiltration=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
 
             for(int l=0;l<nblayers_soil;l++) {
                 if(NULL==(SWC3D[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7138,6 +7141,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(KsPhi[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
+
+                if(NULL==(Infiltration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
 
                 if (_CAPILLARY_RISE == 1){ //BR
                     if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7182,6 +7187,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     KsPhi[l][dcell]=0.0;
                     //KsPhi2[l][dcell]=0.0;
                     Transpiration[l][dcell]=0.0;
+                    Infiltration[l][dcell]=0.0;
 
                     if (_CAPILLARY_RISE == 1){ //BR
                         soil_phi3D_cap[l][dcell]=0.0; //BR
@@ -7214,6 +7220,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
             }
 
+            
+
             if(NULL==(LAI_DCELL=new float*[HEIGHT+1]))
                 cerr<<"!!! Mem_Alloc\n";
             for(int h=0;h<(HEIGHT+1);h++) {
@@ -7225,6 +7233,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 cerr<<"!!! Mem_Alloc\n";
             if(NULL==(LAI_old=new float[HEIGHT+1]))
                 cerr<<"!!! Mem_Alloc\n";
+            
+            // outpouts at dcell level
             if(NULL==(Canopy_height_DCELL=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(TopWindSpeed_DCELL=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(HSum_DCELL=new int[nbdcells])) cerr<<"!!! Mem_Alloc\n";
@@ -7675,6 +7685,9 @@ if (_WATER_RETENTION_CURVE==1) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
                         if(in>(FC_SWC[l]-SWC3D[l][d])) {
+                            if (l==0){
+                                Infiltration[l][d]=(FC_SWC[l]-SWC3D[l][d]);
+                            }
                             in-=(FC_SWC[l]-SWC3D[l][d]);
                             SWC3D[l][d]=FC_SWC[l];
                             if(isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<=0) {
@@ -7683,6 +7696,10 @@ if (_WATER_RETENTION_CURVE==1) {
                             } 
                         }
                         else{
+                            if (l==0){
+                                Infiltration[l][d]=in;
+                            }
+                          
                             SWC3D[l][d]+=in;
                             if (isnan(SWC3D[l][d]) || (SWC3D[l][d]-Min_SWC[l])<0) {
                                 cout << "incorrect SWC3D, Min/Max_SWC" << endl;
@@ -7694,6 +7711,9 @@ if (_WATER_RETENTION_CURVE==1) {
                     }
                 }
                 else { //if the top soil layer is already saturated (eg. inundated forest), throughfall -> runoff
+                    
+                    Infiltration[0][d]=0.0;
+                    
                     Runoff[d]=Throughfall[d];
                 }
 
@@ -7765,6 +7785,8 @@ if (_WATER_RETENTION_CURVE==1) {
             // 4. Actual infiltration is the minimum between the water available from throughfall, the potential maximum gain of the layer, and the maximum volume that can infiltrate limited by Ks    
                 float actual_infiltration = fminf(in, fminf(vol_inf_K, pot_max_gain)); // m3
 
+                Infiltration[0][d] = actual_infiltration; // store infiltration value in the first layer for output
+                
                 if (actual_infiltration > 0.0f) {   
                     cout << endl ;
                     cout << "Max SWC layer 0: dcell " << d << " Max_SWC[0]=" << Max_SWC[0] << endl ;
@@ -7772,13 +7794,21 @@ if (_WATER_RETENTION_CURVE==1) {
                     cout << "Volume infiltration depending on k " << d << " vol_inf_K=" << vol_inf_K << endl ;
                     cout << "Throughfall available for infiltration: dcell " << d << " in=" << in << endl ;
                     cout << "Infiltration calculation: dcell " << d << " actual_infiltration=" << actual_infiltration << endl ;
+                    cout << "Field capacity of layer 0: dcell " << d << " FC_SWC[0]=" << FC_SWC[0] << " Field capacity - actual inf = "  << FC_SWC[0] - actual_infiltration << endl ;
                     cout << endl ;
                 }
 
             // 5. Update soil water content of layer 0 after infiltration
-                SWC3D[0][d] += actual_infiltration;
-                Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
-                Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers
+                // SWC3D[0][d] += actual_infiltration;
+                // this will be used when the logic is complete:
+                // Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
+                // Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers
+                //for now:
+                
+                // in -= actual_infiltration; // remaining water after infiltration 
+
+                
+                
 
 // } //endif unified vert water flux
 
@@ -8709,6 +8739,13 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
                 output_vertical_flux << water_upward_vol_out << "\t";
             }
+
+            float infiltration_out = 0.0;
+            for (int d=0; d<nbdcells; d++) {
+                infiltration_out = Infiltration[0][d]; // in m3
+                // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
+            }
+            output_vertical_flux << infiltration_out << "\t";
 
             output_vertical_flux << endl;
 #endif
