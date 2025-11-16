@@ -7680,7 +7680,8 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // }
 
-// if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux scheme is disabled, downward flux is considered using bucket model scheme //BR
+if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux scheme is disabled, downward flux is considered using bucket model scheme //BR
+                Infiltration[0][d] = 0.0; // BR - can be excluded in the future if not needed for output
                 if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
@@ -7722,7 +7723,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 Leakage[d]=in;
 
 
-// } else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
+} else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
 
             // ******* Infiltration calculation following a Darcy-based approach ********
             // Unlike the bucket model above, infiltration here is not limited only by the
@@ -7787,30 +7788,19 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 Infiltration[0][d] = actual_infiltration; // store infiltration value in the first layer for output
                 
-                if (actual_infiltration > 0.0f) {   
-                    cout << endl ;
-                    cout << "Max SWC layer 0: dcell " << d << " Max_SWC[0]=" << Max_SWC[0] << endl ;
-                    cout << "Infiltration calculation: dcell " << d << " pot_max_gain=" << pot_max_gain << endl ;
-                    cout << "Volume infiltration depending on k " << d << " vol_inf_K=" << vol_inf_K << endl ;
-                    cout << "Throughfall available for infiltration: dcell " << d << " in=" << in << endl ;
-                    cout << "Infiltration calculation: dcell " << d << " actual_infiltration=" << actual_infiltration << endl ;
-                    cout << "Field capacity of layer 0: dcell " << d << " FC_SWC[0]=" << FC_SWC[0] << " Field capacity - actual inf = "  << FC_SWC[0] - actual_infiltration << endl ;
-                    cout << endl ;
-                }
 
             // 5. Update soil water content of layer 0 after infiltration
-                // SWC3D[0][d] += actual_infiltration;
-                // this will be used when the logic is complete:
-                // Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
-                // Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers
-                //for now:
-                
-                // in -= actual_infiltration; // remaining water after infiltration 
+                SWC3D[0][d] += actual_infiltration;
+                Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
+                Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers.
+                in -= actual_infiltration; // remaining water after infiltration in the first layer
+
+                // only for testing purpose, to be removed later
 
                 
                 
 
-// } //endif unified vert water flux
+} //endif unified vert water flux
 
 
 
