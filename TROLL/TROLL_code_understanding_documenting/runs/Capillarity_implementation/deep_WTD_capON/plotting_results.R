@@ -17,7 +17,7 @@ main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_under
 
 # Example: you can add 2, 3, 5, ... scenarios.
 # If you do NOT name them, the script will use folder names as labels.
-scenario_paths <- c("wtOn_capOn_capFunction")
+scenario_paths <- c("inf_darcy")
 #scenario_paths <- c("wtOn_capOn_vegetation_deepWT", "wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/deep_WTD/")
 #scenario_paths <- c("wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/shallow_WTD/")
 
@@ -29,6 +29,7 @@ transpiration_layers  <- c("transpiration_0", "transpiration_1", "transpiration_
 water_flux_vars       <- c("precipitation", "interception", "throughfall", "runoff", "leak", "evaporation")
 water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4")
 water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4")
+infiltration <- c("infiltration_l_0")
 
 variable_groups <- list(
   biogeochemical       = biogeochemical_vars,
@@ -37,7 +38,8 @@ variable_groups <- list(
   transpiration_layers = transpiration_layers,
   water_fluxes         = water_flux_vars,
   water_change_volume  = water_change_volume,
-  water_upward_volume  = water_upward_volume
+  water_upward_volume  = water_upward_volume,
+  infiltration         = infiltration
 )
 
 variable_file_map <- c(
@@ -47,7 +49,8 @@ variable_file_map <- c(
   transpiration_layers = "water_balance",
   water_fluxes         = "water_balance",
   water_change_volume  = "vertical_water_flux",
-  water_upward_volume  = "vertical_water_flux"
+  water_upward_volume  = "vertical_water_flux",
+  infiltration         = "vertical_water_flux"
 )
 
 # ========== 3) Helper functions ==========
