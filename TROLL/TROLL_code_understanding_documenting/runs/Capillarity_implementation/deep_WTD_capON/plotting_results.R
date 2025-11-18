@@ -17,7 +17,7 @@ main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_under
 
 # Example: you can add 2, 3, 5, ... scenarios.
 # If you do NOT name them, the script will use folder names as labels.
-scenario_paths <- c("inf_darcy")
+scenario_paths <- c("unified_shallowWT")
 #scenario_paths <- c("wtOn_capOn_vegetation_deepWT", "wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/deep_WTD/")
 #scenario_paths <- c("wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/shallow_WTD/")
 
@@ -29,7 +29,6 @@ transpiration_layers  <- c("transpiration_0", "transpiration_1", "transpiration_
 water_flux_vars       <- c("precipitation", "interception", "throughfall", "runoff", "leak", "evaporation")
 water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4")
 water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4")
-infiltration <- c("infiltration_l_0")
 
 variable_groups <- list(
   biogeochemical       = biogeochemical_vars,
@@ -38,8 +37,7 @@ variable_groups <- list(
   transpiration_layers = transpiration_layers,
   water_fluxes         = water_flux_vars,
   water_change_volume  = water_change_volume,
-  water_upward_volume  = water_upward_volume,
-  infiltration         = infiltration
+  water_upward_volume  = water_upward_volume
 )
 
 variable_file_map <- c(
@@ -49,8 +47,7 @@ variable_file_map <- c(
   transpiration_layers = "water_balance",
   water_fluxes         = "water_balance",
   water_change_volume  = "vertical_water_flux",
-  water_upward_volume  = "vertical_water_flux",
-  infiltration         = "vertical_water_flux"
+  water_upward_volume  = "vertical_water_flux"
 )
 
 # ========== 3) Helper functions ==========
@@ -488,3 +485,137 @@ if (!is.null(diag$D3_water_balance)) {
   print(diag$D3_water_balance)
 }
 
+
+# ========== SWC grid: one panel per layer x scenario ==========
+plot_SWC_grid_facets <- function(scenario_paths_vec = scenario_paths,
+                                 file_type = "water_balance",
+                                 ncol = NULL) {
+  
+  # --- 1) Load data for all scenarios ---
+  labs <- scenario_labels(scenario_paths_vec)
+  dirs <- sapply(scenario_paths_vec, resolve_path, USE.NAMES = FALSE)
+  dfs  <- Map(function(d, lab) safe_read(d, file_type, lab), dirs, labs)
+  all_data <- dplyr::bind_rows(dfs[!sapply(dfs, is.null)])
+  
+  if (is.null(all_data) || nrow(all_data) == 0) {
+    stop("No valid data found for file type: ", file_type)
+  }
+  
+  # --- 2) Select SWC columns and reshape to long format ---
+  swc_vars <- paste0("SWC_", 0:4)
+  
+  long_data <- all_data %>%
+    dplyr::select(iter, scenario, dplyr::all_of(swc_vars)) %>%
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(swc_vars),
+      names_to = "variable",
+      values_to = "swc_value"
+    ) %>%
+    dplyr::mutate(
+      # Extract numeric layer index (0,1,2,3,4) for nicer facet labels
+      layer = as.integer(gsub("SWC_", "", variable))
+    )
+  
+  # --- 3) Common y-axis range across all layers and scenarios ---
+  y_limits <- range(long_data$swc_value, na.rm = TRUE)
+  message("Common y-axis range for SWC facets: ",
+          round(y_limits[1], 4), " to ", round(y_limits[2], 4))
+  
+  # --- 4) Single ggplot with facet_grid(layer ~ scenario) ---
+  p <- ggplot2::ggplot(long_data, ggplot2::aes(x = iter, y = swc_value)) +
+    ggplot2::geom_line(linewidth = 0.6) +  # one line per scenario in each facet
+    ggplot2::scale_y_continuous(limits = y_limits) +
+    ggplot2::scale_x_continuous(
+      name = "Year",
+      breaks = seq(0, 10000, by = 365 * 3),
+      labels = function(x) floor(x / 365) + 1
+    ) +
+    ggplot2::facet_grid(
+      rows   = ggplot2::vars(layer),    # one row per soil layer
+      cols   = ggplot2::vars(scenario)  # one column per scenario
+    ) +
+    ggplot2::labs(
+      title = "Soil Water Content by layer and scenario",
+      y     = "Soil Water Content (m³/m³)",
+      x     = "Year"
+    ) +
+    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.background = element_rect(fill = "grey90", color = NA),
+      strip.text = element_text(face = "bold")
+    )
+  
+  return(p)
+}
+
+p_swc_facets <- plot_SWC_grid_facets(scenario_paths)
+print(p_swc_facets)
+
+# ========== SWP grid: one panel per layer x scenario ==========
+
+
+plot_SWP_grid_facets <- function(scenario_paths_vec = scenario_paths,
+                                 file_type = "water_balance",
+                                 ncol = NULL) {
+  
+  # --- 1) Load data for all scenarios ---
+  labs <- scenario_labels(scenario_paths_vec)
+  dirs <- sapply(scenario_paths_vec, resolve_path, USE.NAMES = FALSE)
+  dfs  <- Map(function(d, lab) safe_read(d, file_type, lab), dirs, labs)
+  all_data <- dplyr::bind_rows(dfs[!sapply(dfs, is.null)])
+  
+  if (is.null(all_data) || nrow(all_data) == 0) {
+    stop("No valid data found for file type: ", file_type)
+  }
+  
+  # --- 2) Select SWP columns and reshape to long format ---
+  swp_vars <- paste0("SWP_", 0:4)
+  
+  long_data <- all_data %>%
+    dplyr::select(iter, scenario, dplyr::all_of(swp_vars)) %>%
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(swp_vars),
+      names_to = "variable",
+      values_to = "swp_value"
+    ) %>%
+    dplyr::mutate(
+      # Extract numeric layer index (0,1,2,3,4) for nicer facet labels
+      layer = as.integer(gsub("SWP_", "", variable))
+    )
+  
+  # --- 3) Common y-axis range across all layers and scenarios ---
+  y_limits <- range(long_data$swp_value, na.rm = TRUE)
+  message("Common y-axis range for SWP facets: ",
+          round(y_limits[1], 4), " to ", round(y_limits[2], 4))
+  
+  # --- 4) Single ggplot with facet_grid(layer ~ scenario) ---
+  p <- ggplot2::ggplot(long_data, ggplot2::aes(x = iter, y = swp_value)) +
+    ggplot2::geom_line(linewidth = 0.6) +  # one line per scenario in each facet
+    ggplot2::scale_y_continuous(limits = y_limits) +
+    ggplot2::scale_x_continuous(
+      name = "Year",
+      breaks = seq(0, 10000, by = 365 * 3),
+      labels = function(x) floor(x / 365) + 1
+    ) +
+    ggplot2::facet_grid(
+      rows   = ggplot2::vars(layer),    # one row per soil layer
+      cols   = ggplot2::vars(scenario)  # one column per scenario
+    ) +
+    ggplot2::labs(
+      title = "Soil Water Content by layer and scenario",
+      y     = "Soil Water Content (m³/m³)",
+      x     = "Year"
+    ) +
+    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.background = element_rect(fill = "grey90", color = NA),
+      strip.text = element_text(face = "bold")
+    )
+  
+  return(p)
+}
+
+p_swp_facets <- plot_SWP_grid_facets(scenario_paths)
+print(p_swp_facets)

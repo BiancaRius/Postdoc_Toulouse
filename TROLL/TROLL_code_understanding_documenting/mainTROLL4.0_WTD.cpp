@@ -8018,7 +8018,8 @@ if (_WATER_RETENTION_CURVE==1) {
 //   are allowed to fill up to saturation (Max_SWC), and "field capacity" is an
 //   emergent state rather than an imposed storage cap.
 if (_UNIFIED_VERT_WATER_FLUX == 1) {
-                max_gain[l] = Max_SWC[l] - SWC3D[l][d];
+                // max_gain[l] = Max_SWC[l] - SWC3D[l][d];
+                max_gain[l] = FC_SWC[l] - SWC3D[l][d];
 } else {
                 max_gain[l] = FC_SWC[l]  - SWC3D[l][d];
 }                
