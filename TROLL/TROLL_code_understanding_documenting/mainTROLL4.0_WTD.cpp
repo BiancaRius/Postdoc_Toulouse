@@ -7147,12 +7147,12 @@ if (_WATER_RETENTION_CURVE==1) {
                 for(int dcell=0; dcell<nbdcells; dcell++) {
                     //SWC3D[l][dcell]=Max_SWC[l];
                     SWC3D[l][dcell]=FC_SWC[l];
-                    cout << "layer: " << l << " SWC3D initialized at FC: " << SWC3D[l][dcell] << endl; 
+                    // cout << "layer: " << l << " SWC3D initialized at FC: " << SWC3D[l][dcell] << endl; 
 
 
                     if (_CAPILLARY_RISE == 1) {//BR
                         SWC3D_cap[l][dcell]=FC_SWC[l];
-                        cout << "layer: " << l << " SWC3D_cap initialized at FC: " << SWC3D_cap[l][dcell] << endl; 
+                        // cout << "layer: " << l << " SWC3D_cap initialized at FC: " << SWC3D_cap[l][dcell] << endl; 
                     }
 
                     
@@ -7185,14 +7185,15 @@ if (_WATER_RETENTION_CURVE==1) {
                         soil_phi3D_cap[l][dcell]=0.0; //BR
                         water_change_cap[l][dcell]=0.0; //BR
                         Ks_cap[l][dcell]=0.0; //BR
+                        if (SWC3D_cap[l][dcell]<=0.0) {
+                            cout << "Soil water content capillarity <=0.0  " << SWC3D_cap[l][dcell] << "\t" <<Max_SWC[l] << "\n";
+                        }
                     }
 
                     if (SWC3D[l][dcell]<=0.0) {
                         cout << "Soil water content <=0.0  " << SWC3D[l][dcell] << "\t" <<Max_SWC[l] << "\n";
                     }
-                    if (SWC3D_cap[l][dcell]<=0.0) {
-                        cout << "Soil water content capillarity <=0.0  " << SWC3D_cap[l][dcell] << "\t" <<Max_SWC[l] << "\n";
-                    }
+                    
                 }
             }
 
@@ -8759,6 +8760,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 #endif
 
 #ifdef VERTICAL_WATER_FLUX // BR
+    if (_CAPILLARY_RISE == 1){
             output_vertical_flux << iter << '\t';   
             for(int l=0; l<nblayers_soil; l++) {
                 float water_change_cap_out = 0.0;
@@ -8779,6 +8781,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             }
 
             output_vertical_flux << endl;
+    }        
 #endif
             cout.flush();
             
