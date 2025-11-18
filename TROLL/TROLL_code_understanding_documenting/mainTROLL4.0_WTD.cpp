@@ -7968,31 +7968,29 @@ if (_WATER_RETENTION_CURVE==1) {
                 float gravity = 9.81f; // Acceleration due to gravity [m/s2]
 
                 // // Calculate flux using a modified Darcy's Law. 
-                
-                // 1) Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
-                // q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
-                //     (delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1));
+                    // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
+                    // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
+                const float delta_t_sec = 86400.0f; 
+if (_UNIFIED_VERT_WATER_FLUX == 0) {              
+                // Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
+                q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
+                    (delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1));
                 // // cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
-
-                // 2) Considering up and downward flux (q_cap > 0 = upward flux; q_cap < 0 = downward flux)
-                q_cap[l][d] = - Ks_cap_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
-
-                
-                
+               
                 // // Calculate the total height of water [m] moved during the timestep in the interface of layers.
-                // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
-                // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
-                const float delta_t_sec = 86400.0f;
-                
-                //  1) Only allows upward capillary rise (positive flux)
-                // if (q_cap[l][d] > 0.0f) { // Upward flux only
-                //     water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
-                // } else {
-                //     water_height_upward[l][d] = 0.0f; // No downward flux considered yet
-                // }
+                if (q_cap[l][d] > 0.0f) { // Upward flux only
+                    water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
+                } else {
+                    water_height_upward[l][d] = 0.0f; // No downward flux considered yet
+                }
 
-                // 2) Considering up and downward flux (q_cap > 0 = upward flux; q_cap < 0 = downward flux)
+} else {
+                // Considering up and downward flux (q_cap > 0 = upward flux; q_cap < 0 = downward flux)
+                q_cap[l][d] = - Ks_cap_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
+                 // // Calculate the total height of water [m] moved during the timestep in the interface of layers.
                 water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
+
+} // endif unified vertical water flux                    
 
             } // End for layers interface (step 3)
 
@@ -8017,13 +8015,14 @@ if (_WATER_RETENTION_CURVE==1) {
 //   represented explicitly by the fluxes between layers. In this case, layers
 //   are allowed to fill up to saturation (Max_SWC), and "field capacity" is an
 //   emergent state rather than an imposed storage cap.
-if (_UNIFIED_VERT_WATER_FLUX == 1) {
+if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 // max_gain[l] = Max_SWC[l] - SWC3D[l][d];
                 max_gain[l] = FC_SWC[l] - SWC3D[l][d];
 } else {
                 max_gain[l] = FC_SWC[l]  - SWC3D[l][d];
 }                
-
+                max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
+                
                 // Receiver capacity: cannot exceed saturation
                 receiv_capacity[l] = max(0.0f, max_gain[l]); 
                 // Donor capacity: cannot go below residual
@@ -8049,43 +8048,46 @@ if (_UNIFIED_VERT_WATER_FLUX == 1) {
             water_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
            
             for (int l = 0; l < nblayers_soil -1; l++){
-                // 1) Considering only upward movement
+
+if (_UNIFIED_VERT_WATER_FLUX == 0) {
+                // Considering only upward movement
                 // Always limited by the layer above (receiver), that's why volume of the top layer is considered
-                // float vol_top = layer_thickness_global[l] * voxel_area;   // m³
+                float vol_top = layer_thickness_global[l] * voxel_area;   // m³
 
-                // // between the layers, there is a potential transference of water, depending on the amount of water that moved upward during the timestep (water_height_upward), and the thickness of the layer where the water is coming from (layer l+1)
-                // float potential_transfer =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
-                // // Transforms the potential water transfer in volume of water
-                // float vol_potential_transfer = potential_transfer * vol_top; // m³
+                // between the layers, there is a potential transference of water, depending on the amount of water that moved upward during the timestep (water_height_upward), and the thickness of the layer where the water is coming from (layer l+1)
+                float potential_transfer =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
+                // Transforms the potential water transfer in volume of water
+                float vol_potential_transfer = potential_transfer * vol_top; // m³
 
-                // // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
-                // float vol_transfer_restricted = std::min(
-                //     vol_potential_transfer,
-                //     std::min(receiv_capacity[l], donor_capacity[l+1]));
+                // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
+                float vol_transfer_restricted = std::min(
+                    vol_potential_transfer,
+                    std::min(receiv_capacity[l], donor_capacity[l+1]));
 
-                // // Water change (if positive, it is the receiver, if negative it is the donor)
-                // water_change_vol[l] += vol_transfer_restricted;
+                // Water change (if positive, it is the receiver, if negative it is the donor)
+                water_change_vol[l] += vol_transfer_restricted;
 
-                // // the lower later (l+1) lose water 
-                // water_change_vol[l+1] -= vol_transfer_restricted;
+                // the lower later (l+1) lose water 
+                water_change_vol[l+1] -= vol_transfer_restricted;
                 
-                // if (_WATER_TABLE == 1) {  
+                if (_WATER_TABLE == 1) {  
 
-                //     if (layer_depth[l+1] > WTD){
-                //         water_change_vol[l+1] = 0.0f; // This reset is needed because donor_capacity of WT layer is set to infinity, so it can donate but as an infinity source of water, in practice, it shouldn't lose water
+                    if (layer_depth[l+1] > WTD){
+                        water_change_vol[l+1] = 0.0f; // This reset is needed because donor_capacity of WT layer is set to infinity, so it can donate but as an infinity source of water, in practice, it shouldn't lose water
 
-                //         if (fabs(water_change_vol[l+1]) > 1e-6f) {
-                //             cout << "Warning: layer " << l+1 << " is below WTD but has water change vol: " << water_change_vol[l+1] << endl;
-                //             cout << endl;                      
-                //         }
-                //     }
-                // }
+                        if (fabs(water_change_vol[l+1]) > 1e-6f) {
+                            cout << "Warning: layer " << l+1 << " is below WTD but has water change vol: " << water_change_vol[l+1] << endl;
+                            cout << endl;                      
+                        }
+                    }
+                }
 
                 // // Creating the output for the volume of water transfered between layers
-                // water_upward_vol[l][d] = vol_transfer_restricted; // for output purpose, the actual volume of water that moved upward between layers during the timestep (m³)
+                water_upward_vol[l][d] = vol_transfer_restricted; // for output purpose, the actual volume of water that moved upward between layers during the timestep (m³)
+
+} else {            
             
-            
-                // 2) Considering up and downward movement
+                // Considering up and downward movement
                 float vol_top = layer_thickness_global[l] * voxel_area;   // m³
                 float vol_bottom = layer_thickness_global[l+1] * voxel_area;   // m³
 
@@ -8114,7 +8116,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 1) {
                     // transported across the interface. Note that the sign of wh encodes the
                     // flow direction, but the actual transfer volume must be positive.
                     // The direction is applied later when updating water_change_vol for each layer.
-                    water_height_upward[l][d] = -water_height_upward[l][d];
+                    water_height_upward[l][d] = - water_height_upward[l][d];
                     
                     // now the receiver is the lower layer, that is why we use its thickness and volume 
                     float potential_transfer = water_height_upward[l][d]/ layer_thickness_global[l+1];
@@ -8134,7 +8136,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 1) {
                     water_upward_vol[l][d] = - vol_transfer_restricted;
 
                 }
-
+}
             } // End for layers interface (step 5)
 
             // --- Step 6: Update SWC3D after capillary rise ---
