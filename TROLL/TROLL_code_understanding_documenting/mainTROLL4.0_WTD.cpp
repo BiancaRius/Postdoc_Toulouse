@@ -8111,7 +8111,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 
                 } else if (water_height_upward[l][d] < 0.0f){
                     // from l to l+1
-                    
                     // For downward flow (water_height_upward < 0), -water_height_upward gives the magnitude of the water height
                     // transported across the interface. Note that the sign of wh encodes the
                     // flow direction, but the actual transfer volume must be positive.
