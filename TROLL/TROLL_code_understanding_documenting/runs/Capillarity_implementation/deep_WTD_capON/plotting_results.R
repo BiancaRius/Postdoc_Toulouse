@@ -17,7 +17,8 @@ main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_under
 
 # Example: you can add 2, 3, 5, ... scenarios.
 # If you do NOT name them, the script will use folder names as labels.
-scenario_paths <- c("unified_shallowWT")
+scenario_paths <- c("notUnified_noWT_fcSWC", "unified_noWT_fcSWC", "notUnified_noWT_capOn_fcSWC", "Unified_noWT_maxSWC",
+                    "Unified_maxSWC_shallowWT",  "Unified_maxSWC_deepWT")
 #scenario_paths <- c("wtOn_capOn_vegetation_deepWT", "wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/deep_WTD/")
 #scenario_paths <- c("wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/shallow_WTD/")
 
@@ -603,8 +604,8 @@ plot_SWP_grid_facets <- function(scenario_paths_vec = scenario_paths,
       cols   = ggplot2::vars(scenario)  # one column per scenario
     ) +
     ggplot2::labs(
-      title = "Soil Water Content by layer and scenario",
-      y     = "Soil Water Content (m³/m³)",
+      title = "Soil Water Potential by layer and scenario",
+      y     = "Soil Water Potential",
       x     = "Year"
     ) +
     ggplot2::theme_minimal(base_size = 11) +
@@ -619,3 +620,72 @@ plot_SWP_grid_facets <- function(scenario_paths_vec = scenario_paths,
 
 p_swp_facets <- plot_SWP_grid_facets(scenario_paths)
 print(p_swp_facets)
+
+plot_SWP_zoom_layers <- function(scenario_paths_vec = scenario_paths,
+                                 layers_to_plot = 1:4,
+                                 file_type = "water_balance",
+                                 ylim_padding = 0.1) {
+  
+  # --- 1) Load data ---
+  labs <- scenario_labels(scenario_paths_vec)
+  dirs <- sapply(scenario_paths_vec, resolve_path, USE.NAMES = FALSE)
+  dfs  <- Map(function(d, lab) safe_read(d, file_type, lab), dirs, labs)
+  all_data <- dplyr::bind_rows(dfs[!sapply(dfs, is.null)])
+  
+  if (is.null(all_data) || nrow(all_data) == 0) {
+    stop("No valid data found for file type: ", file_type)
+  }
+  
+  # --- 2) Select SWP columns and reshape ---
+  swp_vars <- paste0("SWP_", layers_to_plot)
+  
+  long_data <- all_data %>%
+    dplyr::select(iter, scenario, dplyr::all_of(swp_vars)) %>%
+    tidyr::pivot_longer(cols = dplyr::all_of(swp_vars),
+                        names_to = "variable",
+                        values_to = "swp_value") %>%
+    dplyr::mutate(
+      layer = as.integer(gsub("SWP_", "", variable))
+    )
+  
+  # --- 3) Determine zoomed y-axis range ---
+  y_min <- min(long_data$swp_value, na.rm = TRUE)
+  y_max <- max(long_data$swp_value, na.rm = TRUE)
+  
+  # add a small padding to make the plot nicer
+  y_range <- c(y_min - abs(y_min)*ylim_padding,
+               y_max + abs(y_max)*ylim_padding)
+  
+  message("Zoom Y-limits: ", round(y_range[1], 4), " to ", round(y_range[2], 4))
+  
+  # --- 4) Facet plot ---
+  p <- ggplot2::ggplot(long_data,
+                       ggplot2::aes(x = iter, y = swp_value, color = scenario)) +
+    ggplot2::geom_line(linewidth = 0.7, alpha = 0.9) +
+    ggplot2::scale_y_continuous(limits = y_range) +
+    ggplot2::scale_x_continuous(
+      name = "Year",
+      breaks = seq(0, 10000, by = 365 * 5),
+      labels = function(x) floor(x / 365) + 1
+    ) +
+    ggplot2::facet_grid(
+      rows = ggplot2::vars(layer),
+      cols = ggplot2::vars(scenario),
+      scales = "free_x"
+    ) +
+    ggplot2::labs(
+      title = "SWP (zoomed view) for layers 1–4",
+      y = "Soil Water Potential",
+      x = "Year"
+    ) +
+    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme(
+      strip.background = element_rect(fill = "grey90", color = NA),
+      strip.text = element_text(face = "bold"),
+      legend.position = "none"
+    )
+  
+  return(p)
+}
+p_zoom <- plot_SWP_zoom_layers(scenario_paths)
+print(p_zoom)

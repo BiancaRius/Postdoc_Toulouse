@@ -5405,7 +5405,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             WDailyMean_year *=SWtoPPFD/nbdays;
             
             tnight=NightTemperature[0];
-            precip=Rainfall[0];
+            precip=Rainfall[0]*0.5;
             WSDailyMean=DailyMeanWindSpeed[0];
             WDailyMean=DailyMeanIrradiance[0]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[0];
@@ -7395,7 +7395,7 @@ if (_WATER_RETENTION_CURVE==1) {
     * @param nbdays    The total number of days in the climate data cycle.
     */            
             tnight=NightTemperature[iter%nbdays];
-            precip=Rainfall[iter%nbdays];
+            precip=Rainfall[iter%nbdays]*0.5;
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[iter%nbdays];
@@ -7839,7 +7839,8 @@ if (_WATER_RETENTION_CURVE==1) {
      *  */
 
                 if (_CAPILLARY_RISE==1) { // BR
-                    CapillaryRise(d);   
+                    CapillaryRise(d);
+
                  
                 } // end if (_CAPILLARY_RISE==1) 
 
@@ -7929,6 +7930,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
+                soil_phi3D[l][d] = soil_phi3D_cap[l][d]; //to update the output
             } // End for layers (step 1)
 
             
@@ -7972,6 +7974,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
                     // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
                 const float delta_t_sec = 86400.0f; 
+
 if (_UNIFIED_VERT_WATER_FLUX == 0) {              
                 // Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
                 q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
@@ -8017,10 +8020,11 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 //   are allowed to fill up to saturation (Max_SWC), and "field capacity" is an
 //   emergent state rather than an imposed storage cap.
 if (_UNIFIED_VERT_WATER_FLUX == 0) {
-                // max_gain[l] = Max_SWC[l] - SWC3D[l][d];
+                
                 max_gain[l] = FC_SWC[l] - SWC3D[l][d];
 } else {
                 max_gain[l] = FC_SWC[l]  - SWC3D[l][d];
+                // max_gain[l] = Max_SWC[l] - SWC3D[l][d];
 }                
                 max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
