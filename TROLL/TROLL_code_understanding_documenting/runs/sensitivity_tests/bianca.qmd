@@ -1,0 +1,200 @@
+---
+title: "Bianca"
+author: "S. Schmitt"
+date: last-modified
+format: 
+  html:
+    embed-resources: true
+    toc: true
+---
+
+# Setup
+
+You only need the `tidyverse` package for table manipulation and figures preparation. 
+
+```{r libs}
+#| message: false
+#| warning: false
+library(tidyverse)
+```
+
+The parameters are the vertical resolution of the soil depth (here 10 cm),
+the layer depths used in the model,
+and the dry and wet season month used for inter annual summary.
+
+> Note that I used end of the rain season where precipiation is not the highest but soil water is.
+
+```{r pars}
+#| message: false
+#| warning: false
+resolution <- 0.1
+layers_depths_shallow <- c(0.1, 0.2, 0.4, 0.7, 1.1, 2.5)
+layers_depths_deep <- c(0.1, 0.5, 1.0, 2.4, 6.0, 10.0)
+dry_months <- 10:11
+wet_months <- 6:7
+```
+
+# Data
+
+First we need to compute layers depth structure with cumulated minimum and maximum values.
+
+```{r depths}
+#| message: false
+#| warning: false
+depths_shallow <- tibble(depth = layers_depths_shallow) %>%
+  mutate(depth_max = cumsum(depth)) %>% 
+  mutate(depth_min = lag(depth_max)) %>% 
+  mutate(depth_min = ifelse(is.na(depth_min), 0, depth_min))
+
+depths_deep <- tibble(depth = layers_depths_deep) %>%
+  mutate(depth_max = cumsum(depth)) %>% 
+  mutate(depth_min = lag(depth_max)) %>% 
+  mutate(depth_min = ifelse(is.na(depth_min), 0, depth_min))
+
+```
+
+Then we open the TROLL output of water balance.
+For test purposes we reduce here to the years 2005 to 2010.
+And we extract the soil water content and potentials (SWC & SWP) and add the corresponding layer depths.
+
+```{r data}
+#| message: false
+#| warning: false
+model_path_shallow <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests/shallow_thick_sandy"
+model_path_deep <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests/deep_thick_sandy"
+file <- "(null)_0_water_balance.txt"
+file_path_shallow <- file.path(model_path_shallow, file)
+file_path_deep <- file.path(model_path_deep, file)
+
+data_shallow <- read_tsv(file_path_shallow) %>% 
+  mutate(date = as_date("2004/01/01") + iter) %>% 
+  # filter(year(date) %in% 2005:2010) %>% 
+  select(date, starts_with("SWC"), starts_with("SWP")) %>% 
+  gather(variable, value, -date) %>% 
+  separate(variable, c("variable", "layer"), convert = TRUE) %>% 
+  mutate(depth_max = depths_shallow$depth_max[layer+1]) %>% 
+  mutate(depth_min = depths_shallow$depth_min[layer+1]) %>% 
+  select(date, depth_min, depth_max, variable, value) %>% 
+  mutate(simulation = "shallow")
+data_deep <- read_tsv(file_path_deep) %>% 
+  mutate(date = as_date("2004/01/01") + iter) %>% 
+  # filter(year(date) %in% 2005:2010) %>% 
+  select(date, starts_with("SWC"), starts_with("SWP")) %>% 
+  gather(variable, value, -date) %>% 
+  separate(variable, c("variable", "layer"), convert = TRUE) %>% 
+  mutate(depth_max = depths_deep$depth_max[layer+1]) %>% 
+  mutate(depth_min = depths_deep$depth_min[layer+1]) %>% 
+  select(date, depth_min, depth_max, variable, value) %>% 
+  mutate(simulation = "deep")
+
+data <- bind_rows(data_shallow, data_deep)
+```
+
+To compute figures at a finer vertical resolution,
+we first need to round up the depth to the resolution we will use,
+and then we simply expand observed values to sublayers.
+
+```{r raster}
+#| message: false
+#| warning: false
+raster <- data %>% 
+  mutate(depth_min = round(depth_min, 1),
+         depth_max = round(depth_max, 1)) %>% 
+  rowwise() %>% 
+  mutate(depth = list(seq(depth_min, 
+                          depth_max, 
+                          by = resolution))) %>% 
+  unnest(depth)
+```
+
+# Figures
+
+And here are the codes to represent SWC and SWP as raster with depth and time or
+mean dry and wet season profiles.
+
+## Rasters
+
+```{r swc_rast}
+#| message: false
+#| warning: false
+#| fig-cap: "Soil water content across time (x-axis) and depth (y-axis)."
+raster %>% 
+  filter(variable == "SWC") %>% 
+  ggplot(aes(date, depth, fill = value)) +
+  geom_raster() +
+  theme_bw() +
+  scale_y_reverse() +
+  scale_fill_viridis_c(expression("SWC ["~m^3~m^3~"]"),
+                       direction = -1) +
+  xlab("") +
+  ylab("Depth [ m ]")+
+  facet_wrap(~simulation, nrow = 1)
+```
+
+```{r swp_rast}
+#| message: false
+#| warning: false
+#| fig-cap: "Soil water potential across time (x-axis) and depth (y-axis)."
+raster %>% 
+  filter(variable == "SWP") %>% 
+  ggplot(aes(date, depth, fill = -value)) +
+  geom_raster() +
+  theme_bw() +
+  scale_y_reverse() +
+  scale_fill_viridis_c(expression("|SWP| ["~MPa~"]"),
+                       direction = 1, trans = "log") +
+  xlab("") +
+  ylab("Depth [ m ]")
+```
+
+## Profiles
+
+> Profiles are made with daily means across years, but maybe we should use first a season mean within year and then summarise it across years.
+
+```{r swc_profile}
+#| message: false
+#| warning: false
+#| fig-cap: "Mean soil water content for wet and dry season across depth (y-axis). Point represent the median across days and bars the 90% interval."
+data %>% 
+  filter(variable == "SWC") %>% 
+  filter(month(date) %in% c(dry_months, wet_months)) %>% 
+  mutate(season = ifelse(month(date) %in% dry_months, "dry", "wet")) %>% 
+  group_by(simulation,variable, depth_min, depth_max, season) %>% 
+  summarise(m = median(value), 
+            ll = quantile(value, .05), 
+            hh = quantile(value, .95)) %>% 
+  mutate(depth = (depth_min + depth_max)/2) %>% 
+  ggplot(aes(depth_max, m, col = paste(simulation, season))) +
+  geom_line() +
+  geom_linerange(aes(ymin = ll, ymax = hh)) +
+  geom_point() +
+  theme_bw() +
+  coord_flip() +
+  scale_x_reverse("Depth [ m ]") +
+  ylab(expression("SWC ["~m^3~m^3~"]"))
+```
+
+```{r swp_profile}
+#| message: false
+#| warning: false
+#| fig-cap: "Mean soil water potential for wet and dry season across depth (y-axis). Point represent the median across days and bars the 90% interval."
+data %>% 
+  filter(variable == "SWP") %>% 
+  filter(month(date) %in% c(dry_months, wet_months)) %>% 
+  mutate(season = ifelse(month(date) %in% dry_months, "dry", "wet")) %>% 
+  group_by(simulation,variable, depth_min, depth_max, season) %>% 
+  mutate(value = -value) %>% 
+  summarise(m = median(value), 
+            ll = quantile(value, .05), 
+            hh = quantile(value, .95)) %>% 
+  mutate(depth = (depth_min + depth_max)/2) %>% 
+  ggplot(aes(depth, m, col = paste(simulation,season))) +
+  geom_line() +
+  geom_linerange(aes(ymin = ll, ymax = hh)) +
+  geom_point() +
+  theme_bw() +
+  coord_flip() +
+  scale_x_reverse("Depth [ m ]") +
+  scale_y_log10(expression("|SWP| ["~MPa~"]"))
+```
+

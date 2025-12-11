@@ -5405,6 +5405,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             WDailyMean_year *=SWtoPPFD/nbdays;
             
             tnight=NightTemperature[0];
+            // precip=Rainfall[0];
             precip=Rainfall[0]*0.5;
             WSDailyMean=DailyMeanWindSpeed[0];
             WDailyMean=DailyMeanIrradiance[0]*SWtoPPFD;
@@ -6545,6 +6546,9 @@ if (_WATER_RETENTION_CURVE==1) {
                     for(int l=0;l<nblayers_soil-1;l++) {
                         output_vertical_flux << "wupv_interface_" << l << "_" << (l+1) << "\t"; // amount of water (volume) moving up across the interface between layer l and l+1
                     }
+                    for(int l=0;l<nblayers_soil-1;l++) { // water height upward
+                        output_vertical_flux << "whu_interface_" << l << "_" << (l+1) << "\t"; // amount of water (volume) moving up across the interface between layer l and l+1
+                    }
                     output_vertical_flux << endl;  // end of header
 
 #endif
@@ -7395,6 +7399,7 @@ if (_WATER_RETENTION_CURVE==1) {
     * @param nbdays    The total number of days in the climate data cycle.
     */            
             tnight=NightTemperature[iter%nbdays];
+            // precip=Rainfall[iter%nbdays];
             precip=Rainfall[iter%nbdays]*0.5;
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
@@ -7756,7 +7761,7 @@ if (_WATER_RETENTION_CURVE==1) {
 } // end of water retention curve choice
 
             // 2. Compute Potential Maximum amount of water that layer 0 can absorb from throughfall, i.e. without considering the layer hydraulic conductivity (Ks)
-                float pot_max_gain = Max_SWC[0] - SWC3D[0][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. NOTE: Here, the maximum water storage capacity of a layer(l) == Max_SWC[l] not FC_SWC[l]. Field capacity is used only in bucket schemes; under Darcy, gravitational drainage emerges from the (ψ + z) gradient.
+                float pot_max_gain = FC_SWC[0] - SWC3D[0][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. NOTE: Here, the maximum water storage capacity of a layer(l) == Max_SWC[l] not FC_SWC[l]. Field capacity is used only in bucket schemes; under Darcy, gravitational drainage emerges from the (ψ + z) gradient.
                 pot_max_gain = fmaxf(0.0f, pot_max_gain); // to avoid negative values due to numerical approximations
 
             // 3. Compute maximum volume of water that can infiltrate the soil layer during the timestep, limited by the layer hydraulic conductivity // m3 
@@ -8782,6 +8787,15 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
                 }
                 output_vertical_flux << water_upward_vol_out << "\t";
+            }
+
+            for(int l=0; l<nblayers_soil-1; l++) {
+                float water_height_upward_out = 0.0;
+                for (int d=0; d<nbdcells; d++) {
+                    water_height_upward_out = water_height_upward[l][d]; // in m3
+                    // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
+                }
+                output_vertical_flux << water_height_upward_out << "\t";
             }
 
             output_vertical_flux << endl;

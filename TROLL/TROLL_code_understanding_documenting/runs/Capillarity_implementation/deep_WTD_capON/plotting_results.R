@@ -12,24 +12,29 @@ library(tidyr) # Added for data reshaping (pivot_longer)
 
 # ========== 1) Main path and scenario definitions ==========
 # Define one main path, then add subfolders for each scenario.
-main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/"
+main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests"
 
 
 # Example: you can add 2, 3, 5, ... scenarios.
 # If you do NOT name them, the script will use folder names as labels.
-scenario_paths <- c("notUnified_noWT_fcSWC", "unified_noWT_fcSWC", "notUnified_noWT_capOn_fcSWC", "Unified_noWT_maxSWC",
-                    "Unified_maxSWC_shallowWT",  "Unified_maxSWC_deepWT")
+scenario_paths <- c("shallow_thick_sandy", "deep_thick_sandy")
+#scenario_paths <- c("notUnified", "Unified", "notUnified_drought", "Unified_drought")
+
+#scenario_paths <- c("unified_noWT_fcSWC", "notUnified_noWT_capOn_fcSWC", "Unified_noWT_maxSWC")
+                   # "Unified_maxSWC_shallowWT",  "Unified_maxSWC_deepWT")
 #scenario_paths <- c("wtOn_capOn_vegetation_deepWT", "wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/deep_WTD/")
 #scenario_paths <- c("wtOn_capOn_vegetation_shallowWT", "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/WT_implementation/regular_climate/shallow_WTD/")
 
 # ========== 2) Variable groups and corresponding input file types ==========
 biogeochemical_vars   <- c("npp", "gpp", "agb", "sum1", "sum10", "sum30", "ba", "ba10", "litterfall")
-soil_water_content    <- c("SWC_0", "SWC_1", "SWC_2", "SWC_3", "SWC_4")
-soil_water_potential  <- c("SWP_0", "SWP_1", "SWP_2", "SWP_3", "SWP_4")
-transpiration_layers  <- c("transpiration_0", "transpiration_1", "transpiration_2", "transpiration_3", "transpiration_4")
+soil_water_content    <- c("SWC_0", "SWC_1", "SWC_2", "SWC_3", "SWC_4", "SWC_5")
+soil_water_potential  <- c("SWP_0", "SWP_1", "SWP_2", "SWP_3", "SWP_4","SWC_5")
+transpiration_layers  <- c("transpiration_0", "transpiration_1", "transpiration_2", "transpiration_3", "transpiration_4", "transpiration_5")
 water_flux_vars       <- c("precipitation", "interception", "throughfall", "runoff", "leak", "evaporation")
-water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4")
-water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4")
+water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4", "wcv_5")
+water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4", "wupv_interface_4_5")
+water_height          <- c("whu_interface_0_1", "whu_interface_1_2", "whu_interface_2_3", "whu_interface_3_4", "whu_interface_4_5")
+
 
 variable_groups <- list(
   biogeochemical       = biogeochemical_vars,
@@ -38,7 +43,8 @@ variable_groups <- list(
   transpiration_layers = transpiration_layers,
   water_fluxes         = water_flux_vars,
   water_change_volume  = water_change_volume,
-  water_upward_volume  = water_upward_volume
+  water_upward_volume  = water_upward_volume,
+  water_height         = water_height
 )
 
 variable_file_map <- c(
@@ -48,7 +54,8 @@ variable_file_map <- c(
   transpiration_layers = "water_balance",
   water_fluxes         = "water_balance",
   water_change_volume  = "vertical_water_flux",
-  water_upward_volume  = "vertical_water_flux"
+  water_upward_volume  = "vertical_water_flux",
+  water_height         = "vertical_water_flux"
 )
 
 # ========== 3) Helper functions ==========
@@ -184,7 +191,7 @@ plot_SWC_grid <- function(scenario_paths_vec = scenario_paths,
   }
   
   # --- Step 2: Determine the common y-axis range ---
-  swc_vars <- paste0("SWC_", 0:4)
+  swc_vars <- paste0("SWC_", 0:5)
   
   # Reshape data to long format to easily find the overall min/max
   long_data <- all_data %>%
@@ -197,7 +204,7 @@ plot_SWC_grid <- function(scenario_paths_vec = scenario_paths,
   
   # Calculate the shared y-axis limits across all SWC variables
   y_limits <- range(long_data$swc_value, na.rm = TRUE)
-  message("Common y-axis range for SWC plots: ", round(y_limits[1], 4), " to ", round(y_limits[2], 4))
+  message("Common y-axis range for SWC plots: ", round(y_limits[1], 5), " to ", round(y_limits[2], 5))
   
   # --- Step 3: Generate colors and individual plots ---
   # Generate reproducible colors
@@ -264,7 +271,7 @@ plot_upward_flux_grid <- function(scenario_paths_vec = scenario_paths,
   
   # interfaces esperadas
   wupv_vars_expected <- c("wupv_interface_0_1","wupv_interface_1_2",
-                          "wupv_interface_2_3","wupv_interface_3_4")
+                          "wupv_interface_2_3","wupv_interface_3_4", "wupv_interface_4_5")
   
   wupv_vars <- intersect(wupv_vars_expected, names(all_data))
   if (length(wupv_vars) == 0) {
@@ -503,7 +510,7 @@ plot_SWC_grid_facets <- function(scenario_paths_vec = scenario_paths,
   }
   
   # --- 2) Select SWC columns and reshape to long format ---
-  swc_vars <- paste0("SWC_", 0:4)
+  swc_vars <- paste0("SWC_", 0:5)
   
   long_data <- all_data %>%
     dplyr::select(iter, scenario, dplyr::all_of(swc_vars)) %>%
@@ -520,7 +527,7 @@ plot_SWC_grid_facets <- function(scenario_paths_vec = scenario_paths,
   # --- 3) Common y-axis range across all layers and scenarios ---
   y_limits <- range(long_data$swc_value, na.rm = TRUE)
   message("Common y-axis range for SWC facets: ",
-          round(y_limits[1], 4), " to ", round(y_limits[2], 4))
+          round(y_limits[1], 5), " to ", round(y_limits[2], 5))
   
   # --- 4) Single ggplot with facet_grid(layer ~ scenario) ---
   p <- ggplot2::ggplot(long_data, ggplot2::aes(x = iter, y = swc_value)) +
@@ -571,7 +578,7 @@ plot_SWP_grid_facets <- function(scenario_paths_vec = scenario_paths,
   }
   
   # --- 2) Select SWP columns and reshape to long format ---
-  swp_vars <- paste0("SWP_", 0:4)
+  swp_vars <- paste0("SWP_", 0:5)
   
   long_data <- all_data %>%
     dplyr::select(iter, scenario, dplyr::all_of(swp_vars)) %>%
@@ -588,7 +595,7 @@ plot_SWP_grid_facets <- function(scenario_paths_vec = scenario_paths,
   # --- 3) Common y-axis range across all layers and scenarios ---
   y_limits <- range(long_data$swp_value, na.rm = TRUE)
   message("Common y-axis range for SWP facets: ",
-          round(y_limits[1], 4), " to ", round(y_limits[2], 4))
+          round(y_limits[1], 5), " to ", round(y_limits[2], 5))
   
   # --- 4) Single ggplot with facet_grid(layer ~ scenario) ---
   p <- ggplot2::ggplot(long_data, ggplot2::aes(x = iter, y = swp_value)) +
@@ -622,7 +629,7 @@ p_swp_facets <- plot_SWP_grid_facets(scenario_paths)
 print(p_swp_facets)
 
 plot_SWP_zoom_layers <- function(scenario_paths_vec = scenario_paths,
-                                 layers_to_plot = 1:4,
+                                 layers_to_plot = 1:5,
                                  file_type = "water_balance",
                                  ylim_padding = 0.1) {
   
@@ -656,7 +663,7 @@ plot_SWP_zoom_layers <- function(scenario_paths_vec = scenario_paths,
   y_range <- c(y_min - abs(y_min)*ylim_padding,
                y_max + abs(y_max)*ylim_padding)
   
-  message("Zoom Y-limits: ", round(y_range[1], 4), " to ", round(y_range[2], 4))
+  message("Zoom Y-limits: ", round(y_range[1], 5), " to ", round(y_range[2], 5))
   
   # --- 4) Facet plot ---
   p <- ggplot2::ggplot(long_data,
@@ -674,7 +681,7 @@ plot_SWP_zoom_layers <- function(scenario_paths_vec = scenario_paths,
       scales = "free_x"
     ) +
     ggplot2::labs(
-      title = "SWP (zoomed view) for layers 1–4",
+      title = "SWP (zoomed view) for layers 1–5",
       y = "Soil Water Potential",
       x = "Year"
     ) +
