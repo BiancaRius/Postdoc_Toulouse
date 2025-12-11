@@ -6,8 +6,6 @@
 # Ignore executable created
 *.out
 
-# Ignore input files
-Paracou_input*
 
 # Ignore WTD input
 wtd_test.txt

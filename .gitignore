@@ -1,8 +1,9 @@
-# Ignore all .txt files in specific folders, except Paracou_input_global.txt
+# Ignore all .txt files in specific folders, except Paracou_input_global.txt and Paracou_input_pedology.txt
 TROLL/transfer_8110311_files_8a5bba64/*.txt
+TROLL/TROLL_code_understanding_documenting/*.txt
 
-!Paracou_input_global.txt
-!Paracou_input_pedology.txt
+!TROLL/TROLL_code_understanding_documenting/Paracou_input_global.txt
+!TROLL/TROLL_code_understanding_documenting/Paracou_input_pedology.txt
 
 *.out
 *.out.yml
