@@ -5720,6 +5720,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     // Calculate layer geometry --- // To be used in the soil water flow calculations // BR
                     // This section computes the vertical position of each layer's center and the
                     // distance between adjacent layer centers.
+
+                    // Vertical position of each layer's center
                     layer_center_z[l] = -(cumulative_depth - layer_thickness[l] / 2.0f);
  
                     cout << l << "  layer center z = " << layer_center_z[l] << endl;
@@ -7962,6 +7964,10 @@ if (_WATER_RETENTION_CURVE==1) {
 
             // --- Step 3: Calculate capillary flux between layer's interfaces---
             // The flux is computed using Darcy's Law, considering only upward movement.
+
+            // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
+            // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
+            const float delta_t_sec = 86400.0f; 
             for (int l=0; l<nblayers_soil-1; l++) { // from top to bottom
             // for (int l = nblayers_soil -2; l>=0; l-- ){ // from bottom to top, starting from the second last layer (as the last layer is the bottom of the soil profile, no layer below it and no interface exists)
 
@@ -7976,9 +7982,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 float gravity = 9.81f; // Acceleration due to gravity [m/s2]
 
                 // // Calculate flux using a modified Darcy's Law. 
-                    // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
-                    // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
-                const float delta_t_sec = 86400.0f; 
 
 if (_UNIFIED_VERT_WATER_FLUX == 0) {              
                 // Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
@@ -7996,12 +7999,115 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 } else {
                 // Considering up and downward flux (q_cap > 0 = upward flux; q_cap < 0 = downward flux)
                 q_cap[l][d] = - Ks_cap_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
-                 // // Calculate the total height of water [m] moved during the timestep in the interface of layers.
+                // Calculate the total height of water [m] moved during the timestep in the interface of layers.
                 water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
 
 } // endif unified vertical water flux                    
 
             } // End for layers interface (step 3)
+
+            // --- Substep: identifying the capillary fringe ---
+            // that is, how much the water from WT contributes to the water availability in the layers above it.
+            
+            int l_wt = -1; //variable to identify the layer where the water table is located
+            int l_abv_wt = -1; //variable to identify the layer just above the water table
+            for (int l=0; l<nblayers_soil; l++) {
+                if (_WATER_TABLE == 1) { 
+                    if (layer_depth[l] > WTD) {
+                        l_wt = l;
+                        break; // Exit loop once the WT layer is found  
+                    }                          
+                }
+            } // End for identifying cap fringe (substep)
+
+            // Identify the layer just above the water table
+            if (l_wt > 0) {
+                l_abv_wt = l_wt - 1;
+                // cout << "Layer of WT: " << l_wt << ", Layer above WT: " << l_abv_wt << endl;
+            }
+
+            // Identify if there is water supply from the water table
+            float q_wt_supply = 0.0f;     // Initialize the water table supply variable
+            float water_height_wt = 0.0f; // Initialize the water height from WT
+            
+            if (l_wt > 0 && l_abv_wt >= 0) {
+                q_wt_supply = q_cap[l_abv_wt][d]; // m/s // Water flux at the interface just above the WT layer
+                water_height_wt = std::max(0.0f, q_wt_supply)* delta_t_sec; // m // (max(0.0, q_wt_supply)) Keep only the upward (WT-to-soil) 
+                                                                            //contribution: downward flux (q_wt_supply < 0) is drainage toward the WT and is not counted as groundwater supply.
+
+            }
+
+            // if there is no water going up from the WT interface, there is no capillary rise comingo from WT 
+            int fringe_top_layer = -1; // index for the heighest layer reached by the capillary fringe from WT
+            float height_fringe = 0.0f; // height above WT
+
+            // Threshold to ignore noise: minimum height (m) that needs to rise in the timestep
+            // adjust later if nece ssary
+            const float epsH = 1e-6f; // 1 micrometer per timestep
+
+            
+            // If groundwater supply is detected at the WT interface, track how far upward this supply remains
+            // hydraulically connected through a continuous chain of upward fluxes (capillary-rise connectivity).
+            if (water_height_wt > epsH && l_wt > 0) {
+
+                // Start from the layer immediately above the water table (minimum extent of WT influence in this timestep)
+                fringe_top_layer = l_abv_wt;
+
+                // Move upward: as long as the interface above each layer still shows upward transport,
+                // the WT-origin supply can propagate further up.
+                // Note: water_height_upward[i] is associated with the interface between layers i and i+1.
+                for (int i = l_abv_wt - 1; i >= 0; --i) {
+
+                    // Keep only the upward component (positive height); downward values indicate drainage/redistribution
+                    float H_up = std::max(0.0f, water_height_upward[i][d]);
+
+                    if (H_up > epsH) {
+                        // The WT-driven upward connection still reaches this level (layer i)
+                        fringe_top_layer = i;
+                    } else {
+                        // Connectivity breaks here: WT supply does not reach layers above this interface in this timestep
+                        break;
+                    }
+                }
+
+                // Convert the top layer index into a geometric height above the water table (m)
+                // layer_depth stores the depth of the *bottom* of each layer (positive downward).
+                height_fringe = WTD - layer_depth[fringe_top_layer];
+
+                // Safety clamp (can be negative if indexing/geometry is inconsistent or WT is very shallow)
+                if (height_fringe < 0.0f) height_fringe = 0.0f;
+            }
+
+            // (Optional) "Pore-filling" filter: require near-saturation at the fringe top layer
+            // Example criterion: consider the fringe as "filled" only if the top layer is at least 90% of saturation.
+            bool fringe_is_filled = false;
+            if (fringe_top_layer >= 0) {
+                if (SWC3D[fringe_top_layer][d] >= 0.9f * Max_SWC[fringe_top_layer]) {
+                    fringe_is_filled = true;
+                }
+            }
+
+            // Write a lightweight debug output (single cell, e.g. d==0) to avoid exploding I/O and file size
+            if (d == 0) {
+                static std::ofstream fout("capillary_fringe_debug.csv");
+                static bool header_written = false;
+
+                if (!header_written) {
+                    fout << "WTD,l_wt,l_abv_wt,q_wt_supply,water_height_wt,fringe_top_layer,height_fringe,fringe_is_filled\n";
+                    header_written = true;
+                }
+
+                // Replace 'step' with your timestep counter / day index / simulation time variable.
+                fout << WTD << "," << l_wt << "," << l_abv_wt << ","
+                    << q_wt_supply << "," << water_height_wt << ","
+                    << fringe_top_layer << "," << height_fringe << "," << (fringe_is_filled ? 1 : 0) << "\n";
+            }
+
+            
+
+
+
+
 
             // --- Step 4: Evaluate the capacities of the layers to donate or receive water ---
             // Establish physical boundaries for the layers. 
