@@ -7982,7 +7982,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 float gravity = 9.81f; // Acceleration due to gravity [m/s2]
 
                 // // Calculate flux using a modified Darcy's Law. 
-                
+
                 // Considering up and downward flux (q_cap > 0 = upward flux; q_cap < 0 = downward flux)
                 q_cap[l][d] = - Ks_cap_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
                 // Calculate the total height of water [m] moved during the timestep in the interface of layers.
@@ -8115,13 +8115,8 @@ if (_WATER_RETENTION_CURVE==1) {
 //   represented explicitly by the fluxes between layers. In this case, layers
 //   are allowed to fill up to saturation (Max_SWC), and "field capacity" is an
 //   emergent state rather than an imposed storage cap.
-if (_UNIFIED_VERT_WATER_FLUX == 0) {
-                
-                max_gain[l] = FC_SWC[l] - SWC3D[l][d];
-} else {
                 max_gain[l] = FC_SWC[l]  - SWC3D[l][d];
                 // max_gain[l] = Max_SWC[l] - SWC3D[l][d];
-}                
                 max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
                 // Receiver capacity: cannot exceed saturation
