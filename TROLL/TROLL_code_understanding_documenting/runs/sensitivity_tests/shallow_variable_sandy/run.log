@@ -1,0 +1,103 @@
+bufi = /Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests/shallow_variable_sandy/Paracou_input_global.txt
+
+Reading in file: /Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests/shallow_variable_sandy/Paracou_input_global.txt
+rows: 50 cols: 50 HEIGHT: 50
+Number of dcells: 4
+Lin number of dcells: 2
+1 2 375
+Correlation status. corr_N_P: 0.65 cov_N_LMA: -0.43 corr_P_LMA: -0.39
+
+Covariance matrix N,P,LMA: 
+0.0144	0.01872	-0.012384
+0.01872	0.0576	-0.022464
+-0.012384	-0.022464	0.0576
+
+Covariance matrix N,P,LMA (after Cholesky decomposition) 
+0.12	0.01872	-0.012384
+0.156	0.182384	-0.022464
+-0.1032	-0.0348978	0.21385
+Easy MPI rank: 0
+On proc #0 seed: 1
+
+Reading in file: /Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests/common_inputs/Paracou_input_species.txt
+Successfully initialised 114 species from file.
+Successfully read in species file.
+
+Reading in file: /Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests/common_inputs/Paracou_input_climate.txt
+Read in climate data for 219000 days, with365 iterations per year.
+Successfully read the climate file
+
+Reading in file: /Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests/common_inputs/Paracou_input_daily.txt
+Read in: 24 timesteps per day, covering 12 hours of the day.
+Successfully read in daytime variation file
+
+Reading in file: /Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests/shallow_variable_sandy/Paracou_input_pedology.txt
+Read in: 6 soil layers
+print in read input soil 
+0  layer thickness= 0.1 cumulative depth= 0.1 layer depth= 0.1
+0  layer center z = -0.05
+print in read input soil 
+1  layer thickness= 0.2 cumulative depth= 0.3 layer depth= 0.3
+1  layer center z = -0.2
+print in read input soil 
+2  layer thickness= 0.4 cumulative depth= 0.7 layer depth= 0.7
+2  layer center z = -0.5
+print in read input soil 
+3  layer thickness= 0.7 cumulative depth= 1.4 layer depth= 1.4
+3  layer center z = -1.05
+print in read input soil 
+4  layer thickness= 1.1 cumulative depth= 2.5 layer depth= 2.5
+4  layer center z = -1.95
+print in read input soil 
+5  layer thickness= 2.5 cumulative depth= 5 layer depth= 5
+5  layer center z = -3.75
+0  delta z face READ INPUT SOIL= -0.15
+1  delta z face READ INPUT SOIL= -0.3
+2  delta z face READ INPUT SOIL= -0.55
+3  delta z face READ INPUT SOIL= -0.9
+4  delta z face READ INPUT SOIL= -1.8
+layer 0 Vol=62.5 m3; Sat_SWC =0.525602 MAX_SWC =32.8502 m3.
+layer 0  Max SWC!!!! = 32.8502
+layer 1 Vol=125 m3; Sat_SWC =0.525602 MAX_SWC =65.7003 m3.
+layer 1  Max SWC!!!! = 65.7003
+layer 2 Vol=250 m3; Sat_SWC =0.525602 MAX_SWC =131.401 m3.
+layer 2  Max SWC!!!! = 131.401
+layer 3 Vol=437.5 m3; Sat_SWC =0.525602 MAX_SWC =229.951 m3.
+layer 3  Max SWC!!!! = 229.951
+layer 4 Vol=687.5 m3; Sat_SWC =0.525602 MAX_SWC =361.352 m3.
+layer 4  Max SWC!!!! = 361.352
+layer 5 Vol=1562.5 m3; Sat_SWC =0.525602 MAX_SWC =821.254 m3.
+layer 5  Max SWC!!!! = 821.254
+layer 0 Ksat=0.00857198mm/s or kg/m2/s  0.00466697
+layer 1 Ksat=0.00857198mm/s or kg/m2/s  0.00466697
+layer 2 Ksat=0.00857198mm/s or kg/m2/s  0.00466697
+layer 3 Ksat=0.00857198mm/s or kg/m2/s  0.00466697
+layer 4 Ksat=0.00857198mm/s or kg/m2/s  0.00466697
+layer 5 Ksat=0.00857198mm/s or kg/m2/s  0.00466697
+layer 0 Vol=62.5m3; Res=0.136053 MIN_SWC =8.5033 m3
+layer 1 Vol=125m3; Res=0.136053 MIN_SWC =17.0066 m3
+layer 2 Vol=250m3; Res=0.136053 MIN_SWC =34.0132 m3
+layer 3 Vol=437.5m3; Res=0.136053 MIN_SWC =59.5231 m3
+layer 4 Vol=687.5m3; Res=0.136053 MIN_SWC =93.5363 m3
+layer 5 Vol=1562.5m3; Res=0.136053 MIN_SWC =212.583 m3
+layer 0 alpha=409.434	n_vgm=1.4554 FC_SWC=20.8406
+layer 1 alpha=409.434	n_vgm=1.4554 FC_SWC=41.6812
+layer 2 alpha=409.434	n_vgm=1.4554 FC_SWC=83.3624
+layer 3 alpha=409.434	n_vgm=1.4554 FC_SWC=145.884
+layer 4 alpha=409.434	n_vgm=1.4554 FC_SWC=229.247
+layer 5 alpha=409.434	n_vgm=1.4554 FC_SWC=521.015
+Successfully read the soil file
+
+
+Intraspecific variation initialisation: 
+Max and min allometry deviation, lognormal (height): 1.64872 | 0.606531
+Max and min allometry deviation, lognormal (crown radius): 1.64872 | 0.606531
+Max and min trait deviation, lognormal (N): 1.58463 | 0.6402
+Max and min trait deviation, lognormal (P): 1.64872 | 0.606531
+Max and min trait deviation, lognormal (LMA): 1.64872 | 0.606531
+Max and min allometry deviation, normal (crown depth): 1 | 1
+Max and min trait deviation, normal (wsg): 0.253291 | -0.225424
+Max and min trait deviation, lognormal (dmax): 1.2015 | 0.818323
+
+Built-in maximal temperature: 50
+Built-in maximal VPD: 6

@@ -12,12 +12,12 @@ library(tidyr) # Added for data reshaping (pivot_longer)
 
 # ========== 1) Main path and scenario definitions ==========
 # Define one main path, then add subfolders for each scenario.
-main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests"
+main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/Capillarity_implementation/"
 
 
 # Example: you can add 2, 3, 5, ... scenarios.
 # If you do NOT name them, the script will use folder names as labels.
-scenario_paths <- c("shallow_thick_sandy", "deep_thick_sandy")
+scenario_paths <- c("Unified_drought")
 #scenario_paths <- c("notUnified", "Unified", "notUnified_drought", "Unified_drought")
 
 #scenario_paths <- c("unified_noWT_fcSWC", "notUnified_noWT_capOn_fcSWC", "Unified_noWT_maxSWC")
@@ -27,13 +27,13 @@ scenario_paths <- c("shallow_thick_sandy", "deep_thick_sandy")
 
 # ========== 2) Variable groups and corresponding input file types ==========
 biogeochemical_vars   <- c("npp", "gpp", "agb", "sum1", "sum10", "sum30", "ba", "ba10", "litterfall")
-soil_water_content    <- c("SWC_0", "SWC_1", "SWC_2", "SWC_3", "SWC_4", "SWC_5")
-soil_water_potential  <- c("SWP_0", "SWP_1", "SWP_2", "SWP_3", "SWP_4","SWC_5")
-transpiration_layers  <- c("transpiration_0", "transpiration_1", "transpiration_2", "transpiration_3", "transpiration_4", "transpiration_5")
+soil_water_content    <- c("SWC_0", "SWC_1", "SWC_2", "SWC_3", "SWC_4")#, "SWC_5")
+soil_water_potential  <- c("SWP_0", "SWP_1", "SWP_2", "SWP_3", "SWP_4")#,"SWC_5")
+transpiration_layers  <- c("transpiration_0", "transpiration_1", "transpiration_2", "transpiration_3", "transpiration_4")#, "transpiration_5")
 water_flux_vars       <- c("precipitation", "interception", "throughfall", "runoff", "leak", "evaporation")
-water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4", "wcv_5")
-water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4", "wupv_interface_4_5")
-water_height          <- c("whu_interface_0_1", "whu_interface_1_2", "whu_interface_2_3", "whu_interface_3_4", "whu_interface_4_5")
+water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4")#, "wcv_5")
+water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4")#, "wupv_interface_4_5")
+water_height          <- c("whu_interface_0_1", "whu_interface_1_2", "whu_interface_2_3", "whu_interface_3_4")#, "whu_interface_4_5")
 
 
 variable_groups <- list(
@@ -191,7 +191,7 @@ plot_SWC_grid <- function(scenario_paths_vec = scenario_paths,
   }
   
   # --- Step 2: Determine the common y-axis range ---
-  swc_vars <- paste0("SWC_", 0:5)
+  swc_vars <- paste0("SWC_", 0:4)
   
   # Reshape data to long format to easily find the overall min/max
   long_data <- all_data %>%
@@ -510,7 +510,7 @@ plot_SWC_grid_facets <- function(scenario_paths_vec = scenario_paths,
   }
   
   # --- 2) Select SWC columns and reshape to long format ---
-  swc_vars <- paste0("SWC_", 0:5)
+  swc_vars <- paste0("SWC_", 0:4)
   
   long_data <- all_data %>%
     dplyr::select(iter, scenario, dplyr::all_of(swc_vars)) %>%
@@ -578,7 +578,7 @@ plot_SWP_grid_facets <- function(scenario_paths_vec = scenario_paths,
   }
   
   # --- 2) Select SWP columns and reshape to long format ---
-  swp_vars <- paste0("SWP_", 0:5)
+  swp_vars <- paste0("SWP_", 0:4)
   
   long_data <- all_data %>%
     dplyr::select(iter, scenario, dplyr::all_of(swp_vars)) %>%
