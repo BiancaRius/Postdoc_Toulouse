@@ -8144,45 +8144,7 @@ if (_WATER_RETENTION_CURVE==1) {
             water_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
            
             for (int l = 0; l < nblayers_soil -1; l++){
-
-if (_UNIFIED_VERT_WATER_FLUX == 0) {
-                // Considering only upward movement
-                // Always limited by the layer above (receiver), that's why volume of the top layer is considered
-                float vol_top = layer_thickness_global[l] * voxel_area;   // m³
-
-                // between the layers, there is a potential transference of water, depending on the amount of water that moved upward during the timestep (water_height_upward), and the thickness of the layer where the water is coming from (layer l+1)
-                float potential_transfer =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
-                // Transforms the potential water transfer in volume of water
-                float vol_potential_transfer = potential_transfer * vol_top; // m³
-
-                // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
-                float vol_transfer_restricted = std::min(
-                    vol_potential_transfer,
-                    std::min(receiv_capacity[l], donor_capacity[l+1]));
-
-                // Water change (if positive, it is the receiver, if negative it is the donor)
-                water_change_vol[l] += vol_transfer_restricted;
-
-                // the lower later (l+1) lose water 
-                water_change_vol[l+1] -= vol_transfer_restricted;
-                
-                if (_WATER_TABLE == 1) {  
-
-                    if (layer_depth[l+1] > WTD){
-                        water_change_vol[l+1] = 0.0f; // This reset is needed because donor_capacity of WT layer is set to infinity, so it can donate but as an infinity source of water, in practice, it shouldn't lose water
-
-                        if (fabs(water_change_vol[l+1]) > 1e-6f) {
-                            cout << "Warning: layer " << l+1 << " is below WTD but has water change vol: " << water_change_vol[l+1] << endl;
-                            cout << endl;                      
-                        }
-                    }
-                }
-
-                // // Creating the output for the volume of water transfered between layers
-                water_upward_vol[l][d] = vol_transfer_restricted; // for output purpose, the actual volume of water that moved upward between layers during the timestep (m³)
-
-} else {            
-            
+                   
                 // Considering up and downward movement
                 float vol_top = layer_thickness_global[l] * voxel_area;   // m³
                 float vol_bottom = layer_thickness_global[l+1] * voxel_area;   // m³
@@ -8231,7 +8193,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     water_upward_vol[l][d] = - vol_transfer_restricted;
 
                 }
-}
+
             } // End for layers interface (step 5)
 
             // --- Step 6: Update SWC3D after capillary rise ---
