@@ -171,7 +171,7 @@ bool _seedsadditional; //!< User control: excess carbon into seeds? no/yes=(0/1)
 bool _LL_parameterization;   //!< User control: two ways for parameterising leaf lifespan: empirical (derived by Sylvain Schmitt, TODO: from which data?), Kikuzawa model (0,1)
 bool _WATER_TABLE; // !< User control: if _WATER_TABLE == 1, the water table depth is activated, then the soil layer below the depth (WTD variable in global parameters) are always saturated //BR
 bool _CAPILLARY_RISE; // !< User control: if _CAPILLARY_RISE == 1, the capillary rise is activated, then the soil moisture in the layer below can rise to the above layer depending on the soil water potential gradient between the two layers //BR
-bool _UNIFIED_VERT_WATER_FLUX; // !< bool _UNIFIED_VERT_WATER_FLUX; // !< User control: if _UNIFIED_VERT_WATER_FLUX == 1, both upward and downward vertical water fluxes are computed using Darcy's law (based on the total head gradient, ψ + z). When active, the bucket-based percolation scheme between soil layers is disabled. When set to 0, downward fluxes still use the traditional bucket percolation, and only upward fluxes follow Darcy’s law (capillary rise) //BR
+bool _DARCY_WATER_FLUX; // !< bool _DARCY_WATER_FLUX; // !< User control: if _DARCY_WATER_FLUX == 1, both upward and downward vertical water fluxes are computed using Darcy's law (based on the total head gradient, ψ + z). When active, the bucket-based percolation scheme between soil layers is disabled. When set to 0, downward fluxes still use the traditional bucket percolation, and only upward fluxes follow Darcy’s law (capillary rise) //BR
 
 int _LA_regulation;     //!< User control: updated v.3.1: potentially three ways of parameterising leaf dynamic allocation, but currently using only two ways: no regulation (0), never exceed LAImax, i.e. the maximum LAI under full sunlight (1), adjust LAI to the current light environment (2). To switch between option 1 and 2, only one line is necessary in CalcLAmax()
 int _OUTPUT_pointcloud;  //!<User control: ATTENTION! At the moment assumes a little-endian system (most personal computers, but not necessarily server systems), because LAS fles are in little-endian! If == 1, creates a point cloud from a simplified ALS simulation;
@@ -4674,6 +4674,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 #endif
             if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD = " << WTD << endl;
             if(_CAPILLARY_RISE == 1) cout << "Activated Module: CAPILLARY RISE = " << endl;
+            if(_DARCY_WATER_FLUX == 1) cout << "Activated Module: _DARCY_WATER_FLUX =  " << endl;
             if(_GPPcrown == 1) cout << "Activated Module: FastGPP" << endl;
             if(_BASICTREEFALL == 1) cout << "Activated Module: BASICTREEFALL" << endl;
             if(_NDD == 1) cout << "Activated Module: NDD" << endl;
@@ -5085,8 +5086,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             fstream In(inputfile, ios::in);
             if(In){
 #ifdef WATER
-                string parameter_names[74] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta","WTD", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_WATER_TABLE","_CAPILLARY_RISE","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
-                int nb_parameters = 74;
+                string parameter_names[75] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta","WTD", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_WATER_TABLE","_CAPILLARY_RISE","_DARCY_WATER_FLUX","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
+                int nb_parameters = 75;
 #else
                 string parameter_names[61] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_NONRANDOM","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","extent_visual"};
                 int nb_parameters = 61;
@@ -7680,7 +7681,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // }
 
-if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux scheme is disabled, downward flux is considered using bucket model scheme //BR
+if (_DARCY_WATER_FLUX == 0) { // if the Darcy-based water flux scheme is disabled, downward flux is considered using bucket model scheme //BR
                 if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
@@ -7713,7 +7714,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                 Leakage[d]=in;
 
 
-} else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
+} else if (_DARCY_WATER_FLUX == 1){ // if the darcy's water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
 
             // ******* Infiltration calculation following a Darcy-based approach ********
             // Unlike the bucket model above, infiltration here is not limited only by the
@@ -7781,7 +7782,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
                 Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers.
 
-} //endif unified vert water flux
+} //endif vert water flux considring Darcy's law
 
 
 
@@ -8111,7 +8112,7 @@ if (_WATER_RETENTION_CURVE==1) {
 // - In the bucket-based scheme, field capacity (FC_SWC) is treated as a hard upper
 //   limit: any water above FC is removed by gravity drainage in a separate bucket
 //   routine.
-// - In the unified Darcy-based vertical flux scheme, gravitational drainage is
+// - In the Darcy-based vertical flux scheme, gravitational drainage is
 //   represented explicitly by the fluxes between layers. In this case, layers
 //   are allowed to fill up to saturation (Max_SWC), and "field capacity" is an
 //   emergent state rather than an imposed storage cap.
