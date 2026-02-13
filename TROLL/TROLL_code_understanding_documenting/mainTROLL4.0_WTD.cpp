@@ -54,7 +54,7 @@
 #undef CHECK_CARBON      //!< new in v.2.5: DIAGNOSTIC TOOL, checking of carbon budgets, could potentially be extended for nutrient budget checking in the future. The idea is to keep track of carbon stocks and carbon fluxes every timestep to see whether there are any deviations from expectations - to do so, differences between stocks are computed at each timestep, and can be compared to the gross and net assimilation of carbon
 #define FULL_CLIMATE
 #undef MIP_Lichstein //!< includes specific developments and outputs needed for the MIP experiment led by Jeremy Lichstein.
-#define VERTICAL_WATER_FLUX //!<if defined, vertical water fluxes between soil layers (interface l<->l+1) are computed and saved in a separate output file. Vertical water fluxeas are only calculated if _CAPILLARY_RISE == 1 // BR
+#define VERTICAL_WATER_FLUX //!<if defined, vertical water fluxes between soil layers (interface l<->l+1) are computed and saved in a separate output file. Vertical water fluxeas based on Darcy's law are only calculated if _CAPILLARY_RISE == 1 // BR
 
 
 // LIBRAIRIES
@@ -7894,7 +7894,6 @@ if (_WATER_RETENTION_CURVE==1) {
 #endif
         } // end of function UpdateField()
 
-#ifdef VERTICAL_WATER_FLUX // BR
         void CapillaryRise(int d){ // BR
                 // This function is now integrated within the bucket model in UpdateField()
             
@@ -8233,8 +8232,6 @@ if (_WATER_RETENTION_CURVE==1) {
             } // End for layers (step 7)
 
         } // End CapillaryRise function
-
-#endif
         
         //#############################
         // Global function: update SPECIES_SEEDS field
