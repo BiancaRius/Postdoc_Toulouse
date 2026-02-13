@@ -7846,9 +7846,9 @@ if (_WATER_RETENTION_CURVE==1) {
      *  */
 
                 if (_CAPILLARY_RISE==1) { // BR
+                    
                     CapillaryRise(d);
 
-                 
                 } // end if (_CAPILLARY_RISE==1) 
 
               
@@ -7982,27 +7982,12 @@ if (_WATER_RETENTION_CURVE==1) {
                 float gravity = 9.81f; // Acceleration due to gravity [m/s2]
 
                 // // Calculate flux using a modified Darcy's Law. 
-
-if (_UNIFIED_VERT_WATER_FLUX == 0) {              
-                // Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
-                q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
-                    (delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1));
-                // // cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
-               
-                // // Calculate the total height of water [m] moved during the timestep in the interface of layers.
-                if (q_cap[l][d] > 0.0f) { // Upward flux only
-                    water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
-                } else {
-                    water_height_upward[l][d] = 0.0f; // No downward flux considered yet
-                }
-
-} else {
+                
                 // Considering up and downward flux (q_cap > 0 = upward flux; q_cap < 0 = downward flux)
                 q_cap[l][d] = - Ks_cap_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
                 // Calculate the total height of water [m] moved during the timestep in the interface of layers.
                 water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
 
-} // endif unified vertical water flux                    
 
             } // End for layers interface (step 3)
 
