@@ -625,12 +625,10 @@ void OutputCHM(fstream& output_CHM); //!< Global function: Outputs CHM
 void OutputVisual();    //!< Global function: Output function for visualization purposes
 void CloseOutputs();
 void FreeMem(void);
+void VerticalWaterFlux(int d); //!< Global function: both up and down flux implementation based on Darcy's law//BR    
+
 
 void ExportPointcloud(float mean_beam, float sd_beam, float klaser, float transmittance_laser, fstream& output_pointcloud); //!<Global function: point cloud output, v.3.1.6; kept separately from other output functions, as we write to a dedicated external file format (.las)
-
-#ifdef VERTICAL_WATER_FLUX // BR
-void CapillaryRise(int d); //!< Global function: Capillary rise implementation //BR    
-#endif
 
 // HELPER FUNCTIONS
 int GetTimeofyear();    //!< Helper function, new in v.3.1: converts current iteration into time of year, also works backwards (negative iterations)
@@ -7848,7 +7846,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 if (_CAPILLARY_RISE==1) { // BR
                     
-                    CapillaryRise(d);
+                    VerticalWaterFlux(d);
 
                 } // end if (_CAPILLARY_RISE==1) 
 
@@ -7894,7 +7892,7 @@ if (_WATER_RETENTION_CURVE==1) {
 #endif
         } // end of function UpdateField()
 
-        void CapillaryRise(int d){ // BR
+        void VerticalWaterFlux(int d){ // BR
                 // This function is now integrated within the bucket model in UpdateField()
             
             // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
@@ -8231,7 +8229,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
             } // End for layers (step 7)
 
-        } // End CapillaryRise function
+        } // End VerticalWaterFlux function
         
         //#############################
         // Global function: update SPECIES_SEEDS field
