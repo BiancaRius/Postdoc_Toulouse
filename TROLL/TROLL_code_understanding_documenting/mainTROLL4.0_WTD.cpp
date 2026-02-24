@@ -170,7 +170,7 @@ bool _sapwood;         //!< User control: two ways of parameterising sapwood den
 bool _seedsadditional; //!< User control: excess carbon into seeds? no/yes=(0/1)
 bool _LL_parameterization;   //!< User control: two ways for parameterising leaf lifespan: empirical (derived by Sylvain Schmitt, TODO: from which data?), Kikuzawa model (0,1)
 bool _WATER_TABLE; // !< User control: if _WATER_TABLE == 1, the water table depth is activated, then the soil layer below the depth (WTD variable in global parameters) are always saturated //BR
-bool _DARCY_WATER_FLUX; // !< User control: if _DARCY_WATER_FLUX == 1, both upward and downward vertical water fluxes are computed using Darcy's law (based on the total head gradient, ψ + z). When active, the bucket-based percolation scheme between soil layers is disabled. When set to 0, downward fluxes still use the traditional bucket percolation, and only upward fluxes follow Darcy’s law (capillary rise) //BR
+bool _DARCY_WATER_FLUX; // !< User control: if _DARCY_WATER_FLUX == 1, both upward and downward vertical water fluxes are computed using Darcy's law (based on the total head gradient, ψ + z). When active, the bucket-based percolation scheme between soil layers is disabled. When set to 0, downward fluxes still use the traditional bucket percolation //BR
 
 int _LA_regulation;     //!< User control: updated v.3.1: potentially three ways of parameterising leaf dynamic allocation, but currently using only two ways: no regulation (0), never exceed LAImax, i.e. the maximum LAI under full sunlight (1), adjust LAI to the current light environment (2). To switch between option 1 and 2, only one line is necessary in CalcLAmax()
 int _OUTPUT_pointcloud;  //!<User control: ATTENTION! At the moment assumes a little-endian system (most personal computers, but not necessarily server systems), because LAS fles are in little-endian! If == 1, creates a point cloud from a simplified ALS simulation;
@@ -429,15 +429,15 @@ float *phi_e(0);            //!< Global vector: parameter for the Campbell-Muale
 float *b(0);                //!< Global vector: parameter for the Campbell-Mualem soil water retention curves (possible update: replace with a Genuchten parameter)
 float **SWC3D(0);           //!< Global 3D field: soil water content in each soil voxel (layer * DCELL) 
 float **soil_phi3D(0);      //!< Global 3D field: soil water potential (in MPa) in each soil voxel (layer * DCELL)
-float **soil_phi3D_dar(0);  //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in vertical water movement following Darcy's law //BR
-float **SWC3D_dar(0);       //!<Global 3D field: intermediate soil water content in each soil voxel (layer * DCELL). To be used in vertical water movement following Darcy's law //BR
+float **soil_phi3D_darcy(0);  //!<Global 3D field: intermediate soil water potential (in MPa) for each soil voxel (layer * DCELL). To be used in vertical water movement following Darcy's law //BR
+float **SWC3D_darcy(0);       //!<Global 3D field: intermediate soil water content in each soil voxel (layer * DCELL). To be used in vertical water movement following Darcy's law //BR
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
-float **Ks_dar(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
-float **Ks_dar_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
-float **q_dar(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
+float **Ks_darcy(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
+float **Ks_darcy_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
+float **q_darcy(0);            //!<Global 3D field: water flux (in m/s) between two layers (layer * DCELL). It can be up or downward depending on the q_darcy sign //BR
 float **water_disp(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
-float **water_change_dar(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
-float **water_upward_vol(0); //!<Global 3D field: the volume [m3] of water that moved up due to capillarity between two layers (layer * DCELL) //BR
+float **water_change_darcy(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above. = layer_change_vol but used to output purpose //BR
+float **interface_transfer_vol(0); //!<Global 3D field: the volume [m3] of water that moved up due to capillarity between two layers (layer * DCELL) //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -7122,14 +7122,14 @@ if (_WATER_RETENTION_CURVE==1) {
 
             // Variables for vertical water movement following Darcy's law
             if (_DARCY_WATER_FLUX == 1){
-                if(NULL==(soil_phi3D_dar=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(SWC3D_dar=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
-                if(NULL==(Ks_dar = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(Ks_dar_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(q_dar = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(soil_phi3D_darcy=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(SWC3D_darcy=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
+                if(NULL==(Ks_darcy = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(Ks_darcy_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(q_darcy = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_disp = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(water_change_dar = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(water_upward_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
+                if(NULL==(water_change_darcy = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(interface_transfer_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
             }
 
             for(int l=0;l<nblayers_soil;l++) {
@@ -7141,10 +7141,10 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
 
                 if (_DARCY_WATER_FLUX == 1){ //BR
-                    if(NULL==(SWC3D_dar[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
-                    if(NULL==(soil_phi3D_dar[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(water_change_dar[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(Ks_dar[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(SWC3D_darcy[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
+                    if(NULL==(soil_phi3D_darcy[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(water_change_darcy[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(Ks_darcy[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 }
 
                 for(int dcell=0; dcell<nbdcells; dcell++) {
@@ -7154,8 +7154,8 @@ if (_WATER_RETENTION_CURVE==1) {
 
 
                     if (_DARCY_WATER_FLUX == 1) {//BR
-                        SWC3D_dar[l][dcell]=FC_SWC[l];
-                        // cout << "layer: " << l << " SWC3D_dar initialized at FC: " << SWC3D_dar[l][dcell] << endl; 
+                        SWC3D_darcy[l][dcell]=FC_SWC[l];
+                        // cout << "layer: " << l << " SWC3D_darcy initialized at FC: " << SWC3D_darcy[l][dcell] << endl; 
                     }
 
                     
@@ -7170,10 +7170,10 @@ if (_WATER_RETENTION_CURVE==1) {
                             cout << "Layer " << l << " SWC3D " << SWC3D[l][dcell] << endl; 
 
                             if (_DARCY_WATER_FLUX == 1){ // If Darcy's vertical water movement and WT is activated
-                                SWC3D_dar[l][dcell] = Max_SWC[l];
+                                SWC3D_darcy[l][dcell] = Max_SWC[l];
 
-                                cout << "Initialisation of SWC_dar" << endl;
-                                cout << "Layer " << l << " SWC3D_dar " << SWC3D_dar[l][dcell] << endl;     
+                                cout << "Initialisation of SWC_darcy" << endl;
+                                cout << "Layer " << l << " SWC3D_darcy " << SWC3D_darcy[l][dcell] << endl;     
                             }
                         }
                     }
@@ -7185,11 +7185,11 @@ if (_WATER_RETENTION_CURVE==1) {
                     Transpiration[l][dcell]=0.0;
 
                     if (_DARCY_WATER_FLUX == 1){ //BR
-                        soil_phi3D_dar[l][dcell]=0.0; //BR
-                        water_change_dar[l][dcell]=0.0; //BR
-                        Ks_dar[l][dcell]=0.0; //BR
-                        if (SWC3D_dar[l][dcell]<=0.0) {
-                            cout << "Soil water content Darcy's law <=0.0  " << SWC3D_dar[l][dcell] << "\t" <<Max_SWC[l] << "\n";
+                        soil_phi3D_darcy[l][dcell]=0.0; //BR
+                        water_change_darcy[l][dcell]=0.0; //BR
+                        Ks_darcy[l][dcell]=0.0; //BR
+                        if (SWC3D_darcy[l][dcell]<=0.0) {
+                            cout << "Soil water content Darcy's law <=0.0  " << SWC3D_darcy[l][dcell] << "\t" <<Max_SWC[l] << "\n";
                         }
                     }
 
@@ -7203,15 +7203,15 @@ if (_WATER_RETENTION_CURVE==1) {
             // Loop for variables that only exists at the interface of soil layers
             if (_DARCY_WATER_FLUX == 1) {//BR
                 for(int l=0;l<nblayers_soil-1;l++) {
-                        if(NULL==(Ks_dar_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                        if(NULL==(q_dar[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(Ks_darcy_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(q_darcy[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                         if(NULL==(water_disp[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                        if(NULL==(water_upward_vol[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(interface_transfer_vol[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     for (int dcell=0; dcell<nbdcells; dcell++) {
-                        Ks_dar_harmonic[l][dcell] = 0.0; //BR
-                        q_dar[l][dcell] = 0.0; //BR
+                        Ks_darcy_harmonic[l][dcell] = 0.0; //BR
+                        q_darcy[l][dcell] = 0.0; //BR
                         water_disp[l][dcell] = 0.0; //BR
-                        water_upward_vol[l][dcell] = 0.0; //BR
+                        interface_transfer_vol[l][dcell] = 0.0; //BR
                     }
                 }
             }
@@ -7833,13 +7833,13 @@ if (_WATER_RETENTION_CURVE==1) {
      * @param phi_e, b Parameters for the Brooks & Corey-Mualem model.
      * @param Ksat A vector of saturated hydraulic conductivity for each layer [m/s].
      * @param delta_z_face A vector to store the vertical distance between adjacent layer centers [m].
-     * @param soil_phi3D_dar A 3D array to store the calculated soil water potential [MPa].
-     * @param Ks_dar A 3D array to store the calculated unsaturated hydraulic conductivity [m/s].
-     * @param Ks_dar_harmonic A 3D array to store the harmonic mean of hydraulic conductivity between layers [m/s].
-     * @param q_dar A 3D array to store the upward capillary flux between layers [m/s].
+     * @param soil_phi3D_darcy A 3D array to store the calculated soil water potential [MPa].
+     * @param Ks_darcy A 3D array to store the calculated unsaturated hydraulic conductivity [m/s].
+     * @param Ks_darcy_harmonic A 3D array to store the harmonic mean of hydraulic conductivity between layers [m/s].
+     * @param q_darcy A 3D array to store the upward capillary flux between layers [m/s].
      * @param water_disp A 3D array to store the displacement of water [m] due to vertical movement (both up and downward).
-     * @param water_change_dar A 3D array to store the change in water content due to capillary rise.
-     * @param water_upward_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
+     * @param water_change_darcy A 3D array to store the change in water content due to vertical movement.
+     * @param interface_transfer_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
      *  */
 
                 if (_DARCY_WATER_FLUX == 1) { // BR
@@ -7868,7 +7868,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     float inter= 1-pow((1-pow(theta_w, b_vgm[l])),m_vgm[l]);
                     Ks[l][d]=Ksat[l]*pow(theta_w, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     
-                    //cout << "Outside bucket model" << " layer " << l <<  "\t" << "theta_w - theta_dar=  "<< theta_w << "\t" << "soil_phi= " << soil_phi3D[l][d] - soil_phi3D_dar[l][d] << "\t" << "Ks= "<< Ks[l][d] - Ks_dar[l][d] << endl;
+                    //cout << "Outside bucket model" << " layer " << l <<  "\t" << "theta_w - theta_darcy=  "<< theta_w << "\t" << "soil_phi= " << soil_phi3D[l][d] - soil_phi3D_darcy[l][d] << "\t" << "Ks= "<< Ks[l][d] - Ks_darcy[l][d] << endl;
 
                     if (isnan(soil_phi3D[l][d]) || isnan(Ks[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
                         cout << "In bucket model, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " Ks[l][d]=" << Ks[l][d] << endl ;
@@ -7899,41 +7899,41 @@ if (_WATER_RETENTION_CURVE==1) {
             for (int l=0; l<nblayers_soil; l++) {
 
                 // Intermediate relative humidity for 
-                float theta_w_dar = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
+                float theta_w_darcy = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
                 // Special condition for layers below the water table // BR
                 if (_WATER_TABLE == 1) { 
                     if (layer_depth[l] > WTD) {        
-                        soil_phi3D_dar[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
-                        theta_w_dar = 1.0f;            // if there is saturation, relative soil water content = 1                                       
-                        Ks_dar[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
+                        soil_phi3D_darcy[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
+                        theta_w_darcy = 1.0f;            // if there is saturation, relative soil water content = 1                                       
+                        Ks_darcy[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
                     }                        
                 }
 
                  // Prevent division by zero or negative values                    
-                if(theta_w_dar <= 1e-6f) { //BR: update from 0 to <= 1e-6f
-                    theta_w_dar = 0.001; // following the below rule added by SS //BR
-                    // cout << "Warning theta_w_dar = 0 " << endl ;
+                if(theta_w_darcy <= 1e-6f) { //BR: update from 0 to <= 1e-6f
+                    theta_w_darcy = 0.001; // following the below rule added by SS //BR
+                    // cout << "Warning theta_w_darcy = 0 " << endl ;
                 }
 
 if (_WATER_RETENTION_CURVE==1) {
-                soil_phi3D_dar[l][d]=a_vgm[l]*pow((pow(theta_w_dar,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
-                float inter_dar = 1-pow((1-pow(theta_w_dar, b_vgm[l])),m_vgm[l]);
-                Ks_dar[l][d]=Ksat[l]*pow(theta_w_dar, 0.5)*inter_dar*inter_dar; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+                soil_phi3D_darcy[l][d]=a_vgm[l]*pow((pow(theta_w_darcy,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+                float inter_darcy = 1-pow((1-pow(theta_w_darcy, b_vgm[l])),m_vgm[l]);
+                Ks_darcy[l][d]=Ksat[l]*pow(theta_w_darcy, 0.5)*inter_darcy*inter_darcy; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 
 
 } else if (_WATER_RETENTION_CURVE==0) {
 
-                soil_phi3D_dar[l][d]=phi_e[l]*pow(theta_w_dar, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
-                Ks_dar[l][d]=Ksat[l]*pow(theta_w_dar, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
-                KsPhi[l][d]=Ksat[l]*phi_e[l]*pow(theta_w_dar, 2.5+b[l]); //Ks times soil_phi3D, computed directly as the exact power of theta.
+                soil_phi3D_darcy[l][d]=phi_e[l]*pow(theta_w_darcy, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                Ks_darcy[l][d]=Ksat[l]*pow(theta_w_darcy, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                KsPhi[l][d]=Ksat[l]*phi_e[l]*pow(theta_w_darcy, 2.5+b[l]); //Ks times soil_phi3D, computed directly as the exact power of theta.
                 //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
                 // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
 
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
-                soil_phi3D[l][d] = soil_phi3D_dar[l][d]; //to update the output
+                soil_phi3D[l][d] = soil_phi3D_darcy[l][d]; //to update the output
             } // End for layers (step 1)
 
             
@@ -7941,19 +7941,19 @@ if (_WATER_RETENTION_CURVE==1) {
             // The harmonic mean is used to find the effective conductivity at the interface between layers.
             for (int l=0; l<nblayers_soil-1; l++) {
 
-                float k1 = Ks_dar[l][d];
-                float k2 = Ks_dar[l+1][d];
+                float k1 = Ks_darcy[l][d];
+                float k2 = Ks_darcy[l+1][d];
                 float sum_k = k1 + k2;
 
                 // Check for division by zero to avoid errors 
                 // If both conductivities are zero, the harmonic mean is also zero
                 if (sum_k > 1e-9f){
-                    Ks_dar_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                    Ks_darcy_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
                     //cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
                 } else {
-                    Ks_dar_harmonic[l][d] = 0.0f;
-                    cerr << "Warning: Both Ks_dar are zero at layer " << l << " and " << l+1 << endl;
+                    Ks_darcy_harmonic[l][d] = 0.0f;
+                    cerr << "Warning: Both Ks_darcy are zero at layer " << l << " and " << l+1 << endl;
                 }
 
             } // End for layers interface (step 2)
@@ -7961,7 +7961,7 @@ if (_WATER_RETENTION_CURVE==1) {
             // --- Step 3: Calculate vertical water flux between layer's interfaces---
             // The flux is computed using Darcy's Law, which states that the flux (q) is proportional to the hydraulic conductivity (K) and the gradient of hydraulic potential (phi + z) between layers.
 
-            // The flux q_dar is in [m/s], so the timestep (Δt) must be in seconds.
+            // The flux q_darcy is in [m/s], so the timestep (Δt) must be in seconds.
             // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
             const float delta_t_sec = 86400.0f; 
             for (int l=0; l<nblayers_soil-1; l++) { // from top to bottom
@@ -7970,7 +7970,7 @@ if (_WATER_RETENTION_CURVE==1) {
             // for (int l = nblayers_soil -2; l>=0; l-- ){ // from bottom to top, starting from the second last layer (as the last layer is the bottom of the soil profile, no layer below it and no interface exists)
 
                 // Difference in soil water potential (phi) between adjacent layers [MPa]
-                float delta_phi_MPa = soil_phi3D_dar[l+1][d] - soil_phi3D_dar[l][d]; // Delta phi between two adjacent layers l and l+1 [MPa]
+                float delta_phi_MPa = soil_phi3D_darcy[l+1][d] - soil_phi3D_darcy[l][d]; // Delta phi between two adjacent layers l and l+1 [MPa]
                 float delta_phi_Pa = delta_phi_MPa * 1e6f; // Convert Delta phi from MPa to Pa
 
                 cout << std::fixed << std::setprecision(15);
@@ -7981,12 +7981,12 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // // Calculate flux using a modified Darcy's Law. 
 
-                // Considering up and downward flux (q_dar > 0 = upward flux; q_dar < 0 = downward flux)
-                q_dar[l][d] = - Ks_dar_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
+                // Considering up and downward flux (q_darcy > 0 = upward flux; q_darcy < 0 = downward flux)
+                q_darcy[l][d] = - Ks_darcy_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
                 
                 // Signed equivalent water-column displacement across interface over one timestep [m]
                 // > 0 upward, < 0 downward
-                water_disp[l][d] = q_dar[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
+                water_disp[l][d] = q_darcy[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
 
 
             } // End for layers interface (step 3)
@@ -8016,7 +8016,7 @@ if (_WATER_RETENTION_CURVE==1) {
             // float water_height_wt = 0.0f; // Initialize the water height from WT
             
             // if (l_wt > 0 && l_abv_wt >= 0) {
-            //     q_wt_supply = q_dar[l_abv_wt][d]; // m/s // Water flux at the interface just above the WT layer
+            //     q_wt_supply = q_darcy[l_abv_wt][d]; // m/s // Water flux at the interface just above the WT layer
             //     water_height_wt = std::max(0.0f, q_wt_supply)* delta_t_sec; // m // (max(0.0, q_wt_supply)) Keep only the upward (WT-to-soil) 
             //                                                                 //contribution: downward flux (q_wt_supply < 0) is drainage toward the WT and is not counted as groundwater supply.
 
@@ -8140,10 +8140,12 @@ if (_WATER_RETENTION_CURVE==1) {
             // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
             float voxel_area = LH * LH * sites_per_dcell; // m²
            
-            vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
-            water_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
-           
+            vector<float> layer_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
+            layer_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
+
             for (int l = 0; l < nblayers_soil -1; l++){
+                interface_transfer_vol[l][d] = 0.0f; // re-initialize to zero, will be updated with the actual volume transfered between layers after considering the restrictions of donor and receiver capacity
+
                    
                 // Considering up and downward movement
                 float vol_top = layer_thickness_global[l] * voxel_area;   // m³
@@ -8160,19 +8162,19 @@ if (_WATER_RETENTION_CURVE==1) {
                                                     std::min(receiv_capacity[l], donor_capacity[l+1]));
 
                     // upper layer (l) receives
-                    water_change_vol[l]   += vol_transfer_restricted;
+                    layer_change_vol[l]   += vol_transfer_restricted;
                     // lower layer (l+1) donates
-                    water_change_vol[l+1] -= vol_transfer_restricted;
+                    layer_change_vol[l+1] -= vol_transfer_restricted;
 
                     // output
-                    water_upward_vol[l][d] = vol_transfer_restricted;
+                    interface_transfer_vol[l][d] = vol_transfer_restricted;
 
                 } else if (water_disp[l][d] < 0.0f){
                     // from l to l+1
                     // For downward flow (water_disp < 0), -water_disp gives the magnitude of the water height
                     // transported across the interface. Note that the sign of wh encodes the
                     // flow direction, but the actual transfer volume must be positive.
-                    // The direction is applied later when updating water_change_vol for each layer.
+                    // The direction is applied later when updating layer_change_vol for each layer.
                     water_disp[l][d] = - water_disp[l][d];
                     
                     // now the receiver is the lower layer, that is why we use its thickness and volume 
@@ -8185,12 +8187,12 @@ if (_WATER_RETENTION_CURVE==1) {
                         std::min(donor_capacity[l], receiv_capacity[l+1]));
 
                     // upper layer (l) donates
-                    water_change_vol[l]   -= vol_transfer_restricted;
+                    layer_change_vol[l]   -= vol_transfer_restricted;
                     // lower layer (l+1) receives
-                    water_change_vol[l+1] += vol_transfer_restricted;
+                    layer_change_vol[l+1] += vol_transfer_restricted;
 
                     // output
-                    water_upward_vol[l][d] = - vol_transfer_restricted;
+                    interface_transfer_vol[l][d] = - vol_transfer_restricted;
 
                 }
 
@@ -8198,9 +8200,9 @@ if (_WATER_RETENTION_CURVE==1) {
 
             // --- Step 6: Update SWC3D after vertical water movement ---
             for (int l = 0; l < nblayers_soil; l++){
-                water_change_dar[l][d] = water_change_vol[l]; //for output purpose
+                water_change_darcy[l][d] = layer_change_vol[l]; //for output purpose
                         
-                SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
+                SWC3D[l][d] += layer_change_vol[l]; //update SWC3D after capillary rise
 
             } // End for layers (step 6)
 
@@ -8818,21 +8820,21 @@ if (_WATER_RETENTION_CURVE==1) {
     if (_DARCY_WATER_FLUX == 1){
             output_vertical_flux << iter << '\t';   
             for(int l=0; l<nblayers_soil; l++) {
-                float water_change_dar_out = 0.0;
+                float water_change_darcy_out = 0.0;
                 for (int d=0; d<nbdcells; d++) {
-                    water_change_dar_out = water_change_dar[l][d]; // in m3
+                    water_change_darcy_out = water_change_darcy[l][d]; // in m3
                     // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
                 }
-                output_vertical_flux << water_change_dar_out << "\t";
+                output_vertical_flux << water_change_darcy_out << "\t";
             }
 
             for(int l=0; l<nblayers_soil-1; l++) {
-                float water_upward_vol_out = 0.0;
+                float interface_transfer_vol_out = 0.0;
                 for (int d=0; d<nbdcells; d++) {
-                    water_upward_vol_out = water_upward_vol[l][d]; // in m3
+                    interface_transfer_vol_out = interface_transfer_vol[l][d]; // in m3
                     // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
                 }
-                output_vertical_flux << water_upward_vol_out << "\t";
+                output_vertical_flux << interface_transfer_vol_out << "\t";
             }
 
             for(int l=0; l<nblayers_soil-1; l++) {
