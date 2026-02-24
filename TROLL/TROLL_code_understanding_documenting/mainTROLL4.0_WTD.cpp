@@ -434,8 +434,8 @@ float **SWC3D_dar(0);       //!<Global 3D field: intermediate soil water content
 float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in each soil voxel (layer * DCELL)
 float **Ks_dar(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks_dar_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
-float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
-float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
+float **q_dar(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
+float **water_disp(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
 float **water_change_dar(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
 float **water_upward_vol(0); //!<Global 3D field: the volume [m3] of water that moved up due to capillarity between two layers (layer * DCELL) //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
@@ -7126,8 +7126,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(SWC3D_dar=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
                 if(NULL==(Ks_dar = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(Ks_dar_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(q_dar = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(water_disp = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_change_dar = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_upward_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
             }
@@ -7204,13 +7204,13 @@ if (_WATER_RETENTION_CURVE==1) {
             if (_DARCY_WATER_FLUX == 1) {//BR
                 for(int l=0;l<nblayers_soil-1;l++) {
                         if(NULL==(Ks_dar_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                        if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                        if(NULL==(water_height_upward[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(q_dar[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(water_disp[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                         if(NULL==(water_upward_vol[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     for (int dcell=0; dcell<nbdcells; dcell++) {
                         Ks_dar_harmonic[l][dcell] = 0.0; //BR
-                        q_cap[l][dcell] = 0.0; //BR
-                        water_height_upward[l][dcell] = 0.0; //BR
+                        q_dar[l][dcell] = 0.0; //BR
+                        water_disp[l][dcell] = 0.0; //BR
                         water_upward_vol[l][dcell] = 0.0; //BR
                     }
                 }
@@ -7836,8 +7836,8 @@ if (_WATER_RETENTION_CURVE==1) {
      * @param soil_phi3D_dar A 3D array to store the calculated soil water potential [MPa].
      * @param Ks_dar A 3D array to store the calculated unsaturated hydraulic conductivity [m/s].
      * @param Ks_dar_harmonic A 3D array to store the harmonic mean of hydraulic conductivity between layers [m/s].
-     * @param q_cap A 3D array to store the upward capillary flux between layers [m/s].
-     * @param water_height_upward A 3D array to store the height of water moved upward during the timestep [m].
+     * @param q_dar A 3D array to store the upward capillary flux between layers [m/s].
+     * @param water_disp A 3D array to store the displacement of water [m] due to vertical movement (both up and downward).
      * @param water_change_dar A 3D array to store the change in water content due to capillary rise.
      * @param water_upward_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
      *  */
@@ -7893,12 +7893,12 @@ if (_WATER_RETENTION_CURVE==1) {
         void VerticalWaterFlux(int d){ // BR
                 // This function is now integrated within the bucket model in UpdateField()
             
-            // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
+            // --- Step 1: Calculate soil hydraulic properties for vertical water flux (capillarity + percolation) ---
             // Computes relative soil water content, soil water potential (phi), and hydraulic 
             // conductivity (Ks) based on the chosen water retention model.
             for (int l=0; l<nblayers_soil; l++) {
 
-                // Intermediate relative humidity for capillary rise calculation
+                // Intermediate relative humidity for 
                 float theta_w_dar = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
                 // Special condition for layers below the water table // BR
@@ -7958,13 +7958,15 @@ if (_WATER_RETENTION_CURVE==1) {
 
             } // End for layers interface (step 2)
 
-            // --- Step 3: Calculate capillary flux between layer's interfaces---
-            // The flux is computed using Darcy's Law, considering only upward movement.
+            // --- Step 3: Calculate vertical water flux between layer's interfaces---
+            // The flux is computed using Darcy's Law, which states that the flux (q) is proportional to the hydraulic conductivity (K) and the gradient of hydraulic potential (phi + z) between layers.
 
-            // The flux q_cap is in [m/s], so the timestep (Δt) must be in seconds.
+            // The flux q_dar is in [m/s], so the timestep (Δt) must be in seconds.
             // Conversion: 1 day = 24 hours * 60 min/hr * 60 s/min = 86400 s.
             const float delta_t_sec = 86400.0f; 
             for (int l=0; l<nblayers_soil-1; l++) { // from top to bottom
+            
+            // the other option is from bottom to the top. For this, use the following: 
             // for (int l = nblayers_soil -2; l>=0; l-- ){ // from bottom to top, starting from the second last layer (as the last layer is the bottom of the soil profile, no layer below it and no interface exists)
 
                 // Difference in soil water potential (phi) between adjacent layers [MPa]
@@ -7979,10 +7981,12 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // // Calculate flux using a modified Darcy's Law. 
 
-                // Considering up and downward flux (q_cap > 0 = upward flux; q_cap < 0 = downward flux)
-                q_cap[l][d] = - Ks_dar_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
-                // Calculate the total height of water [m] moved during the timestep in the interface of layers.
-                water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
+                // Considering up and downward flux (q_dar > 0 = upward flux; q_dar < 0 = downward flux)
+                q_dar[l][d] = - Ks_dar_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
+                
+                // Signed equivalent water-column displacement across interface over one timestep [m]
+                // > 0 upward, < 0 downward
+                water_disp[l][d] = q_dar[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
 
 
             } // End for layers interface (step 3)
@@ -8012,7 +8016,7 @@ if (_WATER_RETENTION_CURVE==1) {
             // float water_height_wt = 0.0f; // Initialize the water height from WT
             
             // if (l_wt > 0 && l_abv_wt >= 0) {
-            //     q_wt_supply = q_cap[l_abv_wt][d]; // m/s // Water flux at the interface just above the WT layer
+            //     q_wt_supply = q_dar[l_abv_wt][d]; // m/s // Water flux at the interface just above the WT layer
             //     water_height_wt = std::max(0.0f, q_wt_supply)* delta_t_sec; // m // (max(0.0, q_wt_supply)) Keep only the upward (WT-to-soil) 
             //                                                                 //contribution: downward flux (q_wt_supply < 0) is drainage toward the WT and is not counted as groundwater supply.
 
@@ -8036,11 +8040,11 @@ if (_WATER_RETENTION_CURVE==1) {
 
             //     // Move upward: as long as the interface above each layer still shows upward transport,
             //     // the WT-origin supply can propagate further up.
-            //     // Note: water_height_upward[i] is associated with the interface between layers i and i+1.
+            //     // Note: water_disp[i] is associated with the interface between layers i and i+1.
             //     for (int i = l_abv_wt - 1; i >= 0; --i) {
 
             //         // Keep only the upward component (positive height); downward values indicate drainage/redistribution
-            //         float H_up = std::max(0.0f, water_height_upward[i][d]);
+            //         float H_up = std::max(0.0f, water_disp[i][d]);
 
             //         if (H_up > epsH) {
             //             // The WT-driven upward connection still reaches this level (layer i)
@@ -8145,9 +8149,9 @@ if (_WATER_RETENTION_CURVE==1) {
                 float vol_top = layer_thickness_global[l] * voxel_area;   // m³
                 float vol_bottom = layer_thickness_global[l+1] * voxel_area;   // m³
 
-                if (water_height_upward[l][d] > 0.0f){
+                if (water_disp[l][d] > 0.0f){
                     // from l+1 to l
-                    float potential_transfer = water_height_upward[l][d] / layer_thickness_global[l];  // usa espessura da camada receptora (como estava)
+                    float potential_transfer = water_disp[l][d] / layer_thickness_global[l];  // usa espessura da camada receptora (como estava)
                     float vol_potential_transfer = potential_transfer * vol_top;
 
                     // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
@@ -8163,16 +8167,16 @@ if (_WATER_RETENTION_CURVE==1) {
                     // output
                     water_upward_vol[l][d] = vol_transfer_restricted;
 
-                } else if (water_height_upward[l][d] < 0.0f){
+                } else if (water_disp[l][d] < 0.0f){
                     // from l to l+1
-                    // For downward flow (water_height_upward < 0), -water_height_upward gives the magnitude of the water height
+                    // For downward flow (water_disp < 0), -water_disp gives the magnitude of the water height
                     // transported across the interface. Note that the sign of wh encodes the
                     // flow direction, but the actual transfer volume must be positive.
                     // The direction is applied later when updating water_change_vol for each layer.
-                    water_height_upward[l][d] = - water_height_upward[l][d];
+                    water_disp[l][d] = - water_disp[l][d];
                     
                     // now the receiver is the lower layer, that is why we use its thickness and volume 
-                    float potential_transfer = water_height_upward[l][d]/ layer_thickness_global[l+1];
+                    float potential_transfer = water_disp[l][d]/ layer_thickness_global[l+1];
                     float vol_potential_transfer = potential_transfer * vol_bottom;
 
                     // and here the volume is limited by the potential volume to be transfered, the donor capacity of the upper layer and the receiver capacity of the lower layer
@@ -8832,12 +8836,12 @@ if (_WATER_RETENTION_CURVE==1) {
             }
 
             for(int l=0; l<nblayers_soil-1; l++) {
-                float water_height_upward_out = 0.0;
+                float water_disp_out = 0.0;
                 for (int d=0; d<nbdcells; d++) {
-                    water_height_upward_out = water_height_upward[l][d]; // in m3
+                    water_disp_out = water_disp[l][d]; // in m3
                     // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
                 }
-                output_vertical_flux << water_height_upward_out << "\t";
+                output_vertical_flux << water_disp_out << "\t";
             }
 
             output_vertical_flux << endl;
