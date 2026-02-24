@@ -54,7 +54,7 @@
 #undef CHECK_CARBON      //!< new in v.2.5: DIAGNOSTIC TOOL, checking of carbon budgets, could potentially be extended for nutrient budget checking in the future. The idea is to keep track of carbon stocks and carbon fluxes every timestep to see whether there are any deviations from expectations - to do so, differences between stocks are computed at each timestep, and can be compared to the gross and net assimilation of carbon
 #define FULL_CLIMATE
 #undef MIP_Lichstein //!< includes specific developments and outputs needed for the MIP experiment led by Jeremy Lichstein.
-#define OUTPUT_VERT_WATER //!<if defined, vertical water fluxes between soil layers (interface l<->l+1) are saved in a separate output file. Vertical water fluxeas based on Darcy's law are only calculated if _CAPILLARY_RISE == 1 // BR
+#define OUTPUT_VERT_WATER //!<if defined, vertical water fluxes between soil layers (interface l<->l+1) are saved in a separate output file. Vertical water fluxes based on Darcy's law are only calculated if _DARCY_WATER_FLUX == 1 // BR
 
 
 // LIBRAIRIES
@@ -170,8 +170,7 @@ bool _sapwood;         //!< User control: two ways of parameterising sapwood den
 bool _seedsadditional; //!< User control: excess carbon into seeds? no/yes=(0/1)
 bool _LL_parameterization;   //!< User control: two ways for parameterising leaf lifespan: empirical (derived by Sylvain Schmitt, TODO: from which data?), Kikuzawa model (0,1)
 bool _WATER_TABLE; // !< User control: if _WATER_TABLE == 1, the water table depth is activated, then the soil layer below the depth (WTD variable in global parameters) are always saturated //BR
-bool _CAPILLARY_RISE; // !< User control: if _CAPILLARY_RISE == 1, the capillary rise is activated, then the soil moisture in the layer below can rise to the above layer depending on the soil water potential gradient between the two layers //BR
-bool _DARCY_WATER_FLUX; // !< bool _DARCY_WATER_FLUX; // !< User control: if _DARCY_WATER_FLUX == 1, both upward and downward vertical water fluxes are computed using Darcy's law (based on the total head gradient, ψ + z). When active, the bucket-based percolation scheme between soil layers is disabled. When set to 0, downward fluxes still use the traditional bucket percolation, and only upward fluxes follow Darcy’s law (capillary rise) //BR
+bool _DARCY_WATER_FLUX; // !< User control: if _DARCY_WATER_FLUX == 1, both upward and downward vertical water fluxes are computed using Darcy's law (based on the total head gradient, ψ + z). When active, the bucket-based percolation scheme between soil layers is disabled. When set to 0, downward fluxes still use the traditional bucket percolation, and only upward fluxes follow Darcy’s law (capillary rise) //BR
 
 int _LA_regulation;     //!< User control: updated v.3.1: potentially three ways of parameterising leaf dynamic allocation, but currently using only two ways: no regulation (0), never exceed LAImax, i.e. the maximum LAI under full sunlight (1), adjust LAI to the current light environment (2). To switch between option 1 and 2, only one line is necessary in CalcLAmax()
 int _OUTPUT_pointcloud;  //!<User control: ATTENTION! At the moment assumes a little-endian system (most personal computers, but not necessarily server systems), because LAS fles are in little-endian! If == 1, creates a point cloud from a simplified ALS simulation;
@@ -4671,7 +4670,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             cout << "Atmospheric pressure is: " << PRESS << endl;
 #endif
             if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD = " << WTD << endl;
-            if(_CAPILLARY_RISE == 1) cout << "Activated Module: CAPILLARY RISE = " << endl;
             if(_DARCY_WATER_FLUX == 1) cout << "Activated Module: _DARCY_WATER_FLUX =  " << endl;
             if(_GPPcrown == 1) cout << "Activated Module: FastGPP" << endl;
             if(_BASICTREEFALL == 1) cout << "Activated Module: BASICTREEFALL" << endl;
@@ -4994,8 +4992,6 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 SetParameter(parameter_name, parameter_value, _NONRANDOM, bool(0), bool(1), bool(1), quiet);
             } else if(parameter_name == "_WATER_TABLE"){
                 SetParameter(parameter_name, parameter_value, _WATER_TABLE, bool(0), bool(1), bool(0), quiet); //BR
-            } else if(parameter_name == "_CAPILLARY_RISE"){
-                SetParameter(parameter_name, parameter_value, _CAPILLARY_RISE, bool(0), bool(1), bool(0), quiet); //BR
             } else if(parameter_name == "_GPPcrown"){
                 SetParameter(parameter_name, parameter_value, _GPPcrown, bool(0), bool(1), bool(0), quiet);
             } else if(parameter_name == "_BASICTREEFALL"){
@@ -5084,8 +5080,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             fstream In(inputfile, ios::in);
             if(In){
 #ifdef WATER
-                string parameter_names[75] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta","WTD", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_WATER_TABLE","_CAPILLARY_RISE","_DARCY_WATER_FLUX","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
-                int nb_parameters = 75;
+                string parameter_names[74] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta","WTD", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_WATER_TABLE","_DARCY_WATER_FLUX","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
+                int nb_parameters = 74;
 #else
                 string parameter_names[61] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_NONRANDOM","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","extent_visual"};
                 int nb_parameters = 61;
@@ -7122,8 +7118,8 @@ if (_WATER_RETENTION_CURVE==1) {
             //if (NULL==(KsPhi2=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
             if(NULL==(Transpiration=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n";
 
-            // Variables for capillarity
-            if (_CAPILLARY_RISE == 1){
+            // Variables for vertical water movement following Darcy's law
+            if (_DARCY_WATER_FLUX == 1){
                 if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
                 if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
@@ -7142,7 +7138,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 //if (NULL==(KsPhi2[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                 if(NULL==(Transpiration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
 
-                if (_CAPILLARY_RISE == 1){ //BR
+                if (_DARCY_WATER_FLUX == 1){ //BR
                     if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                     if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(water_change_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
@@ -7155,7 +7151,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     // cout << "layer: " << l << " SWC3D initialized at FC: " << SWC3D[l][dcell] << endl; 
 
 
-                    if (_CAPILLARY_RISE == 1) {//BR
+                    if (_DARCY_WATER_FLUX == 1) {//BR
                         SWC3D_cap[l][dcell]=FC_SWC[l];
                         // cout << "layer: " << l << " SWC3D_cap initialized at FC: " << SWC3D_cap[l][dcell] << endl; 
                     }
@@ -7171,7 +7167,7 @@ if (_WATER_RETENTION_CURVE==1) {
                             cout << "Initialisation of SWC " << endl;
                             cout << "Layer " << l << " SWC3D " << SWC3D[l][dcell] << endl; 
 
-                            if (_CAPILLARY_RISE == 1){ // If capillarity and WT is activated
+                            if (_DARCY_WATER_FLUX == 1){ // If capillarity and WT is activated
                                 SWC3D_cap[l][dcell] = Max_SWC[l];
 
                                 cout << "Initialisation of SWC_cap" << endl;
@@ -7186,7 +7182,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     //KsPhi2[l][dcell]=0.0;
                     Transpiration[l][dcell]=0.0;
 
-                    if (_CAPILLARY_RISE == 1){ //BR
+                    if (_DARCY_WATER_FLUX == 1){ //BR
                         soil_phi3D_cap[l][dcell]=0.0; //BR
                         water_change_cap[l][dcell]=0.0; //BR
                         Ks_cap[l][dcell]=0.0; //BR
@@ -7203,7 +7199,7 @@ if (_WATER_RETENTION_CURVE==1) {
             }
 
             // Loop for variables that only exists at the interface of soil layers
-            if (_CAPILLARY_RISE == 1) {//BR
+            if (_DARCY_WATER_FLUX == 1) {//BR
                 for(int l=0;l<nblayers_soil-1;l++) {
                         if(NULL==(Ks_cap_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                         if(NULL==(q_cap[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
@@ -7780,7 +7776,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
                 Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers.
 
-} //endif vert water flux considring Darcy's law
+} //endif vert water flux considering Darcy's law for the first layer
 
 
 
@@ -7844,11 +7840,11 @@ if (_WATER_RETENTION_CURVE==1) {
      * @param water_upward_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
      *  */
 
-                if (_CAPILLARY_RISE==1) { // BR
+                if (_DARCY_WATER_FLUX == 1) { // BR
                     
                     VerticalWaterFlux(d);
 
-                } // end if (_CAPILLARY_RISE==1) 
+                } // end if _DARCY_WATER_FLUX 
 
               
             
@@ -8813,7 +8809,7 @@ if (_WATER_RETENTION_CURVE==1) {
 #endif
 
 #ifdef OUTPUT_VERT_WATER // BR
-    if (_CAPILLARY_RISE == 1){
+    if (_DARCY_WATER_FLUX == 1){
             output_vertical_flux << iter << '\t';   
             for(int l=0; l<nblayers_soil; l++) {
                 float water_change_cap_out = 0.0;
