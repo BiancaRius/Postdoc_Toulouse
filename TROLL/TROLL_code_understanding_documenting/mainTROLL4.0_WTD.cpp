@@ -435,7 +435,8 @@ float **Ks(0);              //!< Global 3D field: soil hydraulic conductivity in
 float **Ks_darcy(0);          //!<Global 3D field: intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **Ks_darcy_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **q_darcy(0);            //!<Global 3D field: water flux (in m/s) between two layers (layer * DCELL). It can be up or downward depending on the q_darcy sign //BR
-float **water_disp(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
+float **water_disp(0); //Global 3D field: equivalent water-column displacement across interface over one timestep [m](layer * DCELL) // > 0 upward, < 0 downward  //BR
+float **abs_water_disp(0); //Global 3D field: absolute value of water_disp, used to compute the change in soil water content in each layer (layer * DCELL) //BR
 float **water_change_darcy(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above. = layer_change_vol but used to output purpose //BR
 float **interface_transfer_vol(0); //!<Global 3D field: the volume [m3] of water that moved up due to capillarity between two layers (layer * DCELL) //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
@@ -7128,6 +7129,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(Ks_darcy_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(q_darcy = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_disp = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(abs_water_disp = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_change_darcy = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(interface_transfer_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
             }
@@ -7206,11 +7208,13 @@ if (_WATER_RETENTION_CURVE==1) {
                         if(NULL==(Ks_darcy_harmonic[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                         if(NULL==(q_darcy[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                         if(NULL==(water_disp[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                        if(NULL==(abs_water_disp[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                         if(NULL==(interface_transfer_vol[l] = new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     for (int dcell=0; dcell<nbdcells; dcell++) {
                         Ks_darcy_harmonic[l][dcell] = 0.0; //BR
                         q_darcy[l][dcell] = 0.0; //BR
                         water_disp[l][dcell] = 0.0; //BR
+                        abs_water_disp[l][dcell] = 0.0; //BR
                         interface_transfer_vol[l][dcell] = 0.0; //BR
                     }
                 }
@@ -7811,45 +7815,21 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
                 // end of water table consideration
 
-    /**
-     * @brief Manages calculations for capillary rise within the soil profile.
-     *
-     * This function calculates key variables necessary for modeling upward water movement 
-     * (capillary rise) between soil layers. It determines layer properties like thickness 
+    /**     
+     * Call function VerticalWaterFlux. This function calculates key variables necessary for modeling vertical water movement 
+     * (capillary rise + percolation) between soil layers. It determines layer properties like thickness 
      * and elevation, then uses either the van Genuchten-Mualem or Brooks & Corey-Mualem 
      * models to compute soil hydraulic properties. Finally, it calculates the water flux 
      * and the resulting change in water content for each layer.
-     *
      * The code uses the soil surface as the reference datum ($z=0.0$), with depth increasing
      * downwards (negative $z$ values).
-     *
-     * @param nblayers_soil Number of soil layers.
-     * @param layer_depth A vector containing the depth to the bottom of each layer from the soil surface [m].
-     * @param WTD Water table depth from the soil surface [m].
-     * @param SWC3D A 3D array of soil water content for each layer.
-     * @param Min_SWC A vector of minimum soil water content for each layer.
-     * @param Max_SWC A vector of maximum soil water content for each layer.
-     * @param a_vgm, b_vgm, c_vgm, m_vgm Parameters for the van Genuchten-Mualem model.
-     * @param phi_e, b Parameters for the Brooks & Corey-Mualem model.
-     * @param Ksat A vector of saturated hydraulic conductivity for each layer [m/s].
-     * @param delta_z_face A vector to store the vertical distance between adjacent layer centers [m].
-     * @param soil_phi3D_darcy A 3D array to store the calculated soil water potential [MPa].
-     * @param Ks_darcy A 3D array to store the calculated unsaturated hydraulic conductivity [m/s].
-     * @param Ks_darcy_harmonic A 3D array to store the harmonic mean of hydraulic conductivity between layers [m/s].
-     * @param q_darcy A 3D array to store the upward capillary flux between layers [m/s].
-     * @param water_disp A 3D array to store the displacement of water [m] due to vertical movement (both up and downward).
-     * @param water_change_darcy A 3D array to store the change in water content due to vertical movement.
-     * @param interface_transfer_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
-     *  */
-
+     * */
                 if (_DARCY_WATER_FLUX == 1) { // BR
                     
                     VerticalWaterFlux(d);
 
                 } // end if _DARCY_WATER_FLUX 
 
-              
-            
             }// END of the BUCKET MODEL.
             
             // Update of soil water potential field
@@ -8152,8 +8132,10 @@ if (_WATER_RETENTION_CURVE==1) {
                 float vol_bottom = layer_thickness_global[l+1] * voxel_area;   // m³
 
                 if (water_disp[l][d] > 0.0f){
+                    abs_water_disp[l][d] = std::fabs(water_disp[l][d]); // magnitude/absolute value of the water height transported across the interface, regardless of the direction (up or down)
+                    
                     // from l+1 to l
-                    float potential_transfer = water_disp[l][d] / layer_thickness_global[l];  // usa espessura da camada receptora (como estava)
+                    float potential_transfer = abs_water_disp[l][d] / layer_thickness_global[l];  // usa espessura da camada receptora (como estava)
                     float vol_potential_transfer = potential_transfer * vol_top;
 
                     // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
@@ -8171,14 +8153,14 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 } else if (water_disp[l][d] < 0.0f){
                     // from l to l+1
-                    // For downward flow (water_disp < 0), -water_disp gives the magnitude of the water height
+                    // For downward flow (water_disp < 0), abs_water_disp gives the magnitude of the water height
                     // transported across the interface. Note that the sign of wh encodes the
                     // flow direction, but the actual transfer volume must be positive.
                     // The direction is applied later when updating layer_change_vol for each layer.
-                    water_disp[l][d] = - water_disp[l][d];
+                    abs_water_disp[l][d] = std::fabs(water_disp[l][d]); // magnitude/absolute value of the water height transported across the interface, regardless of the direction (up or down)
                     
                     // now the receiver is the lower layer, that is why we use its thickness and volume 
-                    float potential_transfer = water_disp[l][d]/ layer_thickness_global[l+1];
+                    float potential_transfer = abs_water_disp[l][d]/ layer_thickness_global[l+1];
                     float vol_potential_transfer = potential_transfer * vol_bottom;
 
                     // and here the volume is limited by the potential volume to be transfered, the donor capacity of the upper layer and the receiver capacity of the lower layer
@@ -8840,8 +8822,7 @@ if (_WATER_RETENTION_CURVE==1) {
             for(int l=0; l<nblayers_soil-1; l++) {
                 float water_disp_out = 0.0;
                 for (int d=0; d<nbdcells; d++) {
-                    water_disp_out = water_disp[l][d]; // in m3
-                    // cout << "layer OUTPUT vertical water change_" << l << vertical_flux_vol << endl; 
+                    water_disp_out = water_disp[l][d]; // // in m (signed equivalent water-column displacement)     
                 }
                 output_vertical_flux << water_disp_out << "\t";
             }
