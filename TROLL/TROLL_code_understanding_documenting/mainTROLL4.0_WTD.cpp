@@ -7764,7 +7764,7 @@ if (_WATER_RETENTION_CURVE==1) {
 } // end of water retention curve choice
 
             // 2. Compute Potential Maximum amount of water that layer 0 can absorb from throughfall, i.e. without considering the layer hydraulic conductivity (Ks)
-                float pot_max_gain = FC_SWC[0] - SWC3D[0][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. NOTE: Here, the maximum water storage capacity of a layer(l) == Max_SWC[l] not FC_SWC[l]. Field capacity is used only in bucket schemes; under Darcy, gravitational drainage emerges from the (ψ + z) gradient.
+                float pot_max_gain = Max_SWC[0] - SWC3D[0][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. NOTE: Here, the maximum water storage capacity of a layer(l) == Max_SWC[l] not FC_SWC[l]. Field capacity is used only in bucket schemes; under Darcy, gravitational drainage emerges from the (ψ + z) gradient.
                 pot_max_gain = fmaxf(0.0f, pot_max_gain); // to avoid negative values due to numerical approximations
 
             // 3. Compute maximum volume of water that can infiltrate the soil layer during the timestep, limited by the layer hydraulic conductivity // m3 
@@ -7878,7 +7878,7 @@ if (_WATER_RETENTION_CURVE==1) {
             // conductivity (Ks) based on the chosen water retention model.
             for (int l=0; l<nblayers_soil; l++) {
 
-                // Intermediate relative humidity for 
+                // Intermediate relative humidity for Darcy-based water flux calculation (theta_w_darcy) - this is the relative soil water content used to calculate soil water potential and hydraulic conductivity for the Darcy-based water flux calculation. It is calculated based on the current soil water content (SWC3D) and the minimum and maximum soil water content for the layer. This variable is used to compute soil hydraulic properties specifically for the Darcy-based water flux calculation, which may differ from the relative soil water content used in other parts of the model (e.g., bucket model). 
                 float theta_w_darcy = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
                 // Special condition for layers below the water table // BR
@@ -7960,7 +7960,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 float gravity = 9.81f; // Acceleration due to gravity [m/s2]
 
                 // // Calculate flux using a modified Darcy's Law. 
-
                 // Considering up and downward flux (q_darcy > 0 = upward flux; q_darcy < 0 = downward flux)
                 q_darcy[l][d] = - Ks_darcy_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
                 
@@ -7970,108 +7969,6 @@ if (_WATER_RETENTION_CURVE==1) {
 
 
             } // End for layers interface (step 3)
-
-            // // --- Substep: identifying the capillary fringe ---
-            // // that is, how much the water from WT contributes to the water availability in the layers above it.
-            
-            // int l_wt = -1; //variable to identify the layer where the water table is located
-            // int l_abv_wt = -1; //variable to identify the layer just above the water table
-            // for (int l=0; l<nblayers_soil; l++) {
-            //     if (_WATER_TABLE == 1) { 
-            //         if (layer_depth[l] > WTD) {
-            //             l_wt = l;
-            //             break; // Exit loop once the WT layer is found  
-            //         }                          
-            //     }
-            // } // End for identifying cap fringe (substep)
-
-            // // Identify the layer just above the water table
-            // if (l_wt > 0) {
-            //     l_abv_wt = l_wt - 1;
-            //     // cout << "Layer of WT: " << l_wt << ", Layer above WT: " << l_abv_wt << endl;
-            // }
-
-            // // Identify if there is water supply from the water table
-            // float q_wt_supply = 0.0f;     // Initialize the water table supply variable
-            // float water_height_wt = 0.0f; // Initialize the water height from WT
-            
-            // if (l_wt > 0 && l_abv_wt >= 0) {
-            //     q_wt_supply = q_darcy[l_abv_wt][d]; // m/s // Water flux at the interface just above the WT layer
-            //     water_height_wt = std::max(0.0f, q_wt_supply)* delta_t_sec; // m // (max(0.0, q_wt_supply)) Keep only the upward (WT-to-soil) 
-            //                                                                 //contribution: downward flux (q_wt_supply < 0) is drainage toward the WT and is not counted as groundwater supply.
-
-            // }
-
-            // // if there is no water going up from the WT interface, there is no capillary rise comingo from WT 
-            // int fringe_top_layer = -1; // index for the heighest layer reached by the capillary fringe from WT
-            // float height_fringe = 0.0f; // height above WT
-
-            // // Threshold to ignore noise: minimum height (m) that needs to rise in the timestep
-            // // adjust later if nece ssary
-            // const float epsH = 1e-6f; // 1 micrometer per timestep
-
-            
-            // // If groundwater supply is detected at the WT interface, track how far upward this supply remains
-            // // hydraulically connected through a continuous chain of upward fluxes (capillary-rise connectivity).
-            // if (water_height_wt > epsH && l_wt > 0) {
-
-            //     // Start from the layer immediately above the water table (minimum extent of WT influence in this timestep)
-            //     fringe_top_layer = l_abv_wt;
-
-            //     // Move upward: as long as the interface above each layer still shows upward transport,
-            //     // the WT-origin supply can propagate further up.
-            //     // Note: water_disp[i] is associated with the interface between layers i and i+1.
-            //     for (int i = l_abv_wt - 1; i >= 0; --i) {
-
-            //         // Keep only the upward component (positive height); downward values indicate drainage/redistribution
-            //         float H_up = std::max(0.0f, water_disp[i][d]);
-
-            //         if (H_up > epsH) {
-            //             // The WT-driven upward connection still reaches this level (layer i)
-            //             fringe_top_layer = i;
-            //         } else {
-            //             // Connectivity breaks here: WT supply does not reach layers above this interface in this timestep
-            //             break;
-            //         }
-            //     }
-
-            //     // Convert the top layer index into a geometric height above the water table (m)
-            //     // layer_depth stores the depth of the *bottom* of each layer (positive downward).
-            //     height_fringe = WTD - layer_depth[fringe_top_layer];
-
-            //     // Safety clamp (can be negative if indexing/geometry is inconsistent or WT is very shallow)
-            //     if (height_fringe < 0.0f) height_fringe = 0.0f;
-            // }
-
-            // // (Optional) "Pore-filling" filter: require near-saturation at the fringe top layer
-            // // Example criterion: consider the fringe as "filled" only if the top layer is at least 90% of saturation.
-            // bool fringe_is_filled = false;
-            // if (fringe_top_layer >= 0) {
-            //     if (SWC3D[fringe_top_layer][d] >= 0.9f * Max_SWC[fringe_top_layer]) {
-            //         fringe_is_filled = true;
-            //     }
-            // }
-
-            // // Write a lightweight debug output (single cell, e.g. d==0) to avoid exploding I/O and file size
-            // if (d == 0) {
-            //     static std::ofstream fout("capillary_fringe_debug.csv");
-            //     static bool header_written = false;
-
-            //     if (!header_written) {
-            //         fout << "WTD,l_wt,l_abv_wt,q_wt_supply,water_height_wt,fringe_top_layer,height_fringe,fringe_is_filled\n";
-            //         header_written = true;
-            //     }
-
-            //     // Replace 'step' with your timestep counter / day index / simulation time variable.
-            //     fout << WTD << "," << l_wt << "," << l_abv_wt << ","
-            //         << q_wt_supply << "," << water_height_wt << ","
-            //         << fringe_top_layer << "," << height_fringe << "," << (fringe_is_filled ? 1 : 0) << "\n";
-            // }
-
-            
-
-
-
 
 
             // --- Step 4: Evaluate the capacities of the layers to donate or receive water ---
@@ -8126,16 +8023,15 @@ if (_WATER_RETENTION_CURVE==1) {
             for (int l = 0; l < nblayers_soil -1; l++){
                 interface_transfer_vol[l][d] = 0.0f; // re-initialize to zero, will be updated with the actual volume transfered between layers after considering the restrictions of donor and receiver capacity
 
-                   
                 // Considering up and downward movement
                 float vol_top = layer_thickness_global[l] * voxel_area;   // m³
                 float vol_bottom = layer_thickness_global[l+1] * voxel_area;   // m³
 
-                if (water_disp[l][d] > 0.0f){
+                if (water_disp[l][d] > 0.0f){ //upward flow
                     abs_water_disp[l][d] = std::fabs(water_disp[l][d]); // magnitude/absolute value of the water height transported across the interface, regardless of the direction (up or down)
                     
                     // from l+1 to l
-                    float potential_transfer = abs_water_disp[l][d] / layer_thickness_global[l];  // usa espessura da camada receptora (como estava)
+                    float potential_transfer = abs_water_disp[l][d] / layer_thickness_global[l];  // uses receiver layer thickness
                     float vol_potential_transfer = potential_transfer * vol_top;
 
                     // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
