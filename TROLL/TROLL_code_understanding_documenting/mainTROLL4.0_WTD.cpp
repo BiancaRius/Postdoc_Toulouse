@@ -7787,7 +7787,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
 
     /**  @brief Applies water table depth effect on soil water content (SWC) if the bucket model is enabled.
-    *If the water table model (_WATER_TABLE) is enabled (== 1), this block updates the soil water content
+    *If the water table model (_WATER_TABLE) is e   nabled (== 1), this block updates the soil water content
     *(SWC3D) in each soil layer. For layers located below the water table depth (WTD), the soil water
     *content is set to its maximum (Max_SWC).
     * @details
@@ -8007,7 +8007,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 if (_WATER_TABLE == 1) {  // BR
                     if (layer_depth[l] > WTD) {
                         donor_capacity[l] = INFINITY;
-                        receiv_capacity[l] = 0.0f;
+                        receiv_capacity[l] = INFINITY; //otherwise, the layer above WT would not be able to discharge water what could create an artificial accumulation of water in the layer and increase too much the capillarity rise
                     }
                 }
         
@@ -8077,7 +8077,15 @@ if (_WATER_RETENTION_CURVE==1) {
             } // End for layers interface (step 5)
 
             // --- Step 6: Update SWC3D after vertical water movement ---
+            //vector<float> deep_drainage(nblayers_soil, 0.0f); // track what should be lost by the water table if we have a deep drainage (can be used in the future) //BR
+            //deep_drainage.assign(nblayers_soil, 0.0f); // initialize to zero
+
             for (int l = 0; l < nblayers_soil; l++){
+                if (_WATER_TABLE == 1 && layer_depth[l] > WTD) {
+                    //deep_drainage[l] = SWC3D[l][d] - Max_SWC[l]; // track the excess water that should be lost by the water table if there is deep drainage (i.e. if SWC3D exceeds Max_SWC for layers below the water table). This is for output purposes and can be used in the future to implement a deep drainage routine that removes this excess water from the system, as currently we just set SWC3D to Max_SWC for layers below the water table without explicitly tracking the excess water.
+                    layer_change_vol[l] = 0.0f; // override any calculated change in water content for layers below the water table, as they are already saturated and cannot receive more water. However, they can still donate water if there is upward flux, but this will be reflected in the change of the layer above (if any) and not in their own SWC3D which remains at Max_SWC.
+                    SWC3D[l][d] = Max_SWC[l]; // ensure that SWC3D of layers below the water table is set to Max_SWC, as they are saturated. This is a safeguard to prevent any numerical issues that could arise from the flux calculations, ensuring that the physical constraint of saturation below the water table is maintained in the model output.
+                }
                 water_change_darcy[l][d] = layer_change_vol[l]; //for output purpose
                         
                 SWC3D[l][d] += layer_change_vol[l]; //update SWC3D after capillary rise
