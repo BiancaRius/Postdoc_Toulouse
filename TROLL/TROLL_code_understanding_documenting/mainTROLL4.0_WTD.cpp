@@ -8181,7 +8181,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 if (_WATER_TABLE == 1) {  // BR
                     if (layer_depth[l] > WTD) {
                         donor_capacity[l] = INFINITY;
-                        receiv_capacity[l] = INFINITY;
+                        receiv_capacity[l] = INFINITY; //otherwise, the layer above WT would not be able to discharge water what could create an artificial accumulation of water in the layer and increase too much the capillarity rise
                     }
                 }
         
@@ -8287,6 +8287,12 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 
             // --- Step 6: Update SWC3D after capillary rise ---
             for (int l = 0; l < nblayers_soil; l++){
+                if (_WATER_TABLE == 1 && layer_depth[l] > WTD) {
+                    //deep_drainage[l] = SWC3D[l][d] - Max_SWC[l]; // track the excess water that should be lost by the water table if there is deep drainage (i.e. if SWC3D exceeds Max_SWC for layers below the water table). This is for output purposes and can be used in the future to implement a deep drainage routine that removes this excess water from the system, as currently we just set SWC3D to Max_SWC for layers below the water table without explicitly tracking the excess water.
+                    water_change_vol[l] = 0.0f; // override any calculated change in water content for layers below the water table, as they are already saturated and cannot receive more water. However, they can still donate water if there is upward flux, but this will be reflected in the change of the layer above (if any) and not in their own SWC3D which remains at Max_SWC.
+                    SWC3D[l][d] = Max_SWC[l]; // ensure that SWC3D of layers below the water table is set to Max_SWC, as they are saturated. This is a safeguard to prevent any numerical issues that could arise from the flux calculations, ensuring that the physical constraint of saturation below the water table is maintained in the model output.
+                }
+               
                 water_change_cap[l][d] = water_change_vol[l]; //for output purpose
                         
                 SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
