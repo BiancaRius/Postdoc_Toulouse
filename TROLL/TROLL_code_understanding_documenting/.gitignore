@@ -11,3 +11,10 @@
 wtd_test.txt
 # Track this specific file
 !Paracou_input_global.txt
+
+runs/**/outputs/
+runs/**/output/
+runs/**/out/
+*.parquet
+*.png
+.Rhistory
