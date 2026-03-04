@@ -439,6 +439,7 @@ float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s)
 float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
 float **water_change_cap(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
 float **water_upward_vol(0); //!<Global 3D field: the volume [m3] of water that moved up due to capillarity between two layers (layer * DCELL) //BR
+float **actual_infiltration(0); //!<Global 3D field: the actual infiltration (in m/s) in each soil voxel (layer * DCELL), after accounting for runoff and soil saturation //BR
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -4674,7 +4675,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
 #endif
             if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD = " << WTD << endl;
             if(_CAPILLARY_RISE == 1) cout << "Activated Module: CAPILLARY RISE  " << endl;
-            if(_UNIFIED_VERT_WATER_FLUX == 1) cout << "Activated Module: CAPILLARY RISE  " << endl;
+            if(_UNIFIED_VERT_WATER_FLUX == 1) cout << "Activated Module: UNIFIED VERT WATER  " << endl;
             if(_GPPcrown == 1) cout << "Activated Module: FastGPP" << endl;
             if(_BASICTREEFALL == 1) cout << "Activated Module: BASICTREEFALL" << endl;
             if(_NDD == 1) cout << "Activated Module: NDD" << endl;
@@ -7135,7 +7136,9 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(water_upward_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
+                if(NULL==(water_upward_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)
+                if(NULL==(actual_infiltration = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR)  
+  
             }
 
             for(int l=0;l<nblayers_soil;l++) {
@@ -7150,6 +7153,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                     if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(water_change_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(actual_infiltration[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 }
 
@@ -7193,6 +7197,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     if (_CAPILLARY_RISE == 1){ //BR
                         soil_phi3D_cap[l][dcell]=0.0; //BR
                         water_change_cap[l][dcell]=0.0; //BR
+                        actual_infiltration[l][dcell]=0.0; //BR
                         Ks_cap[l][dcell]=0.0; //BR
                         if (SWC3D_cap[l][dcell]<=0.0) {
                             cout << "Soil water content capillarity <=0.0  " << SWC3D_cap[l][dcell] << "\t" <<Max_SWC[l] << "\n";
@@ -7735,11 +7740,11 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                 
                 if(theta_w_inf == 0) {
                         theta_w_inf = 0.001; // following SS addition for limit value //BR
-                        // cout << "Warning theta_w = 0 " << endl ;
+                        cout << "Warning theta_w = 0 " << endl ;
                 }
 
-                // cout << "Relative soil water content (infiltration): dcell " << d << " theta_w_inf=" << theta_w_inf << endl ;
-
+                cout << "Relative soil water content (infiltration): dcell " << d << " theta_w_inf=" << theta_w_inf << endl ;
+                cout << "SWC3D[0][d]=" << SWC3D[0][d] << " Min_SWC[0]=" << Min_SWC[0] << " Max_SWC[0]=" << Max_SWC[0] << endl;
                 //
                 //Initialize internal variables to calculate hydraulic potential for the first layer
                 float soil_phi3D_inf = 0.0;
@@ -7782,11 +7787,13 @@ if (_WATER_RETENTION_CURVE==1) {
 
 
             // 4. Actual infiltration is the minimum between the water available from throughfall, the potential maximum gain of the layer, and the maximum volume that can infiltrate limited by Ks    
-                float actual_infiltration = fminf(in, fminf(vol_inf_K, pot_max_gain)); // m3                
+                actual_infiltration[0][d] = fminf(in, fminf(vol_inf_K, pot_max_gain)); // m3
+                cout << "Actual infiltration out cap = " << actual_infiltration[0][d] << endl << " and potential max gain = " << pot_max_gain << " and vol_inf_K = " << vol_inf_K << endl;                
+                cout << "Throughfall = " << in << endl << "Ks_inf = " << Ks_inf << endl << "theta_w_inf = " << theta_w_inf << endl << "ksat = " << Ksat[0] << endl;               
 
             // 5. Update soil water content of layer 0 after infiltration
-                SWC3D[0][d] += actual_infiltration;
-                Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
+                SWC3D[0][d] += actual_infiltration[0][d]; // m3
+                Runoff[d]   += in - actual_infiltration[0][d]; // excess water that cannot infiltrate becomes runoff
                 Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers.
 
 } //endif unified vert water flux
@@ -8275,6 +8282,16 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 }
 
             } // End for layers (step 6)
+
+            // --- Substep: checking water balance ---
+            for (int l=0; l<nblayers_soil; l++) {
+                if(l == 0){
+                    cout << "layer = " << l << " actual infiltration" << actual_infiltration[0][d] << endl;
+                } 
+                // if (layer_depth[l] <= WTD){
+                //     cout << "layer ========" << l << endl ; //confirm the balance is being checked only for the layers above WT
+                // }
+            }
 
             // --- Step 7: Sanity check for updated SWC3D ---
             for (int l=0; l<nblayers_soil; l++) {    
