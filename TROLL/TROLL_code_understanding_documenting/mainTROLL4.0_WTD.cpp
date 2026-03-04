@@ -8181,7 +8181,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 if (_WATER_TABLE == 1) {  // BR
                     if (layer_depth[l] > WTD) {
                         donor_capacity[l] = INFINITY;
-                        receiv_capacity[l] = 0.0f;
+                        receiv_capacity[l] = INFINITY;
                     }
                 }
         
