@@ -4673,7 +4673,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             cout << "Atmospheric pressure is: " << PRESS << endl;
 #endif
             if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD = " << WTD << endl;
-            if(_CAPILLARY_RISE == 1) cout << "Activated Module: CAPILLARY RISE = " << endl;
+            if(_CAPILLARY_RISE == 1) cout << "Activated Module: CAPILLARY RISE  " << endl;
+            if(_UNIFIED_VERT_WATER_FLUX == 1) cout << "Activated Module: CAPILLARY RISE  " << endl;
             if(_GPPcrown == 1) cout << "Activated Module: FastGPP" << endl;
             if(_BASICTREEFALL == 1) cout << "Activated Module: BASICTREEFALL" << endl;
             if(_NDD == 1) cout << "Activated Module: NDD" << endl;
@@ -4997,6 +4998,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 SetParameter(parameter_name, parameter_value, _WATER_TABLE, bool(0), bool(1), bool(0), quiet); //BR
             } else if(parameter_name == "_CAPILLARY_RISE"){
                 SetParameter(parameter_name, parameter_value, _CAPILLARY_RISE, bool(0), bool(1), bool(0), quiet); //BR
+            } else if(parameter_name == "_UNIFIED_VERT_WATER_FLUX"){
+                SetParameter(parameter_name, parameter_value, _UNIFIED_VERT_WATER_FLUX, bool(0), bool(1), bool(0), quiet); //BR
             } else if(parameter_name == "_GPPcrown"){
                 SetParameter(parameter_name, parameter_value, _GPPcrown, bool(0), bool(1), bool(0), quiet);
             } else if(parameter_name == "_BASICTREEFALL"){
@@ -5085,8 +5088,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             fstream In(inputfile, ios::in);
             if(In){
 #ifdef WATER
-                string parameter_names[74] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta","WTD", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_WATER_TABLE","_CAPILLARY_RISE","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
-                int nb_parameters = 74;
+                string parameter_names[75] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","g0", "pheno_a0", "pheno_b0", "pheno_delta","WTD", "vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","sigma_leafarea","sigma_tlp","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","PRESS","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_SOIL_LAYER_WEIGHT","_WATER_RETENTION_CURVE","_NONRANDOM", "_WATER_TABLE","_CAPILLARY_RISE","_UNIFIED_VERT_WATER_FLUX","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","_OUTPUT_inventory", "extent_visual"};
+                int nb_parameters = 75;
 #else
                 string parameter_names[61] = {"cols","rows","HEIGHT","length_dcell","nbiter","NV","NH","nbout","p_nonvert","SWtoPPFD","klight","absorptance_leaves","theta","phi","g1","vC","DBH0","H0","CR_min","CR_a","CR_b","CD_a","CD_b","CD0","shape_crown","dens","fallocwood","falloccanopy","Cseedrain","nbs0","sigma_height","sigma_CR","sigma_CD","sigma_P","sigma_N","sigma_LMA","sigma_wsg","sigma_dbhmax","corr_CR_height","corr_N_P","corr_N_LMA","corr_P_LMA","leafdem_resolution","p_tfsecondary","hurt_decay","crown_gap_fraction","m","m1","Cair","_LL_parameterization","_LA_regulation","_sapwood","_seedsadditional","_NONRANDOM","_GPPcrown","_BASICTREEFALL","_SEEDTRADEOFF","_NDD","_CROWN_MM","_OUTPUT_extended","extent_visual"};
                 int nb_parameters = 61;
@@ -7683,6 +7686,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 // }
 
 if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux scheme is disabled, downward flux is considered using bucket model scheme //BR
+
                 if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
                     while((l<nblayers_soil) && (in>0.0)) {
@@ -7716,23 +7720,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
 
 
 } else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-            cout << "UNIFIED_VERT_WATER_FLUX";
-
 
             // ******* Infiltration calculation following a Darcy-based approach ********
             // Unlike the bucket model above, infiltration here is not limited only by the
