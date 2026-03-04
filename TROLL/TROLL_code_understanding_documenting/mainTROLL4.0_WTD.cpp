@@ -8598,7 +8598,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 
                 
 #ifdef WATER
-                cout << iter << "\tTrees (1/ha): " << sum1 << " | " << sum10 << " | " << sum30 << " *** nbdead (%): " << 100.0*nbdead_n1 * inbhectares/sum1 << " | " << 100.0*nbdead_n10 * inbhectares/sum10 << " | " << 100.0*nbdead_n30 * inbhectares/sum30 << " *** AGB (t/ha): " << round(agb/1000.0) << " GPP (MgC/ha/yr) " << gpp*iterperyear << " NPP " << npp*iterperyear << " litterfall (Mg/ha/yr) " << litterfall*iterperyear << " *** Transpiration (mm): ";
+                // cout << iter << "\tTrees (1/ha): " << sum1 << " | " << sum10 << " | " << sum30 << " *** nbdead (%): " << 100.0*nbdead_n1 * inbhectares/sum1 << " | " << 100.0*nbdead_n10 * inbhectares/sum10 << " | " << 100.0*nbdead_n30 * inbhectares/sum30 << " *** AGB (t/ha): " << round(agb/1000.0) << " GPP (MgC/ha/yr) " << gpp*iterperyear << " NPP " << npp*iterperyear << " litterfall (Mg/ha/yr) " << litterfall*iterperyear << " *** Transpiration (mm): ";
 #else
                 
                 cout << iter << "\tTrees (1/ha): " << sum1 << " | " << sum10 << " | " << sum30 << " *** nbdead (%): " << 100.0*nbdead_n1 * inbhectares/sum1 << " | " << 100.0*nbdead_n10 * inbhectares/sum10 << " | " << 100.0*nbdead_n30 * inbhectares/sum30 << " *** AGB (t/ha): " << round(agb/1000.0) << " GPP (MgC/ha/yr) " << gpp*iterperyear << " NPP " << npp*iterperyear << " litterfall (Mg/ha/yr) " << litterfall*iterperyear << endl;
