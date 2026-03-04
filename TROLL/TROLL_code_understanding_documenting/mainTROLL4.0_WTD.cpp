@@ -6947,7 +6947,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 if (_WATER_RETENTION_CURVE==1) {
                     if(theta_w==0) {
                         theta_w=0.001; // SS addition for limit value
-                        cout << "Warning theta_w = 0 " << endl ;
+                        // cout << "Warning theta_w = 0 " << endl ;
                     }
                     soil_phi3D[l][d]=a_vgm[l]*pow((pow(theta_w,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     float inter= 1-pow((1-pow(theta_w, b_vgm[l])),m_vgm[l]);
@@ -7402,6 +7402,8 @@ if (_WATER_RETENTION_CURVE==1) {
     */            
             tnight=NightTemperature[iter%nbdays];
             // precip=Rainfall[iter%nbdays];
+            // Applying reduced precipitation for tests with WTD
+
             precip=Rainfall[iter%nbdays]*0.5;
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
@@ -7530,7 +7532,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     TopWindSpeed_DCELL[d]=1.204/log(16.67*((MeteoStation_Height/Canopy_height_DCELL[d])-0.8)); // WS is the timestep windspeed at a height=MeteoStation_Height, and TopWindSpeed_DCELL is the wind speed computed at a height=Canopy_height_DCELL[d], according to the model of Monteith & Unsworth 2008 (see Rau et al's TROLL manuscript), with d=0.8H and z0=0.06H; 16.67~1/0.06, 1.204=log(0.2/0.06).
                 } else TopWindSpeed_DCELL[d]=exp(alphaInoue*(1-MeteoStation_Height/Canopy_height_DCELL[d]));
                 if (Canopy_height_DCELL[d]==0) {
-                    cout << "in UpdateField: d=" << d << "; Canopyheight_DCELL[d]=" << Canopy_height_DCELL[d] << "; HSum_DCELL[d]=" << HSum_DCELL[d] << "; TopWindSpeed_DCELL[d]=" << TopWindSpeed_DCELL[d] << endl;
+                    // cout << "in UpdateField: d=" << d << "; Canopyheight_DCELL[d]=" << Canopy_height_DCELL[d] << "; HSum_DCELL[d]=" << HSum_DCELL[d] << "; TopWindSpeed_DCELL[d]=" << TopWindSpeed_DCELL[d] << endl;
                 }
 #else
                if (Canopy_height_DCELL[d]<=MeteoStation_Height) {
@@ -7714,6 +7716,23 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
 
 
 } else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+            cout << "UNIFIED_VERT_WATER_FLUX";
+
 
             // ******* Infiltration calculation following a Darcy-based approach ********
             // Unlike the bucket model above, infiltration here is not limited only by the
@@ -7729,7 +7748,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                 
                 if(theta_w_inf == 0) {
                         theta_w_inf = 0.001; // following SS addition for limit value //BR
-                        cout << "Warning theta_w = 0 " << endl ;
+                        // cout << "Warning theta_w = 0 " << endl ;
                 }
 
                 // cout << "Relative soil water content (infiltration): dcell " << d << " theta_w_inf=" << theta_w_inf << endl ;
@@ -7867,7 +7886,7 @@ if (_WATER_RETENTION_CURVE==1) {
 if (_WATER_RETENTION_CURVE==1) {
                     if(theta_w==0) {
                         theta_w=0.001; // SS addition for limit value
-                        cout << "Warning theta_w = 0 " << endl ;
+                        // cout << "Warning theta_w = 0 " << endl ;
                     }
                     soil_phi3D[l][d]=a_vgm[l]*pow((pow(theta_w,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     float inter= 1-pow((1-pow(theta_w, b_vgm[l])),m_vgm[l]);
@@ -8251,10 +8270,11 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 
                     // output
                     water_upward_vol[l][d] = - vol_transfer_restricted;
-
                 }
-}
+} // end if unified/non unified
+
             } // End for layers interface (step 5)
+
 
             // --- Step 6: Update SWC3D after capillary rise ---
             for (int l = 0; l < nblayers_soil; l++){
