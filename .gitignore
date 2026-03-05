@@ -27,3 +27,4 @@ TROLL/Nouragues_climate/GEE/output_daily.csv
 # Ignore macOS system files
 .DS_Store
 .Rproj.user
+TROLL/TROLL_code_understanding_documenting/debug_troll.log
