@@ -4673,7 +4673,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             cout << "Atmospheric pressure is: " << PRESS << endl;
 #endif
             if(_WATER_TABLE == 1) cout << "Activated Module: water table with WTD = " << WTD << endl;
-            if(_CAPILLARY_RISE == 1) cout << "Activated Module: CAPILLARY RISE = " << endl;
+            if(_CAPILLARY_RISE == 1) cout << "Activated Module: CAPILLARY RISE " << endl;
             if(_UNIFIED_VERT_WATER_FLUX == 1) cout << "Activated Module: _UNIFIED_VERT_WATER_FLUX " << endl;
             if(_GPPcrown == 1) cout << "Activated Module: FastGPP" << endl;
             if(_BASICTREEFALL == 1) cout << "Activated Module: BASICTREEFALL" << endl;
@@ -5715,11 +5715,14 @@ if (_WATER_RETENTION_CURVE==1) {
                 
                 /// @brief Compute cumulative depth for each soil layer
                 for (int l=0; l<nblayers_soil; l++) {
+                    if (layer_depth[l] > WTD) {
+                        cout << "layer " << l << " is water table. " << " Depth " << layer_depth[l] << " WTD set as " << WTD << endl;
+                    }
+                    cout << endl;
                     cumulative_depth+=layer_thickness[l];
                     layer_depth[l]=cumulative_depth;
-                    cout << "print in read input soil " << endl;
                     cout << l << "  layer thickness= " << layer_thickness[l] << " cumulative depth= " << cumulative_depth << " layer depth= " << layer_depth[l] << endl;
-
+                
                     // Calculate layer geometry --- // To be used in the soil water flow calculations // BR
                     // This section computes the vertical position of each layer's center and the
                     // distance between adjacent layer centers.
@@ -5745,8 +5748,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
                     }
                     
-                    cout << l << "  delta z face READ INPUT SOIL= " << delta_z_face[l] << endl;
-
                 }   
 
 
@@ -5769,10 +5770,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     Sat_SWC[l]= 0.01*(40.61+(0.165*proportion_Silt[l])+(0.162*proportion_Clay[l])+(0.00137*proportion_Silt[l]*proportion_Silt[l])+(0.000018*proportion_Silt[l]*proportion_Silt[l]*proportion_Clay[l])); // this is the Tomasella & Hodnett 1998 tropical texture-based pedotransfer function, as reported in Table 2 of Marthews et al. 2014. in m3.m-3
 }
                     Max_SWC[l]=Sat_SWC[l]*sites_per_dcell*LH*LH*layer_thickness[l]; // in m3
-                    cout << "layer " << l << " Vol=" << sites_per_dcell*LH*LH*layer_thickness[l]<< " m3; Sat_SWC =" << Sat_SWC[l] << " MAX_SWC =" << Max_SWC[l] << " m3." << endl;
-                
-                    cout << "layer " << l << "  Max SWC!!!! = " << Max_SWC[l] << endl;
-
+                    cout << "layer " << l << " Layer volume =" << sites_per_dcell*LH*LH*layer_thickness[l]<< " m3; Sat_SWC =" << Sat_SWC[l] << " Max_SWC =" << Max_SWC[l] << " m3." << endl;
                 }
 
                 
@@ -5802,7 +5800,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     /// @brief Computes minimum soil water content in cubic meters
                     Min_SWC[l]=Res_SWC[l]*sites_per_dcell*LH*LH*layer_thickness[l]; //in m3
 
-                    cout << "layer " << l << " Vol=" << sites_per_dcell*LH*LH*layer_thickness[l] << "m3; Res=" << Res_SWC[l]<<  " MIN_SWC =" << Min_SWC[l] << " m3" << endl;
+                    cout << "layer " << l << " Vol=" << sites_per_dcell*LH*LH*layer_thickness[l] << "m3; Res=" << Res_SWC[l]<<  " Min_SWC =" << Min_SWC[l] << " m3" << endl;
                 }
                 
 if (_WATER_RETENTION_CURVE==1) {
@@ -7170,16 +7168,15 @@ if (_WATER_RETENTION_CURVE==1) {
                     // Here the layers correspondent to the water table depth (WTD) are filled as its maximum
                     // The others, are filled at field capacity (FC) //BR
                         if (layer_depth[l] > WTD) {
-                            cout << "layer " << l << " is water table. " << " Depth " << layer_depth[l] << " WTD set as " << WTD << endl;
+                            // cout << "layer " << l << " is water table. " << " Depth " << layer_depth[l] << " WTD set as " << WTD << endl;
                             SWC3D[l][dcell]     = Max_SWC[l]; 
-                            cout << "Initialisation of SWC " << endl;
-                            cout << "Layer " << l << " SWC3D " << SWC3D[l][dcell] << endl; 
+                            // cout << "Initialisation of SWC " << endl;
+                            // cout << "Layer " << l << " SWC3D " << SWC3D[l][dcell] << endl; 
 
                             if (_CAPILLARY_RISE == 1){ // If capillarity and WT is activated
                                 SWC3D_cap[l][dcell] = Max_SWC[l];
-
-                                cout << "Initialisation of SWC_cap" << endl;
-                                cout << "Layer " << l << " SWC3D_cap " << SWC3D_cap[l][dcell] << endl;     
+                                // cout << "Initialisation of SWC_cap" << endl;
+                                // cout << "Layer " << l << " SWC3D_cap " << SWC3D_cap[l][dcell] << endl;     
                             }
                         }
                     }
