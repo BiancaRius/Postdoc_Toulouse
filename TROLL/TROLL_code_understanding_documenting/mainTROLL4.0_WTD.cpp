@@ -7942,11 +7942,19 @@ if (_WATER_RETENTION_CURVE==1) {
                     }                        
                 }
 
-                 // Prevent division by zero or negative values                    
-                if(theta_w_cap <= 1e-6f) { //BR: update from 0 to <= 1e-6f
-                    theta_w_cap = 0.001; // following the below rule added by SS //BR
-                    // cout << "Warning theta_w_cap = 0 " << endl ;
+                // Debug check: use raw theta before any correction
+                if (theta_w_cap < 0.0f || theta_w_cap > 1.0f) {
+                    cout << "Warning: raw theta_w_cap out of physical bounds at layer " << l
+                        << ", d=" << d
+                        << ", theta_w_cap=" << theta_w_cap
+                        << ", SWC3D=" << SWC3D[l][d]
+                        << ", Min_SWC=" << Min_SWC[l]
+                        << ", Max_SWC=" << Max_SWC[l]
+                        << endl;
                 }
+                
+                // Temporary numerical safeguard
+                theta_w_cap = std::max(1e-6f, std::min(1.0f, theta_w_cap));
 
 if (_WATER_RETENTION_CURVE==1) {
                 soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
@@ -8295,6 +8303,19 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                         
                 SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
 
+                if (SWC3D[l][d] < Min_SWC[l] || SWC3D[l][d] > Max_SWC[l]) {
+                    cout << "Warning: SWC3D out of physical bounds immediately after update at layer " << l
+                        << ", d=" << d
+                        << ", SWC3D=" << SWC3D[l][d]
+                        << ", Min_SWC=" << Min_SWC[l]
+                        << ", Max_SWC=" << Max_SWC[l]
+                        << ", water_change_vol=" << water_change_vol[l]
+                        << ", old_SWC3D=" << (SWC3D[l][d] - water_change_vol[l])
+                        << endl;
+                    cout << "receiv_capacity=" << receiv_capacity[l]
+                        << ", donor_capacity=" << donor_capacity[l]
+                        << endl;
+                }               
             } // End for layers (step 6)
 
             // --- Step 7: Sanity check for updated SWC3D ---
