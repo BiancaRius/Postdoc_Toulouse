@@ -8200,6 +8200,12 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
             water_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
            
+           // Residual capacities: initial donor/receiver capacity updated after each accepted transfer between layers. 
+           // This ensures that a layer cannot donate or receive more water than physically allowed during the timestep,
+           // preventing multiple interfaces from using the same capacity twice.
+            vector<float> receiv_capacity_residual = receiv_capacity; 
+            vector<float> donor_capacity_residual = donor_capacity;
+
             for (int l = 0; l < nblayers_soil -1; l++){
 
 if (_UNIFIED_VERT_WATER_FLUX == 0) {
@@ -8212,17 +8218,30 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 // Transforms the potential water transfer in volume of water
                 float vol_potential_transfer = potential_transfer * vol_top; // m³
 
-                // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
+                // the actual volume transfered is limited by
+                // (1) the potential transfer,
+                // (2) the residual receiver capacity of the upper layer,
+                // (3) the residual donor capacity of the lower layer   
                 float vol_transfer_restricted = std::min(
                     vol_potential_transfer,
-                    std::min(receiv_capacity[l], donor_capacity[l+1]));
+                    std::min(receiv_capacity_residual[l], donor_capacity_residual[l+1]));
 
                 // Water change (if positive, it is the receiver, if negative it is the donor)
                 water_change_vol[l] += vol_transfer_restricted;
 
                 // the lower later (l+1) lose water 
                 water_change_vol[l+1] -= vol_transfer_restricted;
+
+                // Update residual capacities after the transfer
+                receiv_capacity_residual[l]  -= vol_transfer_restricted;
+                donor_capacity_residual[l+1] -= vol_transfer_restricted;
                 
+                // Prevent tiny negative values due to floating point precision
+                receiv_capacity_residual[l]  = std::max(0.0f, receiv_capacity_residual[l]);
+                if (!std::isinf(donor_capacity_residual[l+1])) {
+                    donor_capacity_residual[l+1] = std::max(0.0f, donor_capacity_residual[l+1]);
+                }
+
                 if (_WATER_TABLE == 1) {  
 
                     if (layer_depth[l+1] > WTD){
@@ -8252,12 +8271,21 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
                     float vol_transfer_restricted = std::min(
                                                     vol_potential_transfer,
-                                                    std::min(receiv_capacity[l], donor_capacity[l+1]));
+                                                    std::min(receiv_capacity_residual[l], donor_capacity_residual[l+1]));
 
                     // upper layer (l) receives
                     water_change_vol[l]   += vol_transfer_restricted;
                     // lower layer (l+1) donates
                     water_change_vol[l+1] -= vol_transfer_restricted;
+
+                    // Update residual capacities
+                    receiv_capacity_residual[l]  -= vol_transfer_restricted;
+                    donor_capacity_residual[l+1] -= vol_transfer_restricted;
+
+                    receiv_capacity_residual[l] = std::max(0.0f, receiv_capacity_residual[l]);
+                    if (!std::isinf(donor_capacity_residual[l+1])) {
+                        donor_capacity_residual[l+1] = std::max(0.0f, donor_capacity_residual[l+1]);
+                    }
 
                     // output
                     water_upward_vol[l][d] = vol_transfer_restricted;
@@ -8277,13 +8305,23 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     // and here the volume is limited by the potential volume to be transfered, the donor capacity of the upper layer and the receiver capacity of the lower layer
                     float vol_transfer_restricted = std::min(
                         vol_potential_transfer,
-                        std::min(donor_capacity[l], receiv_capacity[l+1]));
+                        std::min(donor_capacity_residual[l], receiv_capacity_residual[l+1]));
 
                     // upper layer (l) donates
                     water_change_vol[l]   -= vol_transfer_restricted;
                     // lower layer (l+1) receives
                     water_change_vol[l+1] += vol_transfer_restricted;
 
+                    // Update residual capacities
+                    donor_capacity_residual[l]    -= vol_transfer_restricted;
+                    receiv_capacity_residual[l+1] -= vol_transfer_restricted;
+
+                    // Prevent tiny negative values due to floating point precision
+                    if (!std::isinf(donor_capacity_residual[l])) {
+                        donor_capacity_residual[l] = std::max(0.0f, donor_capacity_residual[l]);
+                    }
+                    receiv_capacity_residual[l+1] = std::max(0.0f, receiv_capacity_residual[l+1]);
+                    
                     // output
                     water_upward_vol[l][d] = - vol_transfer_restricted;
 
