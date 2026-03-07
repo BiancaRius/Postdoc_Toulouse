@@ -8188,7 +8188,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                         donor_capacity[l] = INFINITY;
                         // receiv_capacity[l] = INFINITY; //otherwise, the layer above WT would not be able to discharge water what could create an artificial accumulation of water in the layer and increase too much the capillarity rise
                         receiv_capacity[l] = 0.0f; //testing
-                    }
+                    } 
                 }
         
             } // End for layers (step 4)
