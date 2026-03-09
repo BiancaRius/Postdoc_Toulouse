@@ -8007,14 +8007,30 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // Check for division by zero to avoid errors 
                 // If both conductivities are zero, the harmonic mean is also zero
-                if (sum_k > 1e-9f){
+                // if (sum_k > 1e-9f){
+                //     Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                //     // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
+
+                // } else {
+                //     Ks_cap_harmonic[l][d] = 0.0f;
+                //     cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
+                // }
+
+
+                //making a very extreme test
+                if (sum_k > 1e-6f){
                     Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-                    //cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
+                    cout << "Interface btwn layers " << l << " & " << l+1 << " ---" << endl;
+                    cout << "ks cap harmonic ==  " << Ks_cap_harmonic[l][d] << " ---" << endl;
+
 
                 } else {
-                    Ks_cap_harmonic[l][d] = 0.0f;
-                    cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
+                    Ks_cap_harmonic[l][d] = 0.000001f;
+                    // cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
+                    cout << "Warning: Both Ks_cap are zero at layer, setting ks to 0.000001f " << l << " and " << l+1 << endl;
+
                 }
+
 
             } // End for layers interface (step 2)
 
@@ -8190,8 +8206,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 
                 max_gain[l] = FC_SWC[l] - SWC3D[l][d];
 } else {
-                // max_gain[l] = FC_SWC[l] - SWC3D[l][d];
-                max_gain[l] = Max_SWC[l] - SWC3D[l][d];
+                max_gain[l] = FC_SWC[l] - SWC3D[l][d];
+                // max_gain[l] = Max_SWC[l] - SWC3D[l][d];
 }                
                 max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
