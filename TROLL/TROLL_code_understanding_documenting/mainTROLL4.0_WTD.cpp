@@ -6945,16 +6945,25 @@ if (_WATER_RETENTION_CURVE==1) {
             for (int d=0; d<nbdcells; d++) {
                 for (int l=0; l<nblayers_soil; l++) {
                     float theta_w=(SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);
-                if (_WATER_RETENTION_CURVE==1) {
-                    if(theta_w==0) {
-                        theta_w=0.001; // SS addition for limit value
+                    
+                    // if(theta_w==0) {
+                    //     theta_w=0.001; // SS addition for limit value
+                    //     cout << "Warning theta_w = 0 " << endl ;
+                    // }
+                    
+                    if(theta_w < 1e-4) {
+                        theta_w=0.001; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                         cout << "Warning theta_w = 0 " << endl ;
                     }
+
+                if (_WATER_RETENTION_CURVE==1) {
+
                     soil_phi3D[l][d]=a_vgm[l]*pow((pow(theta_w,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     float inter= 1-pow((1-pow(theta_w, b_vgm[l])),m_vgm[l]);
                     Ks[l][d]=Ksat[l]*pow(theta_w, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     if (isnan(soil_phi3D[l][d]) || isnan(Ks[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
                         cout << "In bucket model, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " Ks[l][d]=" << Ks[l][d] << endl ;
+               
                 } else if (_WATER_RETENTION_CURVE==0) {
                     soil_phi3D[l][d]=phi_e[l]*pow(theta_w, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
                     Ks[l][d]=Ksat[l]*pow(theta_w, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
@@ -7889,12 +7898,21 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                     //soil_phi3D[l][d]=phi_e[l]*pow((SWC3D[l][d]/Max_SWC[l]), -b[l]);
                     // cout << "layer: "<< l<< "Current status of SWC3D: " << SWC3D[l][d] << endl; 
                     float theta_w=(SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);
-                    
-if (_WATER_RETENTION_CURVE==1) {
-                    if(theta_w==0) {
-                        theta_w=0.001; // SS addition for limit value
+
+                    // if(theta_w==0) {
+                    //     theta_w=0.001; // SS addition for limit value
+                    //     cout << "Warning theta_w = 0 " << endl ;
+                    // }
+
+                    if(theta_w < 1e-4) {
+                        theta_w=0.001; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                         cout << "Warning theta_w = 0 " << endl ;
                     }
+
+
+                    
+if (_WATER_RETENTION_CURVE==1) {
+
                     soil_phi3D[l][d]=a_vgm[l]*pow((pow(theta_w,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     float inter= 1-pow((1-pow(theta_w, b_vgm[l])),m_vgm[l]);
                     Ks[l][d]=Ksat[l]*pow(theta_w, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
@@ -7953,8 +7971,10 @@ if (_WATER_RETENTION_CURVE==1) {
                         << endl;
                 }
                 
-                // Temporary numerical safeguard
-                theta_w_cap = std::max(1e-6f, std::min(1.0f, theta_w_cap));
+                if(theta_w_cap < 1e-4) {
+                    theta_w_cap=0.001; // following SS addition for limit value
+                    cout << "Warning theta_w_cap = 0 " << endl ;
+                }
 
 if (_WATER_RETENTION_CURVE==1) {
                 soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)

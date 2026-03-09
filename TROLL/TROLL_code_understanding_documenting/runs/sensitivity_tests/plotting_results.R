@@ -13,8 +13,8 @@ library(tidyr) # Added for data reshaping (pivot_longer)
 
 # ========== 1) Main path and scenario definitions ==========
 # Define one main path, then add subfolders for each scenario.
-#main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/sensitivity_tests"
-main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/transfer_8110311_files_8a5bba64"
+main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/"
+#main_path <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/transfer_8110311_files_8a5bba64"
 
 #scenario_name <- c("shallow_thin_sandy_")
 scenario_name <- "(null)_"
@@ -30,9 +30,9 @@ soil_water_content    <- c("SWC_0", "SWC_1", "SWC_2", "SWC_3", "SWC_4")#, "SWC_5
 soil_water_potential  <- c("SWP_0", "SWP_1", "SWP_2", "SWP_3", "SWP_4")#,"SWC_5")
 transpiration_layers  <- c("transpiration_0", "transpiration_1", "transpiration_2", "transpiration_3", "transpiration_4")#, "transpiration_5")
 water_flux_vars       <- c("precipitation", "interception", "throughfall", "runoff", "leak", "evaporation")
-#water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4", "wcv_5")
-#water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4", "wupv_interface_4_5")
-#water_height          <- c("whu_interface_0_1", "whu_interface_1_2", "whu_interface_2_3", "whu_interface_3_4", "whu_interface_4_5")
+water_change_volume   <- c("wcv_0", "wcv_1", "wcv_2", "wcv_3", "wcv_4", "wcv_5")
+water_upward_volume   <- c("wupv_interface_0_1", "wupv_interface_1_2", "wupv_interface_2_3", "wupv_interface_3_4", "wupv_interface_4_5")
+water_height          <- c("whu_interface_0_1", "whu_interface_1_2", "whu_interface_2_3", "whu_interface_3_4", "whu_interface_4_5")
 
 
 variable_groups <- list(
