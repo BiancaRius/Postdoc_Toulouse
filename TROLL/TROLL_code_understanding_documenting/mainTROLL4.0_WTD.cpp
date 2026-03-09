@@ -5742,10 +5742,10 @@ if (_WATER_RETENTION_CURVE==1) {
 
                         // Sanity checks for delta_z_face    
                     if (delta_z_face[l] >= 0.0f) {
-                        cerr << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
+                        cout << "Warning: delta_z_face >= 0 at layer " << l << " dz=" << delta_z_face[l] << endl;
                     }
                     if (fabs(delta_z_face[l]) < 1e-6f) {
-                    cerr << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
+                        cout << "Warning: delta_z_face too small at layer " << l << " dz=" << delta_z_face[l] << endl;
                     }
                     
                 }   
@@ -6951,7 +6951,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     //     cout << "Warning theta_w = 0 " << endl ;
                     // }
                     
-                    if(theta_w < 1e-4) {
+                    if(theta_w < 1e-6) {
                         theta_w=0.001; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                         cout << "Warning theta_w = 0 " << endl ;
                     }
@@ -7904,7 +7904,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                     //     cout << "Warning theta_w = 0 " << endl ;
                     // }
 
-                    if(theta_w < 1e-4) {
+                    if(theta_w < 1e-6) {
                         theta_w=0.001; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                         cout << "Warning theta_w = 0 " << endl ;
                     }
@@ -7971,7 +7971,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         << endl;
                 }
                 
-                if(theta_w_cap < 1e-4) {
+                if(theta_w_cap < 1e-6) {
                     theta_w_cap=0.001; // following SS addition for limit value
                     cout << "Warning theta_w_cap = 0 " << endl ;
                 }
@@ -8013,7 +8013,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 } else {
                     Ks_cap_harmonic[l][d] = 0.0f;
-                    cerr << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
+                    cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
                 }
 
             } // End for layers interface (step 2)
