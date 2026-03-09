@@ -8190,8 +8190,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 
                 max_gain[l] = FC_SWC[l] - SWC3D[l][d];
 } else {
-                max_gain[l] = FC_SWC[l] - SWC3D[l][d];
-                // max_gain[l] = Max_SWC[l] - SWC3D[l][d];
+                // max_gain[l] = FC_SWC[l] - SWC3D[l][d];
+                max_gain[l] = Max_SWC[l] - SWC3D[l][d];
 }                
                 max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
