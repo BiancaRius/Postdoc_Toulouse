@@ -6953,7 +6953,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     
                     if(theta_w < 1e-6) {
                         theta_w=0.001; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                        cout << "Warning theta_w = 0 " << endl ;
+                        // cout << "Warning theta_w = 0 " << endl ;
                     }
 
                 if (_WATER_RETENTION_CURVE==1) {
@@ -7906,7 +7906,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
 
                     if(theta_w < 1e-6) {
                         theta_w=0.001; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                        cout << "Warning theta_w = 0 " << endl ;
+                        // cout << "Warning theta_w = 0 " << endl ;
                     }
 
 
@@ -8018,16 +8018,16 @@ if (_WATER_RETENTION_CURVE==1) {
 
 
                 //making a very extreme test
-                if (sum_k > 1e-6f){
+                if (sum_k > 1e-4f){
                     Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
                     cout << "Interface btwn layers " << l << " & " << l+1 << " ---" << endl;
                     cout << "ks cap harmonic ==  " << Ks_cap_harmonic[l][d] << " ---" << endl;
 
 
                 } else {
-                    Ks_cap_harmonic[l][d] = 0.000001f;
+                    Ks_cap_harmonic[l][d] = 0.000015;
                     // cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
-                    cout << "Warning: Both Ks_cap are zero at layer, setting ks to 0.000001f " << l << " and " << l+1 << endl;
+                    // cout << "Warning: Both Ks_cap are zero at layer, setting ks to 0.000001f " << l << " and " << l+1 << endl;
 
                 }
 
@@ -8284,8 +8284,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                         water_change_vol[l+1] = 0.0f; // This reset is needed because donor_capacity of WT layer is set to infinity, so it can donate but as an infinity source of water, in practice, it shouldn't lose water
 
                         if (fabs(water_change_vol[l+1]) > 1e-6f) {
-                            cout << "Warning: layer " << l+1 << " is below WTD but has water change vol: " << water_change_vol[l+1] << endl;
-                            cout << endl;                      
+                            // cout << "Warning: layer " << l+1 << " is below WTD but has water change vol: " << water_change_vol[l+1] << endl;
+                            // cout << endl;                      
                         }
                     }
                 }
@@ -8378,17 +8378,17 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
 
                 if (SWC3D[l][d] < Min_SWC[l] || SWC3D[l][d] > Max_SWC[l]) {
-                    cout << "Warning: SWC3D out of physical bounds immediately after update at layer " << l
-                        << ", d=" << d
-                        << ", SWC3D=" << SWC3D[l][d]
-                        << ", Min_SWC=" << Min_SWC[l]
-                        << ", Max_SWC=" << Max_SWC[l]
-                        << ", water_change_vol=" << water_change_vol[l]
-                        << ", old_SWC3D=" << (SWC3D[l][d] - water_change_vol[l])
-                        << endl;
-                    cout << "receiv_capacity=" << receiv_capacity[l]
-                        << ", donor_capacity=" << donor_capacity[l]
-                        << endl;
+                    // cout << "Warning: SWC3D out of physical bounds immediately after update at layer " << l
+                    //     << ", d=" << d
+                    //     << ", SWC3D=" << SWC3D[l][d]
+                    //     << ", Min_SWC=" << Min_SWC[l]
+                    //     << ", Max_SWC=" << Max_SWC[l]
+                    //     << ", water_change_vol=" << water_change_vol[l]
+                    //     << ", old_SWC3D=" << (SWC3D[l][d] - water_change_vol[l])
+                    //     << endl;
+                    // cout << "receiv_capacity=" << receiv_capacity[l]
+                    //     << ", donor_capacity=" << donor_capacity[l]
+                    //     << endl;
                 }               
             } // End for layers (step 6)
 
@@ -8396,10 +8396,10 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             for (int l=0; l<nblayers_soil; l++) {    
                 if (_WATER_TABLE == 1) { // verify if SWC3D of WT layer is correct after capillary rise (should be = Max_SWC[l])
                     if (layer_depth[l] > WTD && fabs(SWC3D[l][d] - Max_SWC[l]) > 1e-6f) {
-                        cout << "Warning: layer " << l 
-                                << " is below WTD but SWC3D != Max_SWC after capillary rise. "
-                                << "SWC3D=" << SWC3D[l][d] 
-                                << "  Expected=" << Max_SWC[l] << endl;
+                        // cout << "Warning: layer " << l 
+                        //         << " is below WTD but SWC3D != Max_SWC after capillary rise. "
+                        //         << "SWC3D=" << SWC3D[l][d] 
+                        //         << "  Expected=" << Max_SWC[l] << endl;
                     }
 
                     if (layer_depth[l] < WTD && (SWC3D[l][d] > FC_SWC[l] || SWC3D[l][d] < Min_SWC[l])) {
