@@ -7142,10 +7142,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(soil_phi3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(SWC3D_cap=new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR 
                 if(NULL==(Ks_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(receiv_capacity = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(donor_capacity = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(receiv_capacity_residual = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
-                if(NULL==(donor_capacity_residual = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
@@ -7166,10 +7162,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(water_change_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(receiv_capacity[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(donor_capacity[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(receiv_capacity_residual[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
-                    if(NULL==(donor_capacity_residual[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                 }
 
                 for(int dcell=0; dcell<nbdcells; dcell++) {
@@ -7212,10 +7204,6 @@ if (_WATER_RETENTION_CURVE==1) {
                         soil_phi3D_cap[l][dcell]=0.0; //BR
                         water_change_cap[l][dcell]=0.0; //BR
                         Ks_cap[l][dcell]=0.0; //BR
-                        receiv_capacity[l][dcell]=0.0; //BR
-                        donor_capacity[l][dcell]=0.0; //BR
-                        receiv_capacity_residual[l][dcell]=0.0; //BR
-                        donor_capacity_residual[l][dcell]=0.0; //BR
                         if (SWC3D_cap[l][dcell]<=0.0) {
                             cout << "Soil water content capillarity <=0.0  " << SWC3D_cap[l][dcell] << "\t" <<Max_SWC[l] << "\n";
                         }
@@ -7595,6 +7583,8 @@ if (_WATER_RETENTION_CURVE==1) {
             // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
             vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
             vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
+            vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
+            vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
             
             for (int d=0; d<nbdcells; d++) {
                 //****   BUCKET MODEL in each dcell   ****
@@ -8199,17 +8189,11 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             // Establish physical boundaries for the layers. 
             // Each layer has two INDEPENDENT physical limits (in m^3): its receiver capacity and its donor capacity. These limits are used to constrain the actual water transfer between layers.
             
-            // Temporary diagnostic reset to avoid stale values in global arrays
-            for (int l = 0; l < nblayers_soil; l++) {
-                receiv_capacity[l][d] = 0.0f;
-                donor_capacity[l][d] = 0.0f;
-                receiv_capacity_residual[l][d] = 0.0f;
-                donor_capacity_residual[l][d] = 0.0f;
-            }
-
             // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
             vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
             vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
+            vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
+            vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
 
             // loop to set the capacities of each layer
             for (int l = 0; l<nblayers_soil; l++){
@@ -8232,29 +8216,23 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
                 // Receiver capacity: cannot exceed saturation
-                receiv_capacity[l][d] = max(0.0f, max_gain[l]); 
+                receiv_capacity[l] = max(0.0f, max_gain[l]); 
                 // Donor capacity: cannot go below residual
-                donor_capacity[l][d] = max(0.0f, max_loss[l]);
+                donor_capacity[l] = max(0.0f, max_loss[l]);
 
                 // Special case for the WT layer:
                 // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
                 // (In practice, flux will still be limited by the potential and the receiver capacity of the layer above.)
                 if (_WATER_TABLE == 1) {  // BR
                     if (layer_depth[l] > WTD) {
-                        donor_capacity[l][d] = INFINITY;
-                        // receiv_capacity[l][d] = INFINITY; //otherwise, the layer above WT would not be able to discharge water what could create an artificial accumulation of water in the layer and increase too much the capillarity rise
-                        receiv_capacity[l][d] = 0.0f; //testing
+                        donor_capacity[l] = INFINITY;
+                        // receiv_capacity[l] = INFINITY; //otherwise, the layer above WT would not be able to discharge water what could create an artificial accumulation of water in the layer and increase too much the capillarity rise
+                        receiv_capacity[l] = 0.0f; //testing
                     }
                 }
         
             } // End for layers (step 4)
-            
 
-            // Initialize residual capacities for all layers before interface transfers
-            for (int l = 0; l < nblayers_soil; l++) {
-                receiv_capacity_residual[l][d] = receiv_capacity[l][d];
-                donor_capacity_residual[l][d] = donor_capacity[l][d];
-            }
             // --- Step 5: Calculate actual water transfer between layers ---
             // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
             float voxel_area = LH * LH * sites_per_dcell; // m²
@@ -8265,12 +8243,10 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
            // Residual capacities: initial donor/receiver capacity updated after each accepted transfer between layers. 
            // This ensures that a layer cannot donate or receive more water than physically allowed during the timestep,
            // preventing multiple interfaces from using the same capacity twice.
+            vector<float> receiv_capacity_residual = receiv_capacity; 
+            vector<float> donor_capacity_residual = donor_capacity;
 
             for (int l = 0; l < nblayers_soil -1; l++){
-            
-                receiv_capacity_residual[l][d] = receiv_capacity[l][d]; 
-                donor_capacity_residual[l][d] = donor_capacity[l][d];
-
 
 if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 // Considering only upward movement
@@ -8288,7 +8264,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 // (3) the residual donor capacity of the lower layer   
                 float vol_transfer_restricted = std::min(
                     vol_potential_transfer,
-                    std::min(receiv_capacity_residual[l][d], donor_capacity_residual[l+1][d]));
+                    std::min(receiv_capacity_residual[l], donor_capacity_residual[l+1]));
 
                 // Water change (if positive, it is the receiver, if negative it is the donor)
                 water_change_vol[l] += vol_transfer_restricted;
@@ -8297,13 +8273,13 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 water_change_vol[l+1] -= vol_transfer_restricted;
 
                 // Update residual capacities after the transfer
-                receiv_capacity_residual[l][d]  -= vol_transfer_restricted;
-                donor_capacity_residual[l+1][d] -= vol_transfer_restricted;
+                receiv_capacity_residual[l]  -= vol_transfer_restricted;
+                donor_capacity_residual[l+1] -= vol_transfer_restricted;
                 
                 // Prevent tiny negative values due to floating point precision
-                receiv_capacity_residual[l][d]  = std::max(0.0f, receiv_capacity_residual[l][d]);
-                if (!std::isinf(donor_capacity_residual[l+1][d])) {
-                    donor_capacity_residual[l+1][d] = std::max(0.0f, donor_capacity_residual[l+1][d]);
+                receiv_capacity_residual[l]  = std::max(0.0f, receiv_capacity_residual[l]);
+                if (!std::isinf(donor_capacity_residual[l+1])) {
+                    donor_capacity_residual[l+1] = std::max(0.0f, donor_capacity_residual[l+1]);
                 }
 
                 if (_WATER_TABLE == 1) {  
@@ -8335,7 +8311,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
                     float vol_transfer_restricted = std::min(
                                                     vol_potential_transfer,
-                                                    std::min(receiv_capacity_residual[l][d], donor_capacity_residual[l+1][d]));
+                                                    std::min(receiv_capacity_residual[l], donor_capacity_residual[l+1]));
 
                     // upper layer (l) receives
                     water_change_vol[l]   += vol_transfer_restricted;
@@ -8343,12 +8319,12 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     water_change_vol[l+1] -= vol_transfer_restricted;
 
                     // Update residual capacities
-                    receiv_capacity_residual[l][d]  -= vol_transfer_restricted;
-                    donor_capacity_residual[l+1][d] -= vol_transfer_restricted;
+                    receiv_capacity_residual[l]  -= vol_transfer_restricted;
+                    donor_capacity_residual[l+1] -= vol_transfer_restricted;
 
-                    receiv_capacity_residual[l][d] = std::max(0.0f, receiv_capacity_residual[l][d]);
-                    if (!std::isinf(donor_capacity_residual[l+1][d])) {
-                        donor_capacity_residual[l+1][d] = std::max(0.0f, donor_capacity_residual[l+1][d]);
+                    receiv_capacity_residual[l] = std::max(0.0f, receiv_capacity_residual[l]);
+                    if (!std::isinf(donor_capacity_residual[l+1])) {
+                        donor_capacity_residual[l+1] = std::max(0.0f, donor_capacity_residual[l+1]);
                     }
 
                     // output
@@ -8369,7 +8345,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     // and here the volume is limited by the potential volume to be transfered, the donor capacity of the upper layer and the receiver capacity of the lower layer
                     float vol_transfer_restricted = std::min(
                         vol_potential_transfer,
-                        std::min(donor_capacity_residual[l][d], receiv_capacity_residual[l+1][d]));
+                        std::min(donor_capacity_residual[l], receiv_capacity_residual[l+1]));
 
                     // upper layer (l) donates
                     water_change_vol[l]   -= vol_transfer_restricted;
@@ -8377,14 +8353,14 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     water_change_vol[l+1] += vol_transfer_restricted;
 
                     // Update residual capacities
-                    donor_capacity_residual[l][d]    -= vol_transfer_restricted;
-                    receiv_capacity_residual[l+1][d] -= vol_transfer_restricted;
+                    donor_capacity_residual[l]    -= vol_transfer_restricted;
+                    receiv_capacity_residual[l+1] -= vol_transfer_restricted;
 
                     // Prevent tiny negative values due to floating point precision
-                    if (!std::isinf(donor_capacity_residual[l][d])) {
-                        donor_capacity_residual[l][d] = std::max(0.0f, donor_capacity_residual[l][d]);
+                    if (!std::isinf(donor_capacity_residual[l])) {
+                        donor_capacity_residual[l] = std::max(0.0f, donor_capacity_residual[l]);
                     }
-                    receiv_capacity_residual[l+1][d] = std::max(0.0f, receiv_capacity_residual[l+1][d]);
+                    receiv_capacity_residual[l+1] = std::max(0.0f, receiv_capacity_residual[l+1]);
                     
                     // output
                     water_upward_vol[l][d] = - vol_transfer_restricted;
@@ -8414,8 +8390,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                         << ", water_change_vol=" << water_change_vol[l]
                         << ", old_SWC3D=" << (SWC3D[l][d] - water_change_vol[l])
                         << endl;
-                    cout << "receiv_capacity=" << receiv_capacity[l][d]
-                        << ", donor_capacity=" << donor_capacity[l][d]
+                    cout << "receiv_capacity=" << receiv_capacity[l]
+                        << ", donor_capacity=" << donor_capacity[l]
                         << endl;
                 }               
             } // End for layers (step 6)
