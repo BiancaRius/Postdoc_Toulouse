@@ -6956,8 +6956,11 @@ if (_WATER_RETENTION_CURVE==1) {
                     // }
                     
                     if(theta_w < 1e-6) {
-                        theta_w=0.001; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                        // cout << "Warning theta_w = 0 " << endl ;
+                        theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                    } else if(theta_w > 1.0) {
+                        theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                    } else {
+                        theta_w = theta_w; // otherwise, we keep the value as it is
                     }
 
                 if (_WATER_RETENTION_CURVE==1) {
@@ -7909,8 +7912,11 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                     // }
 
                     if(theta_w < 1e-6) {
-                        theta_w=0.001; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                        // cout << "Warning theta_w = 0 " << endl ;
+                        theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                    } else if(theta_w > 1.0) {
+                        theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                    } else {
+                        theta_w = theta_w; // otherwise, we keep the value as it is
                     }
 
 
@@ -7976,8 +7982,11 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
                 
                 if(theta_w_cap < 1e-6) {
-                    theta_w_cap=0.001; // following SS addition for limit value
-                    cout << "Warning theta_w_cap = 0 " << endl ;
+                    theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                } else if(theta_w_cap > 1.0) {
+                    theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                } else {
+                    theta_w_cap = theta_w_cap; // otherwise, we keep the value as it is
                 }
 
 if (_WATER_RETENTION_CURVE==1) {
@@ -8007,34 +8016,18 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 float k1 = Ks_cap[l][d];
                 float k2 = Ks_cap[l+1][d];
-                float sum_k = k1 + k2;
 
-                // Check for division by zero to avoid errors 
-                // If both conductivities are zero, the harmonic mean is also zero
-                // if (sum_k > 1e-9f){
-                //     Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-                //     // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
-
-                // } else {
-                //     Ks_cap_harmonic[l][d] = 0.0f;
-                //     cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
-                // }
-
-
-                //making a very extreme test
-                if (sum_k > 1e-6f){
-                    Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-                    cout << "Interface btwn layers " << l << " & " << l+1 << " ---" << endl;
-                    cout << "ks cap harmonic ==  " << Ks_cap_harmonic[l][d] << " ---" << endl;
-
-
-                } else {
-                    Ks_cap_harmonic[l][d] = 0.000001f;
-                    // cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
-                    // cout << "Warning: Both Ks_cap are zero at layer, setting ks to 0.000001f " << l << " and " << l+1 << endl;
-
+                if (k1 < 1e-12f){
+                    k1 = 1e-12f; // to avoid numerical issues with zero conductivity
                 }
-
+                if (k2 < 1e-12f){
+                    k2 = 1e-12f; // to avoid numerical issues with zero conductivity
+                }
+                
+                float sum_k = k1 + k2;
+                
+                Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
             } // End for layers interface (step 2)
 
