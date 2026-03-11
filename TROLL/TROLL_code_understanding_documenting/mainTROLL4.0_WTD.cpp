@@ -437,11 +437,8 @@ float **Ks_cap(0);          //!<Global 3D field: intermediate soil hydraulic con
 float **Ks_cap_harmonic(0); //!<Global 3D field: harmonic mean of intermediate soil hydraulic conductivity in each soil voxel (layer * DCELL). To be used in capillary rise //BR
 float **q_cap(0);            //!<Global 3D field: upward capillary flux (in m/s) between two layers (layer * DCELL). The water flows from l+1 to l //BR
 float **water_height_upward(0); //Global 3D field: the height [m] of the water layer that moved up due to capillarity (layer * DCELL) //BR
+float **water_change_cap(0); //!<Global 3D field: the change of soil water content in each layer due to capillarity (layer * DCELL). It encompasses the gain of water from the layer below and the loss of water to the layer above //BR
 float **water_upward_vol(0); //!<Global 3D field: the volume [m3] of water that moved up or down  between two layers (layer * DCELL) //BR
-float **receiv_capacity(0); //!<Global 3D field: the volume [m3] of water that can be received by a layer (layer * DCELL) //BR
-float **donor_capacity(0); //!<Global 3D field: the volume [m3] of water that can be donated by a layer (layer * DCELL) //BR
-float **receiv_capacity_residual(0); //!< Global 3D field: residual volume [m3] of water that a soil layer can still receive in each DCELL during the current timestep, after accounting for previous inter-layer transfers // BR
-float **donor_capacity_residual(0); //!< Global 3D field: residual volume [m3] of water that a soil layer can still donate in each DCELL during the current timestep, after accounting for previous inter-layer transfers // BR 
 float **KsPhi(0);           //!< Global vector: soil hydraulic conductivity * soil water potential for each soil voxel (layer * DCELL), useful to ease computation
 float **LAI_DCELL(0);        //!< Global vector: total leaf area index (LAI), averaged per DCELL
 float *LAI_young(0);        //!< Global vector: total young leaf area index (LAI), averaged across all sites
@@ -7152,6 +7149,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(NULL==(Ks_cap_harmonic = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(q_cap = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_height_upward = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR
+                if(NULL==(water_change_cap = new float*[nblayers_soil])) cerr<<"!!! Mem_Alloc\n"; //BR
                 if(NULL==(water_upward_vol = new float*[nblayers_soil-1])) cerr<<"!!! Mem_Alloc\n"; //BR)  
             }
 
@@ -7166,6 +7164,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 if (_CAPILLARY_RISE == 1){ //BR
                     if(NULL==(SWC3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n";
                     if(NULL==(soil_phi3D_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
+                    if(NULL==(water_change_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(Ks_cap[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(receiv_capacity[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
                     if(NULL==(donor_capacity[l]=new float[nbdcells])) cerr<<"!!! Mem_Alloc\n"; //BR
@@ -7211,6 +7210,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
                     if (_CAPILLARY_RISE == 1){ //BR
                         soil_phi3D_cap[l][dcell]=0.0; //BR
+                        water_change_cap[l][dcell]=0.0; //BR
                         Ks_cap[l][dcell]=0.0; //BR
                         receiv_capacity[l][dcell]=0.0; //BR
                         donor_capacity[l][dcell]=0.0; //BR
@@ -7892,6 +7892,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
      * @param Ks_cap_harmonic A 3D array to store the harmonic mean of hydraulic conductivity between layers [m/s].
      * @param q_cap A 3D array to store the upward capillary flux between layers [m/s].
      * @param water_height_upward A 3D array to store the height of water moved upward during the timestep [m].
+     * @param water_change_cap A 3D array to store the change in water content due to capillary rise.
      * @param water_upward_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
      *  */
 
@@ -8198,6 +8199,14 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             // Establish physical boundaries for the layers. 
             // Each layer has two INDEPENDENT physical limits (in m^3): its receiver capacity and its donor capacity. These limits are used to constrain the actual water transfer between layers.
             
+            // Temporary diagnostic reset to avoid stale values in global arrays
+            for (int l = 0; l < nblayers_soil; l++) {
+                receiv_capacity[l][d] = 0.0f;
+                donor_capacity[l][d] = 0.0f;
+                receiv_capacity_residual[l][d] = 0.0f;
+                donor_capacity_residual[l][d] = 0.0f;
+            }
+
             // creates vectors for auxiliary variables needed in the loop inside Step 5 for capillarity (below) //BR
             vector<float> max_gain(nblayers_soil, 0.0f);       // maximum gain possible for the layer (m^3)
             vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
@@ -8239,7 +8248,13 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 }
         
             } // End for layers (step 4)
+            
 
+            // Initialize residual capacities for all layers before interface transfers
+            for (int l = 0; l < nblayers_soil; l++) {
+                receiv_capacity_residual[l][d] = receiv_capacity[l][d];
+                donor_capacity_residual[l][d] = donor_capacity[l][d];
+            }
             // --- Step 5: Calculate actual water transfer between layers ---
             // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
             float voxel_area = LH * LH * sites_per_dcell; // m²
@@ -8384,7 +8399,9 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     //deep_drainage[l] = SWC3D[l][d] - Max_SWC[l]; // track the excess water that should be lost by the water table if there is deep drainage (i.e. if SWC3D exceeds Max_SWC for layers below the water table). This is for output purposes and can be used in the future to implement a deep drainage routine that removes this excess water from the system, as currently we just set SWC3D to Max_SWC for layers below the water table without explicitly tracking the excess water.
                     water_change_vol[l] = 0.0f; // override any calculated change in water content for layers below the water table, as they are already saturated and cannot receive more water. However, they can still donate water if there is upward flux, but this will be reflected in the change of the layer above (if any) and not in their own SWC3D which remains at Max_SWC.
                     SWC3D[l][d] = Max_SWC[l]; // ensure that SWC3D of layers below the water table is set to Max_SWC, as they are saturated. This is a safeguard to prevent any numerical issues that could arise from the flux calculations, ensuring that the physical constraint of saturation below the water table is maintained in the model output.
-                }    
+                }
+               
+                water_change_cap[l][d] = water_change_vol[l]; //for output purpose
                         
                 SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
 
