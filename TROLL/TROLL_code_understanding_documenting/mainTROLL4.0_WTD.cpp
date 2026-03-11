@@ -6959,8 +6959,6 @@ if (_WATER_RETENTION_CURVE==1) {
                         theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                     } else if(theta_w > 1.0) {
                         theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
-                    } else {
-                        theta_w = theta_w; // otherwise, we keep the value as it is
                     }
 
                 if (_WATER_RETENTION_CURVE==1) {
@@ -7915,8 +7913,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                         theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                     } else if(theta_w > 1.0) {
                         theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
-                    } else {
-                        theta_w = theta_w; // otherwise, we keep the value as it is
                     }
 
 
@@ -7985,8 +7981,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                 } else if(theta_w_cap > 1.0) {
                     theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
-                } else {
-                    theta_w_cap = theta_w_cap; // otherwise, we keep the value as it is
                 }
 
 if (_WATER_RETENTION_CURVE==1) {
@@ -8023,7 +8017,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 if (k2 < 1e-12f){
                     k2 = 1e-12f; // to avoid numerical issues with zero conductivity
                 }
-                
+
                 float sum_k = k1 + k2;
                 
                 Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
