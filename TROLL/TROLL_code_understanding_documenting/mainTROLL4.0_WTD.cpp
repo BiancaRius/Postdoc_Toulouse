@@ -7965,18 +7965,24 @@ if (_WATER_RETENTION_CURVE==1) {
                         Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
                     }                        
                 }
-
-                // Debug check: use raw theta before any correction
-                if (theta_w_cap < 0.0f || theta_w_cap > 1.0f) {
-                    cout << "Warning: raw theta_w_cap out of physical bounds at layer " << l
-                        << ", d=" << d
-                        << ", theta_w_cap=" << theta_w_cap
-                        << ", SWC3D=" << SWC3D[l][d]
-                        << ", Min_SWC=" << Min_SWC[l]
-                        << ", Max_SWC=" << Max_SWC[l]
-                        << endl;
-                }
                 
+                // Testing threshold values of theta_w_cap to avoid numerical issues in the calculation of soil_phi3D_cap and Ks_cap, and to detect very small or very large values of theta_w_cap that are not precisely 0 or 1 but can lead to numerical issues in the calculation of soil_phi3D_cap and Ks_cap. We also count the number of occurrences of theta_w_cap below certain thresholds for diagnostic purposes.
+                int n_theta_lt_1e6 = 0;
+                int n_theta_lt_1e5 = 0;
+                int n_theta_lt_1e4 = 0;
+
+                if(theta_w_cap < 1e-6) {
+                    n_theta_lt_1e6++;
+                }
+                if(theta_w_cap < 1e-5) {
+                    n_theta_lt_1e5++;
+                }
+                if(theta_w_cap < 1e-4) {
+                    n_theta_lt_1e4++;
+                }
+
+                cout << "Layer " << l << ", dcell " << d << ": theta_w_cap=" << theta_w_cap << ", n_theta_lt_1e6=" << n_theta_lt_1e6 << ", n_theta_lt_1e5=" << n_theta_lt_1e5 << ", n_theta_lt_1e4=" << n_theta_lt_1e4 << endl;
+
                 if(theta_w_cap < 1e-6) {
                     theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                 } else if(theta_w_cap > 1.0) {
@@ -8001,6 +8007,23 @@ if (_WATER_RETENTION_CURVE==1) {
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
                 soil_phi3D[l][d] = soil_phi3D_cap[l][d]; //to update the output
+
+                int n_ks_lt_1e12 = 0;
+                int n_ks_lt_1e10 = 0;
+                int n_ks_lt_1e8  = 0;
+
+                if (Ks_cap[l][d] < 1e-12f) {
+                    n_ks_lt_1e12++;
+                }
+                if (Ks_cap[l][d] < 1e-10f) {
+                    n_ks_lt_1e10++;
+                }
+                if (Ks_cap[l][d] < 1e-8f) {
+                    n_ks_lt_1e8++;
+                }
+
+                cout << "Layer " << l << ", dcell " << d << ": Ks_cap=" << Ks_cap[l][d] << " m/s, n_ks_lt_1e-12=" << n_ks_lt_1e12 << ", n_ks_lt_1e-10=" << n_ks_lt_1e10 << ", n_ks_lt_1e-8=" << n_ks_lt_1e8 << endl;
+               
             } // End for layers (step 1)
 
             
