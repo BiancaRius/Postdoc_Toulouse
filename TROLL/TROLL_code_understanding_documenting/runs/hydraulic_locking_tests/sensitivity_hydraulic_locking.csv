@@ -1,0 +1,7 @@
+vegetation,theta rule,theta replacement,Ks rule,Ks replacement,Ks_harmonic rule,Ks_harmonic replacement,run_name,obs
+no,none,none,none,none,none,none,baseline_noveg,"Current code, no new safeguard (only the ones added by SS out  of cap function)"
+no,theta == 0,"1,00E-03",none,none,none,none,legacy_theta0_reset1e-3_noveg,Inherited legacy theta safeguard
+no,theta < 1e-6,"1,00E-06",none,none,none,none,theta_thres1e-6_noveg,Theta-only test
+no,theta < 1e-5,"1,00E-05",none,none,none,none,theta_thres1e-5_noveg,Theta-only test
+no,theta < 1e-4,"1,00E-04",none,none,none,none,theta_thres1e-4_noveg,Theta-only test
+no,theta < 1e-3,"1,00E-03",none,none,none,none,theta_thres1e-3_noveg,Continuous version of legacy magnitude
