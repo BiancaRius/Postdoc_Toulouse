@@ -153,6 +153,7 @@ fstream output_track[3];            //!< Global variable: output streams for tra
 
 #ifdef VERTICAL_WATER_FLUX // BR
 fstream output_vertical_flux;       //!< Global variable: output streams for vertical water fluxes between soil layers // BR
+fstream output_debug_hydraulics_by_iter; //!< Global variable: output stream for debugging of hydraulics, by iteration // BR TEMPORARY
 #endif
 
 
@@ -518,6 +519,24 @@ int nbdead_n30;   //!< Global variable: for output -- number of deaths dbh > 30 
 int nbTreefall1;  //!< Global variable: for output -- number of treefalls at each timestep (dbh > 1cm), _BASICTREEFALL
 int nbTreefall10; //!< Global variable: for output -- number of treefalls at each timestep (dbh > 10 cm), _BASICTREEFALL
 int nbTreefall30; //!< Global variable: for output -- number of treefalls at each timestep (dbh > 30 cm), _BASICTREEFALL
+
+
+// DIAGNOSTICS FOR DEBUGGING VERTICAL WATER FLUXES (TEMPORARY) //BR
+
+int n_theta_cap_lt_1e6(0);   //!< Number of soil voxels in the current iteration with theta_raw < 1e-6
+int n_theta_cap_lt_1e5(0);   //!< Number of soil voxels in the current iteration with theta_raw < 1e-5
+int n_theta_cap_lt_1e4(0);   //!< Number of soil voxels in the current iteration with theta_raw < 1e-4
+int n_theta_cap_lt_1e3(0);   //!< Number of soil voxels in the current iteration with theta_raw < 1e-3
+
+int n_ks_cap_lt_1e12(0);   //!< Number of soil voxels in the current iteration with Ks < 1e-12 m/s, which is a very low conductivity, close to the minimum conductivity of dry soil (e.g. 1e-13 m/s for sandy soil, 1e-12 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
+int n_ks_cap_lt_1e10(0);   //!< Number of soil voxels in the current iteration with Ks < 1e-10 m/s, which is a low conductivity, close to the minimum conductivity of wet soil (e.g. 1e-9 m/s for sandy soil, 1e-10 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
+int n_ks_cap_lt_1e8(0);   //!< Number of soil voxels in the current iteration with Ks < 1e-8 m/s, which is a moderate conductivity, close to the maximum conductivity of wet soil (e.g. 1e-7 m/s for sandy soil, 1e-8 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
+int n_ks_cap_eq_0(0);   //!< Number of soil voxels in the current iteration with Ks = 0 m/s, which is a non-physical value that may indicate an error in the computation of Ks
+
+int n_ksh_cap_lt_1e12(0);   //!< Number of soil voxels in the current iteration with Ks harmonic < 1e-12 m/s, which is a very low conductivity, close to the minimum conductivity of dry soil (e.g. 1e-13 m/s for sandy soil, 1e-12 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
+int n_ksh_cap_lt_1e10(0);   //!< Number of soil voxels in the current iteration with Ks harmonic < 1e-10 m/s, which is a low conductivity, close to the minimum conductivity of wet soil (e.g. 1e-9 m/s for sandy soil, 1e-10 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
+int n_ksh_cap_lt_1e8(0);   //!< Number of soil voxels in the current iteration with Ks harmonic < 1e-8 m/s, which is a moderate conductivity, close to the maximum conductivity of wet soil (e.g. 1e-7 m/s for sandy soil, 1e-8 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
+int n_ksh_cap_eq_0(0);   //!< Number of soil voxels in the current iteration with Ks harmonic = 0 m/s, which is a non-physical value that may indicate an error in the computation of Ks harmonic
 
 #ifdef Output_ABC
 int nbdead_n10_abc;  //!< Global variable: for ABC output -- number of trees dbh > 10 cm at each timestep
@@ -6558,6 +6577,26 @@ if (_WATER_RETENTION_CURVE==1) {
 
                     output_vertical_flux << endl;  // end of header
 
+                    // identifying bugs to treat hydraulic locking (TEMPORARY) // BR
+                    // It saves (by iter) how many times theta, ks and ks harmonic attain a threshold
+                    sprintf(nnn,"%s_%i_debug_hydraulics_by_iter.txt",buf, easympi_rank);
+                    output_debug_hydraulics_by_iter.open(nnn, ios::out);
+                    output_debug_hydraulics_by_iter << "iter\t"
+                        << "total_voxels\t"
+                        << "n_theta_cap_lt_1e6\t"
+                        << "n_theta_cap_lt_1e5\t"
+                        << "n_theta_cap_lt_1e4\t"
+                        << "n_theta_cap_lt_1e3\t"
+                        << "n_ks_cap_eq_0\t"
+                        << "n_ks_cap_lt_1e12\t"
+                        << "n_ks_cap_lt_1e10\t"
+                        << "n_ks_cap_lt_1e8\t"
+                        << "n_ksh_cap_eq_0\t"
+                        << "n_ksh_cap_lt_1e12\t"
+                        << "n_ksh_cap_lt_1e10\t"
+                        << "n_ksh_cap_lt_1e8\t"
+                        << endl;
+
 #endif
                 }
             }
@@ -6950,17 +6989,11 @@ if (_WATER_RETENTION_CURVE==1) {
                 for (int l=0; l<nblayers_soil; l++) {
                     float theta_w=(SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);
                     
-                    // if(theta_w==0) {
-                    //     theta_w=0.001; // SS addition for limit value
-                    //     cout << "Warning theta_w = 0 " << endl ;
-                    // }
-                    
-                    if(theta_w < 1e-6) {
-                        theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                    } else if(theta_w > 1.0) {
-                        theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                    if(theta_w==0) {
+                        theta_w=0.001; // SS addition for limit value
+                        cout << "Warning theta_w = 0 " << endl ;
                     }
-
+                    
                 if (_WATER_RETENTION_CURVE==1) {
 
                     soil_phi3D[l][d]=a_vgm[l]*pow((pow(theta_w,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
@@ -7587,6 +7620,22 @@ if (_WATER_RETENTION_CURVE==1) {
             vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
             vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
             
+            // variables to track the number of dcells with a given range of soil water content, to check the effect of implemented scheme for vertical water movement // BR (TEMPORARY)
+            n_theta_cap_lt_1e6 = 0;
+            n_theta_cap_lt_1e5 = 0;
+            n_theta_cap_lt_1e4 = 0;
+            n_theta_cap_lt_1e3 = 0;
+
+            n_ks_cap_lt_1e12 = 0;
+            n_ks_cap_lt_1e10 = 0;
+            n_ks_cap_lt_1e8 = 0;
+            n_ks_cap_eq_0 = 0;
+
+            n_ksh_cap_lt_1e12 = 0;
+            n_ksh_cap_lt_1e10 = 0;
+            n_ksh_cap_lt_1e8 = 0;
+            n_ksh_cap_eq_0 = 0;
+
             for (int d=0; d<nbdcells; d++) {
                 //****   BUCKET MODEL in each dcell   ****
                 // the unit used for water volume throughout the bucket model is m3.
@@ -7904,16 +7953,17 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                     // cout << "layer: "<< l<< "Current status of SWC3D: " << SWC3D[l][d] << endl; 
                     float theta_w=(SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);
 
-                    // if(theta_w==0) {
-                    //     theta_w=0.001; // SS addition for limit value
-                    //     cout << "Warning theta_w = 0 " << endl ;
-                    // }
-
-                    if(theta_w < 1e-6) {
-                        theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                    } else if(theta_w > 1.0) {
-                        theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                    if(theta_w==0) {
+                        theta_w=0.001; // SS addition for limit value
+                        cout << "Warning theta_w = 0 " << endl ;
                     }
+
+
+                    // if(theta_w < 1e-6) {
+                    //     theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                    // } else if(theta_w > 1.0) {
+                    //     theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                    // }
 
 
                     
@@ -7967,27 +8017,29 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
                 
                 // Testing threshold values of theta_w_cap to avoid numerical issues in the calculation of soil_phi3D_cap and Ks_cap, and to detect very small or very large values of theta_w_cap that are not precisely 0 or 1 but can lead to numerical issues in the calculation of soil_phi3D_cap and Ks_cap. We also count the number of occurrences of theta_w_cap below certain thresholds for diagnostic purposes.
-                int n_theta_lt_1e6 = 0;
-                int n_theta_lt_1e5 = 0;
-                int n_theta_lt_1e4 = 0;
-
                 if(theta_w_cap < 1e-6) {
-                    n_theta_lt_1e6++;
+                    n_theta_cap_lt_1e6++;
                 }
                 if(theta_w_cap < 1e-5) {
-                    n_theta_lt_1e5++;
+                    n_theta_cap_lt_1e5++;
                 }
                 if(theta_w_cap < 1e-4) {
-                    n_theta_lt_1e4++;
+                    n_theta_cap_lt_1e4++;
+                }
+                 if(theta_w_cap < 1e-3) {
+                    n_theta_cap_lt_1e3++;
                 }
 
-                cout << "Layer " << l << ", dcell " << d << ": theta_w_cap=" << theta_w_cap << ", n_theta_lt_1e6=" << n_theta_lt_1e6 << ", n_theta_lt_1e5=" << n_theta_lt_1e5 << ", n_theta_lt_1e4=" << n_theta_lt_1e4 << endl;
+                // if(theta_w_cap==0) {
+                //     theta_w_cap=0.001; // following SS addition for limit value
+                //     cout << "Warning theta_w = 0 " << endl ;
+                // }
 
-                if(theta_w_cap < 1e-6) {
-                    theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                } else if(theta_w_cap > 1.0) {
-                    theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
-                }
+                // if(theta_w_cap < 1e-6) {
+                //     theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                // } else if(theta_w_cap > 1.0) {
+                //     theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                // }
 
 if (_WATER_RETENTION_CURVE==1) {
                 soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
@@ -8006,23 +8058,25 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
-                soil_phi3D[l][d] = soil_phi3D_cap[l][d]; //to update the output
 
-                int n_ks_lt_1e12 = 0;
-                int n_ks_lt_1e10 = 0;
-                int n_ks_lt_1e8  = 0;
+                // debugging values of Ks_cap 
+                if(Ks_cap[l][d] < 1e-12) {
+                    n_ks_cap_lt_1e12++;
+                }
+                if(Ks_cap[l][d] < 1e-10) {
+                    n_ks_cap_lt_1e10++;
+                }
+                if(Ks_cap[l][d] < 1e-8) {
+                    n_ks_cap_lt_1e8++;
+                }
+                if(Ks_cap[l][d] == 0.0f) {
+                    n_ks_cap_eq_0++;
+                }
 
-                if (Ks_cap[l][d] < 1e-12f) {
-                    n_ks_lt_1e12++;
-                }
-                if (Ks_cap[l][d] < 1e-10f) {
-                    n_ks_lt_1e10++;
-                }
-                if (Ks_cap[l][d] < 1e-8f) {
-                    n_ks_lt_1e8++;
-                }
 
-                cout << "Layer " << l << ", dcell " << d << ": Ks_cap=" << Ks_cap[l][d] << " m/s, n_ks_lt_1e-12=" << n_ks_lt_1e12 << ", n_ks_lt_1e-10=" << n_ks_lt_1e10 << ", n_ks_lt_1e-8=" << n_ks_lt_1e8 << endl;
+                // Update soil phi
+                 soil_phi3D[l][d] = soil_phi3D_cap[l][d]; //to update the output
+
                
             } // End for layers (step 1)
 
@@ -8034,17 +8088,36 @@ if (_WATER_RETENTION_CURVE==1) {
                 float k1 = Ks_cap[l][d];
                 float k2 = Ks_cap[l+1][d];
 
-                if (k1 < 1e-12f){
-                    k1 = 1e-12f; // to avoid numerical issues with zero conductivity
-                }
-                if (k2 < 1e-12f){
-                    k2 = 1e-12f; // to avoid numerical issues with zero conductivity
-                }
-
                 float sum_k = k1 + k2;
                 
                 Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-                // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
+
+                // debugging values of Ks_cap_harmonic
+                if(Ks_cap_harmonic[l][d] < 1e-12) {
+                    n_ksh_cap_lt_1e12++;
+                } 
+                if(Ks_cap_harmonic[l][d] < 1e-10) {
+                    n_ksh_cap_lt_1e10++;
+                }
+                if(Ks_cap_harmonic[l][d] < 1e-8) {
+                    n_ksh_cap_lt_1e8++;
+                }
+                if(Ks_cap_harmonic[l][d] == 0.0f) {
+                    n_ksh_cap_eq_0++;
+                }
+             
+
+
+                // Check for division by zero to avoid errors 
+                // If both conductivities are zero, the harmonic mean is also zero
+                // if (sum_k > 1e-9f){
+                //     Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                //     // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
+
+                // } else {
+                //     Ks_cap_harmonic[l][d] = 0.0f;
+                //     cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
+                // }
 
             } // End for layers interface (step 2)
 
@@ -9062,6 +9135,27 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 output_vertical_flux << mean_swp_cap_out << "\t" << mean_ks_cap_out << "\t";
             }
             output_vertical_flux << endl;
+
+            // output for debugging hydraulics: number of cells where the capillary rise is below certain thresholds, to track the development of dry conditions in the soil and their impact on the hydraulics
+            int total_voxels = nbdcells * nblayers_soil;
+            int total_interfaces = nbdcells * (nblayers_soil - 1);
+
+            output_debug_hydraulics_by_iter << iter << "\t"
+                << total_voxels << "\t"
+                << total_interfaces << "\t"
+                << n_theta_cap_lt_1e6 << "\t"
+                << n_theta_cap_lt_1e5 << "\t"
+                << n_theta_cap_lt_1e4 << "\t"
+                << n_theta_cap_lt_1e3 << "\t"
+                << n_ks_cap_lt_1e12 << "\t"
+                << n_ks_cap_lt_1e10 << "\t"
+                << n_ks_cap_lt_1e8 << "\t"
+                << n_ks_cap_eq_0 << "\t"
+                << n_ksh_cap_lt_1e12 << "\t"
+                << n_ksh_cap_lt_1e10 << "\t"
+                << n_ksh_cap_lt_1e8 << "\t"
+                << n_ksh_cap_eq_0 << "\t"                
+                << endl;
     }        
 #endif
             cout.flush();
