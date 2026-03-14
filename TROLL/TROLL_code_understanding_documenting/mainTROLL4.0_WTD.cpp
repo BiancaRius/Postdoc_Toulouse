@@ -8030,16 +8030,12 @@ if (_WATER_RETENTION_CURVE==1) {
                     n_theta_cap_lt_1e3++;
                 }
 
-                if(theta_w_cap==0) {
-                    theta_w_cap=0.001; // following SS addition for limit value
-                    cout << "Warning theta_w_cap = 0 " << endl ;
-                }
 
-                // if(theta_w_cap < 1e-6) {
-                //     theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                // } else if(theta_w_cap > 1.0) {
-                //     theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
-                // }
+                if(theta_w_cap < 1e-6) {
+                    theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                } else if(theta_w_cap > 1.0) {
+                    theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                }
 
 if (_WATER_RETENTION_CURVE==1) {
                 soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
