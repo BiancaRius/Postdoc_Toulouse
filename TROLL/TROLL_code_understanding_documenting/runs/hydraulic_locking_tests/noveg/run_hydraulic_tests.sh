@@ -10,11 +10,10 @@ fi
 RUN="$1"
 
 BASE_DIR="/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting"
-RUN_DIR="$BASE_DIR/runs/hydraulic_locking_tests/$RUN"
+RUN_DIR="$BASE_DIR/runs/hydraulic_locking_tests/noveg/ks/$RUN"
 OUTPUT_DIR="$RUN_DIR/output"
 INPUT_DIR="$BASE_DIR/runs/hydraulic_locking_tests/noveg/common_inputs"
 
-CPP_FILE="$BASE_DIR/mainTROLL4.0_WTD.cpp"
 EXE_FILE="$BASE_DIR/TROLL.out"
 
 CLIMATE_FILE="$INPUT_DIR/Paracou_input_climate.txt"
@@ -41,25 +40,20 @@ git_commit_short: $GIT_COMMIT_SHORT
 git_branch: $GIT_BRANCH
 EOF
 
-cp "$CPP_FILE" "$RUN_DIR/"
-
 echo "Compiling..."
 
-{
-  cd "$BASE_DIR"
-  g++ mainTROLL4.0_WTD.cpp -O3 -o TROLL.out -lgsl -lgslcblas -Wall
-} > "$RUN_DIR/compile_log.txt" 2>&1
+cd "$BASE_DIR"
+g++ mainTROLL4.0_WTD.cpp -O3 -o TROLL.out -lgsl -lgslcblas -Wall
 
 echo "Running model..."
 
-{
-  cd "$OUTPUT_DIR"
-  "$EXE_FILE" \
-    -m"$CLIMATE_FILE" \
-    -d"$DAILY_FILE" \
-    -s"$SPECIES_FILE" \
-    -i"$GLOBAL_FILE" \
-    -p"$PEDOLOGY_FILE"
-} > "$RUN_DIR/stdout.txt" 2>&1
+cd "$OUTPUT_DIR"
+"$EXE_FILE" \
+  -m"$CLIMATE_FILE" \
+  -d"$DAILY_FILE" \
+  -s"$SPECIES_FILE" \
+  -i"$GLOBAL_FILE" \
+  -p"$PEDOLOGY_FILE" \
+  > "$RUN_DIR/stdout.txt" 2>&1
 
 echo "Run completed: $RUN"

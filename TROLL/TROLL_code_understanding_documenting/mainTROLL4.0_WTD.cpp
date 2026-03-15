@@ -8069,8 +8069,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     n_ks_cap_eq_0++;
                 }
 
-                if(Ks_cap[l][d] < 1e-12) {
-                    Ks_cap[l][d] = 1e-12; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
+                if(Ks_cap[l][d] < 1e-10) {
+                    Ks_cap[l][d] = 1e-10; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
                 }
 
                 // Update soil phi
