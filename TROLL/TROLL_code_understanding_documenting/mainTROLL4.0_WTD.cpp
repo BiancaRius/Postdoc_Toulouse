@@ -6583,6 +6583,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     output_debug_hydraulics_by_iter.open(nnn, ios::out);
                     output_debug_hydraulics_by_iter << "iter\t"
                         << "total_voxels\t"
+                        << "total_interfaces\t"
                         << "n_theta_cap_lt_1e6\t"
                         << "n_theta_cap_lt_1e5\t"
                         << "n_theta_cap_lt_1e4\t"
@@ -8069,8 +8070,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     n_ks_cap_eq_0++;
                 }
 
-                if(Ks_cap[l][d] < 1e-8) {
-                    Ks_cap[l][d] = 1e-8; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
+                if(Ks_cap[l][d] < 1e-12) {
+                    Ks_cap[l][d] = 1e-12; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
                 }
 
                 // Update soil phi
@@ -9139,21 +9140,22 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             int total_voxels = nbdcells * nblayers_soil;
             int total_interfaces = nbdcells * (nblayers_soil - 1);
 
-            output_debug_hydraulics_by_iter << "iter\t"
-                << "total_voxels\t"
-                << "total_interfaces\t"
-                << "n_theta_cap_lt_1e6\t"
-                << "n_theta_cap_lt_1e5\t"
-                << "n_theta_cap_lt_1e4\t"
-                << "n_theta_cap_lt_1e3\t"
-                << "n_ks_cap_lt_1e12\t"
-                << "n_ks_cap_lt_1e10\t"
-                << "n_ks_cap_lt_1e8\t"
-                << "n_ks_cap_eq_0\t"
-                << "n_ksh_cap_lt_1e12\t"
-                << "n_ksh_cap_lt_1e10\t"
-                << "n_ksh_cap_lt_1e8\t"
-                << "n_ksh_cap_eq_0"
+            output_debug_hydraulics_by_iter
+                << iter << '\t'
+                << total_voxels << '\t'
+                << total_interfaces << '\t'
+                << n_theta_cap_lt_1e6 << '\t'
+                << n_theta_cap_lt_1e5 << '\t'
+                << n_theta_cap_lt_1e4 << '\t'
+                << n_theta_cap_lt_1e3 << '\t'
+                << n_ks_cap_eq_0 << '\t'
+                << n_ks_cap_lt_1e12 << '\t'
+                << n_ks_cap_lt_1e10 << '\t'
+                << n_ks_cap_lt_1e8 << '\t'
+                << n_ksh_cap_eq_0 << '\t'
+                << n_ksh_cap_lt_1e12 << '\t'
+                << n_ksh_cap_lt_1e10 << '\t'
+                << n_ksh_cap_lt_1e8
                 << endl;
     }        
 #endif

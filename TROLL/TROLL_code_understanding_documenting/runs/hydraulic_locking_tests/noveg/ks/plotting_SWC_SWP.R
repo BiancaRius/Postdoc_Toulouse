@@ -14,28 +14,22 @@ out_prefix <- "(null)"
 # -----------------------------
 # Paths (MULTIPLE situations)
 # -----------------------------
-base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/"
+base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/ks/"
 
 files_df <- tibble(
   model_name = c(
-    "baseline_noveg",
-    "legacy_theta0_reset1e-3_noveg",
-    "theta_thres1e-6_noveg",
-    "theta_thres1e-5_noveg",
-    "theta_thres1e-4_noveg",
-    "theta_thres1e-3_noveg"
+    "theta1e-6_ksfloor1e-12_noveg",
+    "theta1e-6_ksfloor1e-10_noveg",
+    "theta1e-6_ksfloor1e-8_noveg"
   ),
   experiment_dir = file.path(base_dir, c(
-    "baseline_noveg/output",
-    "legacy_theta0_reset1e-3_noveg/output",
-    "theta_thres1e-6_noveg/output",
-    "theta_thres1e-5_noveg/output",
-    "theta_thres1e-4_noveg/output",
-    "theta_thres1e-3_noveg/output"
+    "theta1e-6_ksfloor1e-12_noveg/output",
+    "theta1e-6_ksfloor1e-10_noveg/output",
+    "theta1e-6_ksfloor1e-8_noveg/output"
   )),
   pedology_path = rep(
-    file.path(base_dir, "common_inputs/Paracou_input_pedology.txt"),
-    6
+    file.path("~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/common_inputs/Paracou_input_pedology.txt"),
+    3
   )
 ) %>%
   mutate(
