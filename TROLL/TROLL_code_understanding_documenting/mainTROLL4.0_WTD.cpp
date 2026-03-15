@@ -8031,8 +8031,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
 
 
-                if(theta_w_cap < 1e-5) {
-                    theta_w_cap = 1e-5; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                if(theta_w_cap < 1e-4) {
+                    theta_w_cap = 1e-4; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                 } else if(theta_w_cap > 1.0) {
                     theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
                 }
