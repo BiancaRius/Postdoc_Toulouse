@@ -6,30 +6,35 @@ suppressPackageStartupMessages({
 # Params
 # -----------------------------
 out_prefix <- "(null)"
-save_plots <- TRUE   # mude para TRUE se quiser salvar png
+save_plots <- TRUE
 start_date <- as.Date("2004-01-01")
 
 # -----------------------------
 # Base path
 # -----------------------------
-base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg"
+base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/ks"
+
+plot_dir <- file.path(base_dir, "plots")
+if (save_plots) {
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+}
 
 # -----------------------------
 # Runs to compare
 # -----------------------------
 files_df <- tibble(
   model_name = c(
-    "baseline_noveg",
-    "legacy_theta0_reset1e-3_noveg",
-    "theta_thres1e-6_noveg",
-    "theta_thres1e-5_noveg",
-    "theta_thres1e-4_noveg",
-    "theta_thres1e-3_noveg"
+    "theta1e-6_ksfloor1e-12_noveg",
+    "theta1e-6_ksfloor1e-10_noveg",
+    "theta1e-6_ksfloor1e-8_noveg"
   )
 ) %>%
   mutate(
     experiment_dir = file.path(base_dir, model_name, "output"),
-    debug_hyd_path = file.path(experiment_dir, paste0(out_prefix, "_0_debug_hydraulics_by_iter.txt"))
+    debug_hyd_path = file.path(
+      experiment_dir,
+      paste0(out_prefix, "_0_debug_hydraulics_by_iter.txt")
+    )
   )
 
 print(files_df)
@@ -48,49 +53,45 @@ if (nrow(missing_files) > 0) {
 }
 
 # -----------------------------
-# Reader for old broken header
+# Correct column names
 # -----------------------------
-read_debug_fixed <- function(path) {
-  col_names <- c(
-    "iter",
-    "total_voxels",
-    "total_interfaces",
-    "n_theta_cap_lt_1e6",
-    "n_theta_cap_lt_1e5",
-    "n_theta_cap_lt_1e4",
-    "n_theta_cap_lt_1e3",
-    "n_ks_cap_lt_1e12",
-    "n_ks_cap_lt_1e10",
-    "n_ks_cap_lt_1e8",
-    "n_ks_cap_eq_0",
-    "n_ksh_cap_lt_1e12",
-    "n_ksh_cap_lt_1e10",
-    "n_ksh_cap_lt_1e8",
-    "n_ksh_cap_eq_0"
-  )
-  
+col_names_debug <- c(
+  "iter",
+  "total_voxels",
+  "total_interfaces",
+  "n_theta_cap_lt_1e6",
+  "n_theta_cap_lt_1e5",
+  "n_theta_cap_lt_1e4",
+  "n_theta_cap_lt_1e3",
+  "n_ks_cap_eq_0",
+  "n_ks_cap_lt_1e12",
+  "n_ks_cap_lt_1e10",
+  "n_ks_cap_lt_1e8",
+  "n_ksh_cap_eq_0",
+  "n_ksh_cap_lt_1e12",
+  "n_ksh_cap_lt_1e10",
+  "n_ksh_cap_lt_1e8"
+)
+
+# -----------------------------
+# Reader for files with wrong header
+# -----------------------------
+read_debug_fixed_header <- function(path) {
   readr::read_tsv(
-    path,
+    file = path,
     skip = 1,
-    col_names = col_names,
+    col_names = col_names_debug,
     show_col_types = FALSE,
     progress = FALSE
   ) %>%
-    dplyr::select(-dplyr::matches("^X[0-9]+$"))
+    mutate(across(everything(), as.numeric))
 }
 
 # -----------------------------
 # Read all runs
 # -----------------------------
 debug_all <- purrr::map_dfr(seq_len(nrow(files_df)), function(i) {
-  df <- read_debug_fixed(files_df$debug_hyd_path[i])
-  
-  if (!all(c("iter", "total_voxels", "total_interfaces") %in% names(df))) {
-    stop(
-      "Columns 'iter', 'total_voxels' and/or 'total_interfaces' not found in: ",
-      files_df$debug_hyd_path[i]
-    )
-  }
+  df <- read_debug_fixed_header(files_df$debug_hyd_path[i])
   
   df %>%
     mutate(
@@ -104,7 +105,7 @@ debug_all <- purrr::map_dfr(seq_len(nrow(files_df)), function(i) {
 # -----------------------------
 debug_long <- debug_all %>%
   pivot_longer(
-    cols = -c(model_name, iter, total_voxels, total_interfaces, date),
+    cols = starts_with("n_"),
     names_to = "metric",
     values_to = "n_voxels"
   ) %>%
@@ -115,8 +116,8 @@ debug_long <- debug_all %>%
       str_detect(metric, "^n_ksh_cap")   ~ "Ksh",
       TRUE ~ "other"
     ),
-    pct_voxels = 100 * n_voxels / total_voxels,
-    pct_interfaces = 100 * n_voxels / total_interfaces,
+    pct_voxels = if_else(total_voxels > 0, 100 * n_voxels / total_voxels, NA_real_),
+    pct_interfaces = if_else(total_interfaces > 0, 100 * n_voxels / total_interfaces, NA_real_),
     sim_year = as.numeric(date - start_date) / 365
   ) %>%
   filter(group %in% c("theta", "Ks", "Ksh"))
@@ -130,19 +131,21 @@ metric_labels <- c(
   "n_theta_cap_lt_1e4" = "theta < 1e-4",
   "n_theta_cap_lt_1e3" = "theta < 1e-3",
   
-  "n_ks_cap_eq_0"      = "Ks = 0",
-  "n_ks_cap_lt_1e12"   = "Ks < 1e-12",
-  "n_ks_cap_lt_1e10"   = "Ks < 1e-10",
-  "n_ks_cap_lt_1e8"    = "Ks < 1e-8",
+  "n_ks_cap_eq_0"     = "Ks = 0",
+  "n_ks_cap_lt_1e12"  = "Ks < 1e-12",
+  "n_ks_cap_lt_1e10"  = "Ks < 1e-10",
+  "n_ks_cap_lt_1e8"   = "Ks < 1e-8",
   
-  "n_ksh_cap_eq_0"     = "Ksh = 0",
-  "n_ksh_cap_lt_1e12"  = "Ksh < 1e-12",
-  "n_ksh_cap_lt_1e10"  = "Ksh < 1e-10",
-  "n_ksh_cap_lt_1e8"   = "Ksh < 1e-8"
+  "n_ksh_cap_eq_0"    = "Ksh = 0",
+  "n_ksh_cap_lt_1e12" = "Ksh < 1e-12",
+  "n_ksh_cap_lt_1e10" = "Ksh < 1e-10",
+  "n_ksh_cap_lt_1e8"  = "Ksh < 1e-8"
 )
 
 debug_long <- debug_long %>%
-  mutate(metric_pretty = recode(metric, !!!metric_labels))
+  mutate(
+    metric_pretty = recode(metric, !!!metric_labels)
+  )
 
 # -----------------------------
 # Split data
@@ -160,8 +163,8 @@ plot_thresholds <- function(df, title_txt, y_var = c("pct_voxels", "n_voxels")) 
   y_lab <- if (y_var == "pct_voxels") "% of voxels" else "Number of voxels"
   
   ggplot(df, aes(x = sim_year, y = .data[[y_var]], color = metric_pretty)) +
-    geom_line(linewidth = 0.7) +
-    facet_wrap(~ model_name, ncol = 2) +
+    geom_line(linewidth = 0.5) +
+    facet_wrap(~ model_name, ncol = 2, scales = "free_y") +
     labs(
       x = "Time [years]",
       y = y_lab,
@@ -171,7 +174,8 @@ plot_thresholds <- function(df, title_txt, y_var = c("pct_voxels", "n_voxels")) 
     theme_bw() +
     theme(
       legend.position = "bottom",
-      strip.text = element_text(face = "bold")
+      strip.text = element_text(face = "bold"),
+      plot.title = element_text(face = "bold")
     )
 }
 
@@ -201,7 +205,7 @@ print(p_ks_pct)
 print(p_ksh_pct)
 
 # -----------------------------
-# Optional: absolute counts
+# Absolute counts
 # -----------------------------
 p_theta_n <- plot_thresholds(
   theta_df,
@@ -221,20 +225,44 @@ p_ksh_n <- plot_thresholds(
   y_var = "n_voxels"
 )
 
-# Uncomment if you want to see them too
+# Descomente se quiser mostrar também
 # print(p_theta_n)
 # print(p_ks_n)
 # print(p_ksh_n)
 
 # -----------------------------
-# Optional save
+# Save plots
 # -----------------------------
 if (save_plots) {
-  ggsave("theta_thresholds_pct.png", p_theta_pct, width = 13, height = 8, dpi = 300)
-  ggsave("ks_thresholds_pct.png",    p_ks_pct,    width = 13, height = 8, dpi = 300)
-  ggsave("ksh_thresholds_pct.png",   p_ksh_pct,   width = 13, height = 8, dpi = 300)
+  ggsave(
+    filename = file.path(plot_dir, "theta_thresholds_pct.png"),
+    plot = p_theta_pct,
+    width = 13, height = 8, dpi = 300
+  )
+  ggsave(
+    filename = file.path(plot_dir, "ks_thresholds_pct.png"),
+    plot = p_ks_pct,
+    width = 13, height = 8, dpi = 300
+  )
+  ggsave(
+    filename = file.path(plot_dir, "ksh_thresholds_pct.png"),
+    plot = p_ksh_pct,
+    width = 13, height = 8, dpi = 300
+  )
   
-  ggsave("theta_thresholds_n.png", p_theta_n, width = 13, height = 8, dpi = 300)
-  ggsave("ks_thresholds_n.png",    p_ks_n,    width = 13, height = 8, dpi = 300)
-  ggsave("ksh_thresholds_n.png",   p_ksh_n,   width = 13, height = 8, dpi = 300)
+  ggsave(
+    filename = file.path(plot_dir, "theta_thresholds_n.png"),
+    plot = p_theta_n,
+    width = 13, height = 8, dpi = 300
+  )
+  ggsave(
+    filename = file.path(plot_dir, "ks_thresholds_n.png"),
+    plot = p_ks_n,
+    width = 13, height = 8, dpi = 300
+  )
+  ggsave(
+    filename = file.path(plot_dir, "ksh_thresholds_n.png"),
+    plot = p_ksh_n,
+    width = 13, height = 8, dpi = 300
+  )
 }
