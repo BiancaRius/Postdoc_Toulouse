@@ -54,6 +54,5 @@ cd "$OUTPUT_DIR"
   -s"$SPECIES_FILE" \
   -i"$GLOBAL_FILE" \
   -p"$PEDOLOGY_FILE" \
-  > "$RUN_DIR/stdout.txt" 2>&1
 
 echo "Run completed: $RUN"
