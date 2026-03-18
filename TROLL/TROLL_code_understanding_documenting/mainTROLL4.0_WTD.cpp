@@ -7447,7 +7447,7 @@ if (_WATER_RETENTION_CURVE==1) {
     *
     * @param iter      The current iteration number.
     * @param nbdays    The total number of days in the climate data cycle.
-    */            
+        */            
             tnight=NightTemperature[iter%nbdays];
             precip=Rainfall[iter%nbdays];
             // precip=Rainfall[iter%nbdays]*0.5;
