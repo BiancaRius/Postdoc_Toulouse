@@ -14,28 +14,18 @@ out_prefix <- "(null)"
 # -----------------------------
 # Paths (MULTIPLE situations)
 # -----------------------------
-base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/"
+base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/theta/"
 
 files_df <- tibble(
   model_name = c(
-    "baseline_noveg",
-    "legacy_theta0_reset1e-3_noveg",
-    "theta_thres1e-6_noveg",
-    "theta_thres1e-5_noveg",
-    "theta_thres1e-4_noveg",
-    "theta_thres1e-3_noveg"
+    "baseline_noveg_redprec"
   ),
   experiment_dir = file.path(base_dir, c(
-    "baseline_noveg/output",
-    "legacy_theta0_reset1e-3_noveg/output",
-    "theta_thres1e-6_noveg/output",
-    "theta_thres1e-5_noveg/output",
-    "theta_thres1e-4_noveg/output",
-    "theta_thres1e-3_noveg/output"
+    "baseline_noveg_redprec/output"
   )),
   pedology_path = rep(
-    file.path(base_dir, "common_inputs/Paracou_input_pedology.txt"),
-    6
+    file.path("~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/common_inputs/Paracou_input_pedology.txt"),
+    1
   )
 ) %>%
   mutate(
@@ -185,7 +175,10 @@ p_swp_all <- raster_all %>%
   facet_wrap(~ model_name, ncol = 2) +
   labs(x = "Time [years]", y = "Depth [m]", title = "SWP - all configurations") +
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(angle = 45, hjust = 1)
+  )
 
 print(p_swp_all)
 
