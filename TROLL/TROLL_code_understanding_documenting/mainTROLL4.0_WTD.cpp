@@ -5427,8 +5427,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             WDailyMean_year *=SWtoPPFD/nbdays;
             
             tnight=NightTemperature[0];
-            // precip=Rainfall[0];
-            precip=Rainfall[0]*0.5;
+            precip=Rainfall[0];
+            // precip=Rainfall[0]*0.5;
             WSDailyMean=DailyMeanWindSpeed[0];
             WDailyMean=DailyMeanIrradiance[0]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[0];
@@ -7449,8 +7449,8 @@ if (_WATER_RETENTION_CURVE==1) {
     * @param nbdays    The total number of days in the climate data cycle.
     */            
             tnight=NightTemperature[iter%nbdays];
-            // precip=Rainfall[iter%nbdays];
-            precip=Rainfall[iter%nbdays]*0.5;
+            precip=Rainfall[iter%nbdays];
+            // precip=Rainfall[iter%nbdays]*0.5;
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[iter%nbdays];
