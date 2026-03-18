@@ -5427,8 +5427,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             WDailyMean_year *=SWtoPPFD/nbdays;
             
             tnight=NightTemperature[0];
-            precip=Rainfall[0];
-            // precip=Rainfall[0]*0.5;
+            // precip=Rainfall[0];
+            precip=Rainfall[0]*0.5;
             WSDailyMean=DailyMeanWindSpeed[0];
             WDailyMean=DailyMeanIrradiance[0]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[0];
@@ -7447,10 +7447,10 @@ if (_WATER_RETENTION_CURVE==1) {
     *
     * @param iter      The current iteration number.
     * @param nbdays    The total number of days in the climate data cycle.
-        */            
+    */            
             tnight=NightTemperature[iter%nbdays];
-            precip=Rainfall[iter%nbdays];
-            // precip=Rainfall[iter%nbdays]*0.5;
+            // precip=Rainfall[iter%nbdays];
+            precip=Rainfall[iter%nbdays]*0.5;
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[iter%nbdays];
@@ -8066,9 +8066,9 @@ if (_WATER_RETENTION_CURVE==1) {
                     n_ks_cap_eq_0++;
                 }
 
-                // if(Ks_cap[l][d] < 1e-6) {
-                //     Ks_cap[l][d] = 1e-6; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
-                // }
+                if(Ks_cap[l][d] < 1e-12) {
+                    Ks_cap[l][d] = 1e-12; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
+                }
 
                 // Update soil phi
                  soil_phi3D[l][d] = soil_phi3D_cap[l][d]; //to update the output
