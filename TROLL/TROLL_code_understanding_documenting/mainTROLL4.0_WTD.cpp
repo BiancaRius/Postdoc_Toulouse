@@ -5427,8 +5427,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             WDailyMean_year *=SWtoPPFD/nbdays;
             
             tnight=NightTemperature[0];
-            // precip=Rainfall[0];
-            precip=Rainfall[0]*0.5;
+            precip=Rainfall[0];
+            // precip=Rainfall[0]*0.5;
             WSDailyMean=DailyMeanWindSpeed[0];
             WDailyMean=DailyMeanIrradiance[0]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[0];
@@ -7449,8 +7449,8 @@ if (_WATER_RETENTION_CURVE==1) {
     * @param nbdays    The total number of days in the climate data cycle.
     */            
             tnight=NightTemperature[iter%nbdays];
-            // precip=Rainfall[iter%nbdays];
-            precip=Rainfall[iter%nbdays]*0.5;
+            precip=Rainfall[iter%nbdays];
+            // precip=Rainfall[iter%nbdays]*0.5;
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[iter%nbdays];
@@ -8029,7 +8029,8 @@ if (_WATER_RETENTION_CURVE==1) {
 
 
                 if(theta_w_cap < 1e-6) {
-                    theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                    // theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                    theta_w_cap = 1e-3
                 } else if(theta_w_cap > 1.0) {
                     theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
                 }
@@ -8066,8 +8067,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     n_ks_cap_eq_0++;
                 }
 
-                if(Ks_cap[l][d] < 1e-12) {
-                    Ks_cap[l][d] = 1e-12; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
+                if(Ks_cap[l][d] < 1e-8) {
+                    Ks_cap[l][d] = 1e-8; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
                 }
 
                 // Update soil phi
