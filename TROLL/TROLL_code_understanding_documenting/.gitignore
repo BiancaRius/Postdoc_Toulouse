@@ -11,6 +11,10 @@
 wtd_test.txt
 # Track this specific file
 !Paracou_input_global.txt
+!Paracou_input_pedology.txt
+Paracou_input_daily.txt
+Paracou_input_species.txt
+Paracou_input_climate.txt
 
 runs/**/outputs/
 runs/**/output/
@@ -18,3 +22,4 @@ runs/**/out/
 *.parquet
 *.png
 .Rhistory
+*.log

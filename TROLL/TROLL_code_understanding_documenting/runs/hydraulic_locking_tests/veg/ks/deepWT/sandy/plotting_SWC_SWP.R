@@ -16,17 +16,18 @@ out_prefix <- "(null)"
 # -----------------------------
 # Paths (MULTIPLE situations)
 # -----------------------------
-base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/ks/deepWT/"
+#base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/ks/deepWT/"
 
+base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/veg/ks/deepWT/sandy"
 files_df <- tibble(
   model_name = c(
-    "theta1e-6_ksfloor1e-12_noveg_redprec_deepwt"
+    "deep_veg_redprec_theta_lt_1e-3"
   ),
   experiment_dir = file.path(base_dir, c(
-    "theta1e-6_ksfloor1e-12_noveg_redprec_deepwt/output"
+    "deep_veg_redprec_theta_lt_1e-3/output"
   )),
   pedology_path = rep(
-      file.path("~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/ks/deepWT/common_inputs/Paracou_input_pedology.txt"),
+      file.path("~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/veg/ks/deepWT/sandy/common_inputs/Paracou_input_pedology.txt"),
     1
   )
 ) %>%
@@ -129,12 +130,12 @@ raster_all <- data_long_all %>%
     sim_year = days_run / 365,
     model_name = recode(
       model_name,
-      "theta1e-6_ksfloorNone_noveg_precnorm_deepwt" = "theta1e-6_ksfloorNone_noveg_precnorm_deepwt",
+      "deep_veg_redprec_theta_lt_1e-3" = "deep_veg_redprec_theta_lt_1e-3",
     ),
     model_name = factor(
       model_name,
       levels = c(
-        "theta1e-6_ksfloorNone_noveg_precnorm_deepwt"
+        "deep_veg_redprec_theta_lt_1e-3"
       )
     )
   )
@@ -204,20 +205,20 @@ print(p_swp_all)
 output_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/ks/deepWT/theta1e-6_ksfloor1e-12_noveg_redprec_deepwt/"
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-ggsave(
-  filename = file.path(output_dir, "SWC_all_configs.png"),
-  plot = p_swc_all,
-  width = 12,
-  height = 8,
-  dpi = 300
-)
+# ggsave(
+#   filename = file.path(output_dir, "SWC_all_configs.png"),
+#   plot = p_swc_all,
+#   width = 12,
+#   height = 8,
+#   dpi = 300
+# )
 
-ggsave(
-  filename = file.path(output_dir, "SWP_all_configs.png"),
-  plot = p_swp_all,
-  width = 12,
-  height = 8,
-  dpi = 300
-)
+# ggsave(
+#   filename = file.path(output_dir, "SWP_all_configs.png"),
+#   plot = p_swp_all,
+#   width = 12,
+#   height = 8,
+#   dpi = 300
+# )
 
 cat("Saved files in:\n", output_dir, "\n")

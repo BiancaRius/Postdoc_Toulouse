@@ -10,11 +10,11 @@ fi
 RUN="$1"
 
 BASE_DIR="/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting"
-RUN_DIR="$BASE_DIR/runs/hydraulic_locking_tests/veg/ks/deepWT/$RUN"
+RUN_DIR="$BASE_DIR/runs/hydraulic_locking_tests/veg/ks/deepWT/clayey/$RUN"
 OUTPUT_DIR="$RUN_DIR/output"
-INPUT_DIR="$BASE_DIR/runs/hydraulic_locking_tests/veg/ks/deepWT/common_inputs"
+INPUT_DIR="$BASE_DIR/runs/hydraulic_locking_tests/veg/ks/deepWT/clayey/common_inputs"
 
-EXE_FILE="$BASE_DIR/TROLL.out"
+EXE_FILE="$BASE_DIR/TROLL_deep_veg.out"
 
 CLIMATE_FILE="$INPUT_DIR/Paracou_input_climate.txt"
 DAILY_FILE="$INPUT_DIR/Paracou_input_daily.txt"
@@ -43,7 +43,7 @@ EOF
 echo "Compiling..."
 
 cd "$BASE_DIR"
-g++ mainTROLL4.0_WTD.cpp -O3 -o TROLL.out -lgsl -lgslcblas -Wall
+g++ mainTROLL4.0_WTD.cpp -O3 -o TROLL_deep_veg.out -lgsl -lgslcblas -Wall
 
 echo "Running model..."
 

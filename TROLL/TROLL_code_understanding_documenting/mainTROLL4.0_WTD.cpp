@@ -5427,8 +5427,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             WDailyMean_year *=SWtoPPFD/nbdays;
             
             tnight=NightTemperature[0];
-            precip=Rainfall[0];
-            // precip=Rainfall[0]*0.5;
+            // precip=Rainfall[0];
+            precip=Rainfall[0]*0.5;
             WSDailyMean=DailyMeanWindSpeed[0];
             WDailyMean=DailyMeanIrradiance[0]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[0];
@@ -7002,7 +7002,9 @@ if (_WATER_RETENTION_CURVE==1) {
                     Ks[l][d]=Ksat[l]*pow(theta_w, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     if (isnan(soil_phi3D[l][d]) || isnan(Ks[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
                         cout << "In bucket model, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " Ks[l][d]=" << Ks[l][d] << endl ;
-               
+                        cout << "in function readinputinventory" << endl;
+
+
                 } else if (_WATER_RETENTION_CURVE==0) {
                     soil_phi3D[l][d]=phi_e[l]*pow(theta_w, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
                     Ks[l][d]=Ksat[l]*pow(theta_w, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
@@ -7449,8 +7451,8 @@ if (_WATER_RETENTION_CURVE==1) {
     * @param nbdays    The total number of days in the climate data cycle.
     */            
             tnight=NightTemperature[iter%nbdays];
-            precip=Rainfall[iter%nbdays];
-            // precip=Rainfall[iter%nbdays]*0.5;
+            // precip=Rainfall[iter%nbdays];
+            precip=Rainfall[iter%nbdays]*0.5;
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[iter%nbdays];
@@ -7774,6 +7776,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
 
 
 } else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
+            
+            
             // espaço disponível na camada 0 até saturação
                 float cap0 = std::max(0.0f, Max_SWC[0] - SWC3D[0][d]);
 
@@ -7783,7 +7787,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
             // atualiza armazenamento da camada 0
                 SWC3D[0][d] += infil0;
 
-            // o resto vai "pra casa do caralho" = runoff/perda por enquanto
+            // 
                 float excess = in - infil0;
                 Runoff[d] += excess;   // ou LossRain[d] += excess, se você preferir separar
 
@@ -7913,25 +7917,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
      *
      * The code uses the soil surface as the reference datum ($z=0.0$), with depth increasing
      * downwards (negative $z$ values).
-     *
-     * @param nblayers_soil Number of soil layers.
-     * @param layer_depth A vector containing the depth to the bottom of each layer from the soil surface [m].
-     * @param WTD Water table depth from the soil surface [m].
-     * @param SWC3D A 3D array of soil water content for each layer.
-     * @param Min_SWC A vector of minimum soil water content for each layer.
-     * @param Max_SWC A vector of maximum soil water content for each layer.
-     * @param a_vgm, b_vgm, c_vgm, m_vgm Parameters for the van Genuchten-Mualem model.
-     * @param phi_e, b Parameters for the Brooks & Corey-Mualem model.
-     * @param Ksat A vector of saturated hydraulic conductivity for each layer [m/s].
-     * @param delta_z_face A vector to store the vertical distance between adjacent layer centers [m].
-     * @param soil_phi3D_cap A 3D array to store the calculated soil water potential [MPa].
-     * @param Ks_cap A 3D array to store the calculated unsaturated hydraulic conductivity [m/s].
-     * @param Ks_cap_harmonic A 3D array to store the harmonic mean of hydraulic conductivity between layers [m/s].
-     * @param q_cap A 3D array to store the upward capillary flux between layers [m/s].
-     * @param water_height_upward A 3D array to store the height of water moved upward during the timestep [m].
-     * @param water_change_cap A 3D array to store the change in water content due to capillary rise.
-     * @param water_upward_vol A 3D array to store the volume of water moved upward during the timestep [m^3].
-     *  */
+     */
+
 
                 if (_CAPILLARY_RISE==1) { // BR
                     CapillaryRise(d);
@@ -7941,7 +7928,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
 
               
             
-            }// END of the BUCKET MODEL.
+            }// END of the vertical water flow
             
             // Update of soil water potential field
             for (int d=0; d<nbdcells; d++) {
@@ -7950,17 +7937,16 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                     // cout << "layer: "<< l<< "Current status of SWC3D: " << SWC3D[l][d] << endl; 
                     float theta_w=(SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);
 
-                    if(theta_w==0) {
-                        theta_w=0.001; // SS addition for limit value
-                        cout << "Warning theta_w = 0 " << endl ;
-                    }
-
-
-                    // if(theta_w < 1e-6) {
-                    //     theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                    // } else if(theta_w > 1.0) {
-                    //     theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                    // if(theta_w==0) {
+                    //     theta_w=0.001; // SS addition for limit value
+                    //     cout << "Warning theta_w = 0 " << endl ;
                     // }
+
+                    if(theta_w < 1e-3) {
+                        theta_w = 1e-3; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                    } else if(theta_w > 1.0) {
+                        theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
+                    }
 
 
                     
@@ -7970,11 +7956,11 @@ if (_WATER_RETENTION_CURVE==1) {
                     float inter= 1-pow((1-pow(theta_w, b_vgm[l])),m_vgm[l]);
                     Ks[l][d]=Ksat[l]*pow(theta_w, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                     
-                    //cout << "Outside bucket model" << " layer " << l <<  "\t" << "theta_w - theta_cap=  "<< theta_w << "\t" << "soil_phi= " << soil_phi3D[l][d] - soil_phi3D_cap[l][d] << "\t" << "Ks= "<< Ks[l][d] - Ks_cap[l][d] << endl;
 
-                    if (isnan(soil_phi3D[l][d]) || isnan(Ks[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
-                        cout << "In bucket model, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " Ks[l][d]=" << Ks[l][d] << endl ;
-                    
+                    if (isnan(soil_phi3D[l][d]) || isnan(Ks[l][d]) ||  (SWC3D[l][d]-Min_SWC[l])<0) {//|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
+                        cout << "After update theta_w from vertical flow, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " Ks[l][d]=" << Ks[l][d] << endl ;
+                        cout << "in updatefield function" << endl;
+                    }
 
 } else if (_WATER_RETENTION_CURVE==0) {
                     soil_phi3D[l][d]=phi_e[l]*pow(theta_w, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
@@ -7982,7 +7968,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     KsPhi[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5+b[l]); //Ks times soil_phi3D, computed directly as the exact power of theta.
             
                     if (isnan(soil_phi3D[l][d]) || isnan(Ks[l][d]) ||  isnan(KsPhi[l][d]) || (SWC3D[l][d]-Min_SWC[l])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
-                        cout << "In bucket model, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " phi_e=" << phi_e[l] <<" b[l]=" << b[l] << " KsPhi[l][d]=" << KsPhi[l][d] << " Ks[l][d]=" << Ks[l][d] << endl ;
+                        cout << "After update theta_w from vertical flow, layer " << l << " dcell " << d << " theta_w=" << theta_w << " SWC3D[l][d]-Min_SWC[l]=" << (SWC3D[l][d]-Min_SWC[l]) << " soil_phi3D[l][d]=" << soil_phi3D[l][d] << " Ksat=" << Ksat[l] << " phi_e=" << phi_e[l] <<" b[l]=" << b[l] << " KsPhi[l][d]=" << KsPhi[l][d] << " Ks[l][d]=" << Ks[l][d] << endl ;
                     //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
                     // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
                     
@@ -8029,11 +8015,23 @@ if (_WATER_RETENTION_CURVE==1) {
 
 
                 if(theta_w_cap < 1e-6) {
-                    // theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
-                    theta_w_cap = 1e-3
+                    theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                 } else if(theta_w_cap > 1.0) {
                     theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
                 }
+
+                // if (!std::isfinite(theta_w_cap) || theta_w_cap < 1e-2f) {
+                //     std::cout << "Resetting invalid/low theta_w_cap: "
+                //                 << "layer=" << l
+                //                 << ", cell=" << d
+                //                 << ", theta_w_cap(before)=" << theta_w_cap
+                //                 << ", SWC=" << SWC3D[l][d]
+                //                 << std::endl;
+
+                //     theta_w_cap = 1e-2f;
+                // } else if (theta_w_cap > 1.0f) {
+                //     theta_w_cap = 1.0f;
+                // }
 
 if (_WATER_RETENTION_CURVE==1) {
                 soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
@@ -8067,8 +8065,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     n_ks_cap_eq_0++;
                 }
 
-                if(Ks_cap[l][d] < 1e-8) {
-                    Ks_cap[l][d] = 1e-8; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
+                if(Ks_cap[l][d] < 1e-10) {
+                    Ks_cap[l][d] = 1e-10; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
                 }
 
                 // Update soil phi
@@ -8102,19 +8100,17 @@ if (_WATER_RETENTION_CURVE==1) {
                 if(Ks_cap_harmonic[l][d] == 0.0f) {
                     n_ksh_cap_eq_0++;
                 }
-             
-
 
                 // Check for division by zero to avoid errors 
                 // If both conductivities are zero, the harmonic mean is also zero
-                // if (sum_k > 1e-9f){
-                //     Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-                //     // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
+                if (sum_k > 1e-9f){
+                    Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                    // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
-                // } else {
-                //     Ks_cap_harmonic[l][d] = 0.0f;
-                //     cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << endl;
-                // }
+                } else {
+                    Ks_cap_harmonic[l][d] = 0.0f;
+                    cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << "k1=" << k1 << "k2="<< k2<< endl;
+                }
 
             } // End for layers interface (step 2)
 
@@ -8234,7 +8230,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             //     if (height_fringe < 0.0f) height_fringe = 0.0f;
             // }
 
-            // // (Optional) "Pore-filling" filter: require near-saturation at the fringe top layer
+            //  "Pore-filling" filter: require near-saturation at the fringe top layer
             // // Example criterion: consider the fringe as "filled" only if the top layer is at least 90% of saturation.
             // bool fringe_is_filled = false;
             // if (fringe_top_layer >= 0) {
@@ -8258,11 +8254,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             //         << q_wt_supply << "," << water_height_wt << ","
             //         << fringe_top_layer << "," << height_fringe << "," << (fringe_is_filled ? 1 : 0) << "\n";
             // }
-
-            
-
-
-
 
 
             // --- Step 4: Evaluate the capacities of the layers to donate or receive water ---

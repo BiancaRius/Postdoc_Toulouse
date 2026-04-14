@@ -12,17 +12,17 @@ start_date  <- as.Date("2004-01-01")
 # -----------------------------
 # Base paths
 # -----------------------------
-base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/ks/deepWT/theta1e-6_ksfloor1e-12_noveg_redprec_deepwt"
-#plot_dir <- file.path(base_dir, "plots_vertical_flux_faceted")
+base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/hydraulic_locking_tests/noveg/theta"
+plot_dir <- file.path(base_dir, "plots_vertical_flux_faceted")
 
-#dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 
 # -----------------------------
 # Runs to compare
 # -----------------------------
 files_df <- tibble(
   model_name = c(
-    ""
+    "baseline_noveg_redprec"
   )
 ) %>%
   mutate(
@@ -92,11 +92,11 @@ flux_all <- purrr::map_dfr(seq_len(nrow(files_df)), function(i) {
 # Pretty model labels
 # -----------------------------
 model_labels <- c(
-  "theta1e-6_ksfloor1e-12_noveg_redprec_deepwt" = ""
+  "baseline_noveg_redprec" = ""
 )
 
 model_levels <- c(
-  "theta1e-6_ksfloor1e-12_noveg_redprec_deepwt"
+  "baseline_noveg_redprec"
 )
 
 # -----------------------------
@@ -149,7 +149,7 @@ plot_interface_faceted <- function(data, metric_name, title_txt, y_lab, add_zero
     data %>% filter(metric == metric_name),
     aes(x = sim_year, y = value)
   ) +
-    geom_line(linewidth = 0.3) +
+    geom_line(linewidth = 0.6) +
     facet_grid(model_name ~ interface, scales = "free_y") +
     labs(
       title = title_txt,
@@ -160,8 +160,7 @@ plot_interface_faceted <- function(data, metric_name, title_txt, y_lab, add_zero
     theme(
       strip.text = element_text(face = "bold"),
       plot.title = element_text(face = "bold")
-    ) 
-    
+    )
   
   if (add_zero) {
     p <- p + geom_hline(yintercept = 0, linetype = 2)
