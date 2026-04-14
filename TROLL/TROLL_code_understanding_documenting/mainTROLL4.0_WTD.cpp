@@ -6990,11 +6990,18 @@ if (_WATER_RETENTION_CURVE==1) {
                 for (int l=0; l<nblayers_soil; l++) {
                     float theta_w=(SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);
                     
-                    if(theta_w==0) {
-                        theta_w=0.001; // SS addition for limit value
-                        cout << "Warning theta_w = 0 " << endl ;
+                    // if(theta_w==0) {
+                    //     theta_w=0.001; // SS addition for limit value
+                    //     cout << "Warning theta_w = 0 " << endl ;
+                    // }
+
+                    if(theta_w < 1e-3) {
+                        theta_w = 1e-3; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                    } else if(theta_w > 1.0) {
+                        theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
                     }
-                    
+
+
                 if (_WATER_RETENTION_CURVE==1) {
 
                     soil_phi3D[l][d]=a_vgm[l]*pow((pow(theta_w,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
@@ -7704,7 +7711,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 SWC3D[0][d]-=Evaporation[d];
                 
                 // Refilling by rainfall
-
                 Interception[d]=fminf(precip, 0.2*LAI_DCELL[0][d]);      // This is the amount of rainfall - in mm, as rainfall -, intercepted by vegetation cover, following the approach used in Liang et al. 1994 Journal of Geophysical Reserach, and also used by Laio et al. 2001 Advances in Water Resources and Fischer et al. 2014 Environmental Modelling & Software (FORMIX3, Madagascar). More complex approach can be used however - see eg. Gutierrez et al. 2014 Plos One (FORMIND, Chili), or Wagner et al. 2011 AFM (Paracou)
                 Throughfall[d]=precip-Interception[d];
                 Throughfall[d]*=sites_per_dcell*LH*LH*0.001; // to convert in absolute amount of water entering the soil voxel in m3
@@ -7810,8 +7816,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
             // sets the maximum infiltration flux that the soil can physically accept during the timestep.
 
 // ATTENTION: INFILTRATION TEMPORARY
-
-
 
 //             // 1. Calculate soil hydraulic properties for the layer 0 in order to compute Infiltration
 //                 // Computes relative soil water content (that_w_inf), soil water potential (soil_phi3D_inf), 
@@ -7980,7 +7984,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
 #ifdef VERTICAL_WATER_FLUX // BR
         void CapillaryRise(int d){ // BR
-                // This function is now integrated within the bucket model in UpdateField()
+            // This function is now integrated within the bucket model in UpdateField()
             
             // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
             // Computes relative soil water content, soil water potential (phi), and hydraulic 
@@ -8014,24 +8018,12 @@ if (_WATER_RETENTION_CURVE==1) {
                 }
 
 
-                if(theta_w_cap < 1e-6) {
-                    theta_w_cap = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                if(theta_w_cap < 1e-3) {
+                    theta_w_cap = 1e-3; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                 } else if(theta_w_cap > 1.0) {
                     theta_w_cap = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
                 }
 
-                // if (!std::isfinite(theta_w_cap) || theta_w_cap < 1e-2f) {
-                //     std::cout << "Resetting invalid/low theta_w_cap: "
-                //                 << "layer=" << l
-                //                 << ", cell=" << d
-                //                 << ", theta_w_cap(before)=" << theta_w_cap
-                //                 << ", SWC=" << SWC3D[l][d]
-                //                 << std::endl;
-
-                //     theta_w_cap = 1e-2f;
-                // } else if (theta_w_cap > 1.0f) {
-                //     theta_w_cap = 1.0f;
-                // }
 
 if (_WATER_RETENTION_CURVE==1) {
                 soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)

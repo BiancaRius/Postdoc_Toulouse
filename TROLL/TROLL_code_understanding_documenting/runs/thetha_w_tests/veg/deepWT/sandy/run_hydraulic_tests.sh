@@ -1,0 +1,74 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [ $# -lt 1 ]; then
+  echo "Usage: ./run_hydraulic_tests.sh RUN_NAME"
+  exit 1
+fi
+
+RUN="$1"
+
+BASE_DIR="/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting"
+RUN_DIR="$BASE_DIR/runs/theta_w_tests/veg/deepWT/sandy/$RUN"
+OUTPUT_DIR="$RUN_DIR/output"
+INPUT_DIR="$BASE_DIR/runs/theta_w_tests/veg/deepWT/sandy/common_inputs"
+
+EXE_FILE="$BASE_DIR/TROLL.out"
+
+CLIMATE_FILE="$INPUT_DIR/Paracou_input_climate.txt"
+DAILY_FILE="$INPUT_DIR/Paracou_input_daily.txt"
+SPECIES_FILE="$INPUT_DIR/Paracou_input_species.txt"
+GLOBAL_FILE="$INPUT_DIR/Paracou_input_global.txt"
+PEDOLOGY_FILE="$INPUT_DIR/Paracou_input_pedology.txt"
+
+mkdir -p "$RUN_DIR"
+mkdir -p "$OUTPUT_DIR"
+
+echo "Running experiment: $RUN"
+
+GIT_COMMIT=$(git -C "$BASE_DIR" rev-parse HEAD)
+GIT_COMMIT_SHORT=$(git -C "$BASE_DIR" rev-parse --short HEAD)
+GIT_BRANCH=$(git -C "$BASE_DIR" branch --show-current)
+
+{
+  echo "run_name: $RUN"
+  echo "date: $(date)"
+  echo
+  echo "git_commit: $GIT_COMMIT"
+  echo "git_commit_short: $GIT_COMMIT_SHORT"
+  echo "git_branch: $GIT_BRANCH"
+  echo
+  echo "climate_file: $CLIMATE_FILE"
+  echo "daily_file: $DAILY_FILE"
+  echo "species_file: $SPECIES_FILE"
+  echo "global_file: $GLOBAL_FILE"
+  echo "pedology_file: $PEDOLOGY_FILE"
+  echo
+  echo "========================"
+  echo "GLOBAL FILE CONTENT"
+  echo "========================"
+  cat "$GLOBAL_FILE"
+  echo
+  echo "=========================="
+  echo "PEDOLOGY FILE CONTENT"
+  echo "=========================="
+  cat "$PEDOLOGY_FILE"
+} > "$RUN_DIR/config_used.txt"
+
+echo "Compiling..."
+
+cd "$BASE_DIR"
+g++ mainTROLL4.0_WTD.cpp -O3 -o TROLL.out -lgsl -lgslcblas -Wall
+
+echo "Running model..."
+
+cd "$OUTPUT_DIR"
+"$EXE_FILE" \
+  -m"$CLIMATE_FILE" \
+  -d"$DAILY_FILE" \
+  -s"$SPECIES_FILE" \
+  -i"$GLOBAL_FILE" \
+  -p"$PEDOLOGY_FILE"
+
+echo "Run completed: $RUN"
