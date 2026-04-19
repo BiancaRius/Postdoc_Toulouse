@@ -2,17 +2,47 @@
 
 set -euo pipefail
 
-if [ $# -lt 1 ]; then
-  echo "Usage: ./run_hydraulic_tests.sh RUN_NAME"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Find project root by walking up until mainTROLL4.0_WTD.cpp is found
+find_project_root() {
+  local dir="$1"
+  while [ "$dir" != "/" ]; do
+    if [ -f "$dir/mainTROLL4.0_WTD.cpp" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+  return 1
+}
+
+BASE_DIR="$(find_project_root "$SCRIPT_DIR")" || {
+  echo "Error: could not find project root containing mainTROLL4.0_WTD.cpp"
+  exit 1
+}
+
+# Assume the script is inside the experiment branch folder
+# Example:
+# .../runs/theta_w_tests/veg/deepWT/sandy/
+BRANCH_DIR="$SCRIPT_DIR"
+INPUT_DIR="$BRANCH_DIR/common_inputs"
+
+# Ask for run name if not provided as argument
+if [ $# -ge 1 ]; then
+  RUN="$1"
+else
+  read -r -p "Enter run name: " RUN
+fi
+
+if [ -z "$RUN" ]; then
+  echo "Error: run name cannot be empty."
   exit 1
 fi
 
-RUN="$1"
-
-BASE_DIR="/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting"
-RUN_DIR="$BASE_DIR/runs/theta_w_tests/veg/deepWT/sandy/$RUN"
+RUN_DIR="$BRANCH_DIR/$RUN"
 OUTPUT_DIR="$RUN_DIR/output"
-INPUT_DIR="$BASE_DIR/runs/theta_w_tests/veg/deepWT/sandy/common_inputs"
 
 EXE_FILE="$BASE_DIR/TROLL.out"
 
@@ -22,10 +52,26 @@ SPECIES_FILE="$INPUT_DIR/Paracou_input_species.txt"
 GLOBAL_FILE="$INPUT_DIR/Paracou_input_global.txt"
 PEDOLOGY_FILE="$INPUT_DIR/Paracou_input_pedology.txt"
 
+# Check required input files
+for f in \
+  "$CLIMATE_FILE" \
+  "$DAILY_FILE" \
+  "$SPECIES_FILE" \
+  "$GLOBAL_FILE" \
+  "$PEDOLOGY_FILE"
+do
+  if [ ! -f "$f" ]; then
+    echo "Error: required input file not found: $f"
+    exit 1
+  fi
+done
+
 mkdir -p "$RUN_DIR"
 mkdir -p "$OUTPUT_DIR"
 
 echo "Running experiment: $RUN"
+echo "Branch directory: $BRANCH_DIR"
+echo "Project root: $BASE_DIR"
 
 GIT_COMMIT=$(git -C "$BASE_DIR" rev-parse HEAD)
 GIT_COMMIT_SHORT=$(git -C "$BASE_DIR" rev-parse --short HEAD)
@@ -34,6 +80,9 @@ GIT_BRANCH=$(git -C "$BASE_DIR" branch --show-current)
 {
   echo "run_name: $RUN"
   echo "date: $(date)"
+  echo
+  echo "branch_dir: $BRANCH_DIR"
+  echo "project_root: $BASE_DIR"
   echo
   echo "git_commit: $GIT_COMMIT"
   echo "git_commit_short: $GIT_COMMIT_SHORT"
@@ -59,7 +108,7 @@ GIT_BRANCH=$(git -C "$BASE_DIR" branch --show-current)
 echo "Compiling..."
 
 cd "$BASE_DIR"
-g++ mainTROLL4.0_WTD.cpp -O3 -o TROLL.out -lgsl -lgslcblas -Wall
+g++ mainTROLL4.0_WTD.cpp -O3 -o TROLL.out -lgsl -lgslcblas -Wall 2>&1 | tee "$RUN_DIR/compile.log"
 
 echo "Running model..."
 
@@ -69,6 +118,7 @@ cd "$OUTPUT_DIR"
   -d"$DAILY_FILE" \
   -s"$SPECIES_FILE" \
   -i"$GLOBAL_FILE" \
-  -p"$PEDOLOGY_FILE"
+  -p"$PEDOLOGY_FILE" \
+  2>&1 | tee "$RUN_DIR/run.log"
 
 echo "Run completed: $RUN"
