@@ -8043,20 +8043,6 @@ if (_WATER_RETENTION_CURVE==1) {
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
 
-                // debugging values of Ks_cap 
-                if(Ks_cap[l][d] < 1e-12) {
-                    n_ks_cap_lt_1e12++;
-                }
-                if(Ks_cap[l][d] < 1e-10) {
-                    n_ks_cap_lt_1e10++;
-                }
-                if(Ks_cap[l][d] < 1e-8) {
-                    n_ks_cap_lt_1e8++;
-                }
-                if(Ks_cap[l][d] == 0.0f) {
-                    n_ks_cap_eq_0++;
-                }
-
                 if(Ks_cap[l][d] < 1e-10) {
                     Ks_cap[l][d] = 1e-10; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
                 }
@@ -8079,23 +8065,10 @@ if (_WATER_RETENTION_CURVE==1) {
                 
                 Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
 
-                // debugging values of Ks_cap_harmonic
-                if(Ks_cap_harmonic[l][d] < 1e-12) {
-                    n_ksh_cap_lt_1e12++;
-                } 
-                if(Ks_cap_harmonic[l][d] < 1e-10) {
-                    n_ksh_cap_lt_1e10++;
-                }
-                if(Ks_cap_harmonic[l][d] < 1e-8) {
-                    n_ksh_cap_lt_1e8++;
-                }
-                if(Ks_cap_harmonic[l][d] == 0.0f) {
-                    n_ksh_cap_eq_0++;
-                }
 
                 // Check for division by zero to avoid errors 
                 // If both conductivities are zero, the harmonic mean is also zero
-                if (sum_k > 1e-9f){
+                if (sum_k > 2e-11f){ // BR - changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking. The limit is set to 2 times the limit set for Ks_cap, as the sum of two Ks_cap can be at minimum 2 times the limit set for Ks_cap.
                     Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
                     // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
