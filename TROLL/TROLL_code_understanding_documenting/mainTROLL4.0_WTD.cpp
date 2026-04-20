@@ -8481,12 +8481,20 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                                 << "  Expected=" << Max_SWC[l] << endl;
                     }
 
-                    if (layer_depth[l] < WTD && (SWC3D[l][d] > Max_SWC[l] || SWC3D[l][d] < Min_SWC[l])) {
-                        cout << "Warning: layer " << l 
-                                << " SWC3D out of bounds after capillary rise. "
+                    if (layer_depth[l] < WTD){
+                        if (SWC3D[l][d] > Max_SWC[l]){
+                            cout << "Warning: layer " << l 
+                                << " SWC3D higher than the minimum. "
                                 << "SWC3D=" << SWC3D[l][d]
                                 << "  Expected range= [MinSWC, MaxSWC][" << Min_SWC[l] << ", " << Max_SWC[l] << "]" << endl;
-                                
+
+                        } 
+                        if (SWC3D[l][d] < Min_SWC[l]) {
+                            cout << "Warning: layer " << l 
+                                << " SWC3D lower than the minimum. "
+                                << "SWC3D=" << SWC3D[l][d]
+                                << "  Expected range= [MinSWC, MaxSWC][" << Min_SWC[l] << ", " << Max_SWC[l] << "]" << endl;
+                        }        
                     }
                     
                 } else { // if water table model is not activated, just check if SWC3D is within Min and Max
