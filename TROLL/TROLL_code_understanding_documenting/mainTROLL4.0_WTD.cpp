@@ -5427,8 +5427,8 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             WDailyMean_year *=SWtoPPFD/nbdays;
             
             tnight=NightTemperature[0];
-            precip=Rainfall[0];
-            // precip=Rainfall[0]*0.5;
+            // precip=Rainfall[0];
+            precip=Rainfall[0]*0.5;
             WSDailyMean=DailyMeanWindSpeed[0];
             WDailyMean=DailyMeanIrradiance[0]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[0];
@@ -7458,8 +7458,8 @@ if (_WATER_RETENTION_CURVE==1) {
     * @param nbdays    The total number of days in the climate data cycle.
     */            
             tnight=NightTemperature[iter%nbdays];
-            precip=Rainfall[iter%nbdays];
-            // precip=Rainfall[iter%nbdays]*0.5;
+            // precip=Rainfall[iter%nbdays];
+            precip=Rainfall[iter%nbdays]*0.5;
             WSDailyMean=DailyMeanWindSpeed[iter%nbdays];
             WDailyMean=DailyMeanIrradiance[iter%nbdays]*SWtoPPFD;
             tDailyMean=DailyMeanTemperature[iter%nbdays];
@@ -8273,7 +8273,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 
                 max_gain[l] = FC_SWC[l] - SWC3D[l][d];
 } else {
-                //max_gain[l] = FC_SWC[l] - SWC3D[l][d];
+                // max_gain[l] = FC_SWC[l] - SWC3D[l][d];
                 max_gain[l] = Max_SWC[l] - SWC3D[l][d];
 }                
                 max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
@@ -8290,7 +8290,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     if (layer_depth[l] > WTD) {
                         donor_capacity[l] = INFINITY;
                         // receiv_capacity[l] = INFINITY; //otherwise, the layer above WT would not be able to discharge water what could create an artificial accumulation of water in the layer and increase too much the capillarity rise
-                        receiv_capacity[l] = 0.0f; //testing
+                        receiv_capacity[l] = 0.0f;
                     }
                 }
         
@@ -8444,42 +8444,55 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                         
                 SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
 
-                if (SWC3D[l][d] < Min_SWC[l] || SWC3D[l][d] > Max_SWC[l]) {
-                    cout << "Warning: SWC3D out of physical bounds immediately after update at layer " << l
-                        << ", d=" << d
-                        << ", SWC3D=" << SWC3D[l][d]
-                        << ", Min_SWC=" << Min_SWC[l]
-                        << ", Max_SWC=" << Max_SWC[l]
-                        << ", water_change_vol=" << water_change_vol[l]
-                        << ", old_SWC3D=" << (SWC3D[l][d] - water_change_vol[l])
-                        << endl;
-                    cout << "receiv_capacity=" << receiv_capacity[l]
-                        << ", donor_capacity=" << donor_capacity[l]
-                        << endl;
-                }               
+                // ==============================================================================
+                // SAFETY CLAMP for SWC: Prevent floating-point precision errors from crashing the soil physics.
+                // Due to single-precision (float) arithmetic during water mass transfers 
+                // (e.g., infiltration, capillary rise, or drainage), SWC3D can drop infinitesimally 
+                // below Min_SWC or slightly exceed Max_SWC.
+                //
+                // If SWC3D falls below Min_SWC even by 1e-7, the subsequent soil matric potential 
+                // calculations (e.g., Van Genuchten or Brooks-Corey equations) will attempt to 
+                // evaluate an impossible physical state. This results in extreme negative 
+                // pressures (e.g., -9449.14) or NaN, which immediately forces the hydraulic 
+                // conductivity (Ks) to strictly zero, artificially halting all water movement.
+                //
+                // We use a tiny epsilon to clamp the values securely within physical boundaries.
+                // This ensures numerical stability for the non-linear hydraulic equations 
+                // without violating the overall mass conservation of the system.
+                // ==============================================================================
+
+                float epsilon = 0.00001f; 
+                if (SWC3D[l][d] < Min_SWC[l] + epsilon) {
+                    SWC3D[l][d] = Min_SWC[l] + epsilon;
+                } 
+                else if (SWC3D[l][d] > Max_SWC[l] - epsilon) {
+                    SWC3D[l][d] = Max_SWC[l] - epsilon;
+                }
+            
             } // End for layers (step 6)
 
             // --- Step 7: Sanity check for updated SWC3D ---
             for (int l=0; l<nblayers_soil; l++) {    
                 if (_WATER_TABLE == 1) { // verify if SWC3D of WT layer is correct after capillary rise (should be = Max_SWC[l])
                     if (layer_depth[l] > WTD && fabs(SWC3D[l][d] - Max_SWC[l]) > 1e-6f) {
-                        // cout << "Warning: layer " << l 
-                        //         << " is below WTD but SWC3D != Max_SWC after capillary rise. "
-                        //         << "SWC3D=" << SWC3D[l][d] 
-                        //         << "  Expected=" << Max_SWC[l] << endl;
+                        cout << "Warning: layer " << l 
+                                << " is below WTD but SWC3D != Max_SWC after capillary rise. "
+                                << "SWC3D=" << SWC3D[l][d] 
+                                << "  Expected=" << Max_SWC[l] << endl;
                     }
 
-                    if (layer_depth[l] < WTD && (SWC3D[l][d] > FC_SWC[l] || SWC3D[l][d] < Min_SWC[l])) {
+                    if (layer_depth[l] < WTD && (SWC3D[l][d] > Max_SWC[l] || SWC3D[l][d] < Min_SWC[l])) {
                         cout << "Warning: layer " << l 
-                                << " is above WTD but SWC3D out of bounds after capillary rise. "
+                                << " SWC3D out of bounds after capillary rise. "
                                 << "SWC3D=" << SWC3D[l][d]
-                                << "  Expected range=[" << Min_SWC[l] << ", " << FC_SWC[l] << "]" << endl;
+                                << "  Expected range= [MinSWC, MaxSWC][" << Min_SWC[l] << ", " << Max_SWC[l] << "]" << endl;
+                                
                     }
                     
                 } else { // if water table model is not activated, just check if SWC3D is within Min and Max
                     if (SWC3D[l][d] > FC_SWC[l] || SWC3D[l][d] < Min_SWC[l]) {
                         cout << "Warning: layer " << l 
-                                << " has SWC3D out of range after capillary rise. "
+                                << " SWC3D out of physical boundaries. "
                                 << "SWC3D=" << SWC3D[l][d]
                                 << "  Expected range=[" << Min_SWC[l] << ", " << FC_SWC[l] << "]" << endl;
                     }
