@@ -514,8 +514,8 @@ experiment_table <- tibble(
   water_table = c("deepWT", "deepWT"),
   texture = c("sandy", "sandy"),
   experiment_name = c(
-    "maxgain_maxswc",
-    "maxgain_maxswc_normalprec"
+    "maxgain_maxswc_redprec_epilson",
+    "maxgain_maxswc_epilson_sumk"
   )
 )
 

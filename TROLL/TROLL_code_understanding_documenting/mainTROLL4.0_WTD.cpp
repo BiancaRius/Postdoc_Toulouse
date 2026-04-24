@@ -520,23 +520,25 @@ int nbTreefall1;  //!< Global variable: for output -- number of treefalls at eac
 int nbTreefall10; //!< Global variable: for output -- number of treefalls at each timestep (dbh > 10 cm), _BASICTREEFALL
 int nbTreefall30; //!< Global variable: for output -- number of treefalls at each timestep (dbh > 30 cm), _BASICTREEFALL
 
+// Diagnostic for water mass balance
+// ============================================================================
+// Clamp diagnostics accumulated over time
+// SWC units
+// ============================================================================
+double annual_clamp_created_swc = 0.0;
+double annual_clamp_destroyed_swc = 0.0;
+double total_clamp_created_swc  = 0.0;
+double total_clamp_destroyed_swc  = 0.0;
 
-// DIAGNOSTICS FOR DEBUGGING VERTICAL WATER FLUXES (TEMPORARY) //BR
+// ============================================================================
+// Clamp diagnostics accumulated over time
+// Equivalent water depth in mm
+// ============================================================================
+double annual_clamp_created_mm = 0.0;
+double annual_clamp_destroyed_mm = 0.0;
+double total_clamp_created_mm  = 0.0;
+double total_clamp_destroyed_mm  = 0.0;
 
-int n_theta_cap_lt_1e6(0);   //!< Number of soil voxels in the current iteration with theta_raw < 1e-6
-int n_theta_cap_lt_1e5(0);   //!< Number of soil voxels in the current iteration with theta_raw < 1e-5
-int n_theta_cap_lt_1e4(0);   //!< Number of soil voxels in the current iteration with theta_raw < 1e-4
-int n_theta_cap_lt_1e3(0);   //!< Number of soil voxels in the current iteration with theta_raw < 1e-3
-
-int n_ks_cap_lt_1e12(0);   //!< Number of soil voxels in the current iteration with Ks < 1e-12 m/s, which is a very low conductivity, close to the minimum conductivity of dry soil (e.g. 1e-13 m/s for sandy soil, 1e-12 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
-int n_ks_cap_lt_1e10(0);   //!< Number of soil voxels in the current iteration with Ks < 1e-10 m/s, which is a low conductivity, close to the minimum conductivity of wet soil (e.g. 1e-9 m/s for sandy soil, 1e-10 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
-int n_ks_cap_lt_1e8(0);   //!< Number of soil voxels in the current iteration with Ks < 1e-8 m/s, which is a moderate conductivity, close to the maximum conductivity of wet soil (e.g. 1e-7 m/s for sandy soil, 1e-8 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
-int n_ks_cap_eq_0(0);   //!< Number of soil voxels in the current iteration with Ks = 0 m/s, which is a non-physical value that may indicate an error in the computation of Ks
-
-int n_ksh_cap_lt_1e12(0);   //!< Number of soil voxels in the current iteration with Ks harmonic < 1e-12 m/s, which is a very low conductivity, close to the minimum conductivity of dry soil (e.g. 1e-13 m/s for sandy soil, 1e-12 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
-int n_ksh_cap_lt_1e10(0);   //!< Number of soil voxels in the current iteration with Ks harmonic < 1e-10 m/s, which is a low conductivity, close to the minimum conductivity of wet soil (e.g. 1e-9 m/s for sandy soil, 1e-10 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
-int n_ksh_cap_lt_1e8(0);   //!< Number of soil voxels in the current iteration with Ks harmonic < 1e-8 m/s, which is a moderate conductivity, close to the maximum conductivity of wet soil (e.g. 1e-7 m/s for sandy soil, 1e-8 m/s for clayey soil, according to data from Cosby et al. 1984 Water Resources Research)
-int n_ksh_cap_eq_0(0);   //!< Number of soil voxels in the current iteration with Ks harmonic = 0 m/s, which is a non-physical value that may indicate an error in the computation of Ks harmonic
 
 #ifdef Output_ABC
 int nbdead_n10_abc;  //!< Global variable: for ABC output -- number of trees dbh > 10 cm at each timestep
@@ -4734,6 +4736,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
             
             double start_time,stop_time, duration=0.0;           // for simulation duration
             stop_time = clock();
+
             for(iter=0;iter<nbiter;iter++) {
                 start_time = stop_time;
                 
@@ -4744,6 +4747,33 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                 if(_OUTPUT_extended == 1 && extent_visual > 0){
                     int timeofyear = GetTimeofyear();
                     if(timeofyear == 0) OutputVisual();
+                }
+
+                // for diagnostics with water mass balance, we keep track of the annual water changes due to the creation and destruction of clamps, and output these at the end of each year // temporary, delete // BR
+                if ( (iter + 1) % iterperyear == 0 ) {
+
+                    int year_index = (iter + 1) / iterperyear;
+
+                    cout << "Year " << year_index
+                        << " | annual clamp-created SWC = " << annual_clamp_created_swc
+                        << " | annual clamp-destroyed SWC = " << annual_clamp_destroyed_swc
+                        << " | annual net SWC change = "
+                        << (annual_clamp_created_swc - annual_clamp_destroyed_swc)
+                        << endl;
+
+                    cout << "Year " << year_index
+                        << " | annual clamp-created water (mm) = " << annual_clamp_created_mm
+                        << " | annual clamp-destroyed water (mm) = " << annual_clamp_destroyed_mm
+                        << " | annual net water change (mm) = "
+                        << (annual_clamp_created_mm - annual_clamp_destroyed_mm)
+                        << endl;
+
+                    // Reset annual counters
+                    annual_clamp_created_swc = 0.0;
+                    annual_clamp_destroyed_swc = 0.0;
+
+                    annual_clamp_created_mm = 0.0;
+                    annual_clamp_destroyed_mm = 0.0;
                 }
                 
                 /*if(_OUTPUT_pointcloud > 0 && iter == iter_pointcloud_generation){
@@ -6584,18 +6614,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     output_debug_hydraulics_by_iter << "iter\t"
                         << "total_voxels\t"
                         << "total_interfaces\t"
-                        << "n_theta_cap_lt_1e6\t"
-                        << "n_theta_cap_lt_1e5\t"
-                        << "n_theta_cap_lt_1e4\t"
-                        << "n_theta_cap_lt_1e3\t"
-                        << "n_ks_cap_eq_0\t"
-                        << "n_ks_cap_lt_1e12\t"
-                        << "n_ks_cap_lt_1e10\t"
-                        << "n_ks_cap_lt_1e8\t"
-                        << "n_ksh_cap_eq_0\t"
-                        << "n_ksh_cap_lt_1e12\t"
-                        << "n_ksh_cap_lt_1e10\t"
-                        << "n_ksh_cap_lt_1e8"
                         << endl;
 
 #endif
@@ -7626,21 +7644,6 @@ if (_WATER_RETENTION_CURVE==1) {
             vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
             vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
             
-            // variables to track the number of dcells with a given range of soil water content, to check the effect of implemented scheme for vertical water movement // BR (TEMPORARY)
-            n_theta_cap_lt_1e6 = 0;
-            n_theta_cap_lt_1e5 = 0;
-            n_theta_cap_lt_1e4 = 0;
-            n_theta_cap_lt_1e3 = 0;
-
-            n_ks_cap_lt_1e12 = 0;
-            n_ks_cap_lt_1e10 = 0;
-            n_ks_cap_lt_1e8 = 0;
-            n_ks_cap_eq_0 = 0;
-
-            n_ksh_cap_lt_1e12 = 0;
-            n_ksh_cap_lt_1e10 = 0;
-            n_ksh_cap_lt_1e8 = 0;
-            n_ksh_cap_eq_0 = 0;
 
             for (int d=0; d<nbdcells; d++) {
                 //****   BUCKET MODEL in each dcell   ****
@@ -7984,8 +7987,8 @@ if (_WATER_RETENTION_CURVE==1) {
 
 #ifdef VERTICAL_WATER_FLUX // BR
         void CapillaryRise(int d){ // BR
-            // This function is now integrated within the bucket model in UpdateField()
-            
+         // This function is now integrated within the bucket model in UpdateField()
+
             // --- Step 1: Calculate soil hydraulic properties for capillary rise ---
             // Computes relative soil water content, soil water potential (phi), and hydraulic 
             // conductivity (Ks) based on the chosen water retention model.
@@ -8003,20 +8006,6 @@ if (_WATER_RETENTION_CURVE==1) {
                     }                        
                 }
                 
-                // Testing threshold values of theta_w_cap to avoid numerical issues in the calculation of soil_phi3D_cap and Ks_cap, and to detect very small or very large values of theta_w_cap that are not precisely 0 or 1 but can lead to numerical issues in the calculation of soil_phi3D_cap and Ks_cap. We also count the number of occurrences of theta_w_cap below certain thresholds for diagnostic purposes.
-                if(theta_w_cap < 1e-6) {
-                    n_theta_cap_lt_1e6++;
-                }
-                if(theta_w_cap < 1e-5) {
-                    n_theta_cap_lt_1e5++;
-                }
-                if(theta_w_cap < 1e-4) {
-                    n_theta_cap_lt_1e4++;
-                }
-                 if(theta_w_cap < 1e-3) {
-                    n_theta_cap_lt_1e3++;
-                }
-
 
                 if(theta_w_cap < 1e-3) {
                     theta_w_cap = 1e-3; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
@@ -8417,6 +8406,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                         
                 SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
 
+
                 // ==============================================================================
                 // SAFETY CLAMP for SWC: Prevent floating-point precision errors from crashing the soil physics.
                 // Due to single-precision (float) arithmetic during water mass transfers 
@@ -8434,14 +8424,52 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 // without violating the overall mass conservation of the system.
                 // ==============================================================================
 
-                float epsilon = 0.00001f; 
+                const float epsilon = 1e-5f;
+                const float mass_balance_tol = 1e-12f; // Tolerance for mass balance check after clamping for diagnostic change in water balance (temporary, delete) //BR
+                float original_SWC = SWC3D[l][d]; // Store the original SWC before clamping for diagnostic change in water balance (temporary, delete) //BR
+
                 if (SWC3D[l][d] < Min_SWC[l] + epsilon) {
                     SWC3D[l][d] = Min_SWC[l] + epsilon;
                 } 
                 else if (SWC3D[l][d] > Max_SWC[l] - epsilon) {
                     SWC3D[l][d] = Max_SWC[l] - epsilon;
                 }
-            
+
+                // Diagnostic for water mass balance // temporary (delete) // BR
+                // Difference introduced by the clamp
+                float difference = SWC3D[l][d] - original_SWC;
+
+                if (std::fabs(difference) > mass_balance_tol) {
+
+                    // ------------------------------------------------------------------------
+                    // 1) Diagnose the clamp effect in raw SWC units
+                    // ------------------------------------------------------------------------
+                    if (difference > 0.0f) {
+                        annual_clamp_created_swc += (double)difference;
+                        total_clamp_created_swc  += (double)difference;
+                    }
+                    else {
+                        annual_clamp_destroyed_swc += (double)(-difference);
+                        total_clamp_destroyed_swc  += (double)(-difference);
+                    }
+
+                    // ------------------------------------------------------------------------
+                    // 2) Convert the SWC change into equivalent water depth (mm)
+                    // Replace layer_thickness_m with the actual layer thickness variable
+                    // ------------------------------------------------------------------------
+                    double delta_water_mm = (double)difference * (double)layer_thickness_global[l] * 1000.0;
+
+                    if (delta_water_mm > 0.0) {
+                        annual_clamp_created_mm += delta_water_mm;
+                        total_clamp_created_mm  += delta_water_mm;
+                    }
+                    else {
+                        annual_clamp_destroyed_mm += -delta_water_mm;
+                        total_clamp_destroyed_mm  += -delta_water_mm;
+                    }
+                }
+
+
             } // End for layers (step 6)
 
             // --- Step 7: Sanity check for updated SWC3D ---
@@ -9118,18 +9146,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 << iter << '\t'
                 << total_voxels << '\t'
                 << total_interfaces << '\t'
-                << n_theta_cap_lt_1e6 << '\t'
-                << n_theta_cap_lt_1e5 << '\t'
-                << n_theta_cap_lt_1e4 << '\t'
-                << n_theta_cap_lt_1e3 << '\t'
-                << n_ks_cap_eq_0 << '\t'
-                << n_ks_cap_lt_1e12 << '\t'
-                << n_ks_cap_lt_1e10 << '\t'
-                << n_ks_cap_lt_1e8 << '\t'
-                << n_ksh_cap_eq_0 << '\t'
-                << n_ksh_cap_lt_1e12 << '\t'
-                << n_ksh_cap_lt_1e10 << '\t'
-                << n_ksh_cap_lt_1e8
                 << endl;
     }        
 #endif
