@@ -4749,7 +4749,7 @@ void Tree::Fluxh(int h,float &PPFD, float &VPD, float &Tmp, float &leafarea_laye
                     if(timeofyear == 0) OutputVisual();
                 }
 
-                // for diagnostics with water mass balance, we keep track of the annual water changes due to the creation and destruction of clamps, and output these at the end of each year // temporary, delete // BR
+                // for diagnostics with water mass balance, we keep track of the annual water changes due to the creation and destruction of clamps, and output these at the end of each year // temporary, delete //BR
                 if ( (iter + 1) % iterperyear == 0 ) {
 
                     int year_index = (iter + 1) / iterperyear;
@@ -7998,12 +7998,12 @@ if (_WATER_RETENTION_CURVE==1) {
                 float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
                 // Special condition for layers below the water table // BR
-                if (_WATER_TABLE == 1) { 
-                    if (layer_depth[l] > WTD) {        
+                if (_WATER_TABLE == 1 && layer_depth[l] > WTD) { 
                         soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
+                        soil_phi3D[l][d] = soil_phi3D_cap[l][d]; // for output
                         theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1                                       
                         Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
-                    }                        
+                        continue;
                 }
                 
 
@@ -8112,103 +8112,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 
             } // End for layers interface (step 3)
 
-            // // --- Substep: identifying the capillary fringe ---
-            // // that is, how much the water from WT contributes to the water availability in the layers above it.
-            
-            // int l_wt = -1; //variable to identify the layer where the water table is located
-            // int l_abv_wt = -1; //variable to identify the layer just above the water table
-            // for (int l=0; l<nblayers_soil; l++) {
-            //     if (_WATER_TABLE == 1) { 
-            //         if (layer_depth[l] > WTD) {
-            //             l_wt = l;
-            //             break; // Exit loop once the WT layer is found  
-            //         }                          
-            //     }
-            // } // End for identifying cap fringe (substep)
-
-            // // Identify the layer just above the water table
-            // if (l_wt > 0) {
-            //     l_abv_wt = l_wt - 1;
-            //     // cout << "Layer of WT: " << l_wt << ", Layer above WT: " << l_abv_wt << endl;
-            // }
-
-            // // Identify if there is water supply from the water table
-            // float q_wt_supply = 0.0f;     // Initialize the water table supply variable
-            // float water_height_wt = 0.0f; // Initialize the water height from WT
-            
-            // if (l_wt > 0 && l_abv_wt >= 0) {
-            //     q_wt_supply = q_cap[l_abv_wt][d]; // m/s // Water flux at the interface just above the WT layer
-            //     water_height_wt = std::max(0.0f, q_wt_supply)* delta_t_sec; // m // (max(0.0, q_wt_supply)) Keep only the upward (WT-to-soil) 
-            //                                                                 //contribution: downward flux (q_wt_supply < 0) is drainage toward the WT and is not counted as groundwater supply.
-
-            // }
-
-            // // if there is no water going up from the WT interface, there is no capillary rise comingo from WT 
-            // int fringe_top_layer = -1; // index for the heighest layer reached by the capillary fringe from WT
-            // float height_fringe = 0.0f; // height above WT
-
-            // // Threshold to ignore noise: minimum height (m) that needs to rise in the timestep
-            // // adjust later if nece ssary
-            // const float epsH = 1e-6f; // 1 micrometer per timestep
-
-            
-            // // If groundwater supply is detected at the WT interface, track how far upward this supply remains
-            // // hydraulically connected through a continuous chain of upward fluxes (capillary-rise connectivity).
-            // if (water_height_wt > epsH && l_wt > 0) {
-
-            //     // Start from the layer immediately above the water table (minimum extent of WT influence in this timestep)
-            //     fringe_top_layer = l_abv_wt;
-
-            //     // Move upward: as long as the interface above each layer still shows upward transport,
-            //     // the WT-origin supply can propagate further up.
-            //     // Note: water_height_upward[i] is associated with the interface between layers i and i+1.
-            //     for (int i = l_abv_wt - 1; i >= 0; --i) {
-
-            //         // Keep only the upward component (positive height); downward values indicate drainage/redistribution
-            //         float H_up = std::max(0.0f, water_height_upward[i][d]);
-
-            //         if (H_up > epsH) {
-            //             // The WT-driven upward connection still reaches this level (layer i)
-            //             fringe_top_layer = i;
-            //         } else {
-            //             // Connectivity breaks here: WT supply does not reach layers above this interface in this timestep
-            //             break;
-            //         }
-            //     }
-
-            //     // Convert the top layer index into a geometric height above the water table (m)
-            //     // layer_depth stores the depth of the *bottom* of each layer (positive downward).
-            //     height_fringe = WTD - layer_depth[fringe_top_layer];
-
-            //     // Safety clamp (can be negative if indexing/geometry is inconsistent or WT is very shallow)
-            //     if (height_fringe < 0.0f) height_fringe = 0.0f;
-            // }
-
-            //  "Pore-filling" filter: require near-saturation at the fringe top layer
-            // // Example criterion: consider the fringe as "filled" only if the top layer is at least 90% of saturation.
-            // bool fringe_is_filled = false;
-            // if (fringe_top_layer >= 0) {
-            //     if (SWC3D[fringe_top_layer][d] >= 0.9f * Max_SWC[fringe_top_layer]) {
-            //         fringe_is_filled = true;
-            //     }
-            // }
-
-            // // Write a lightweight debug output (single cell, e.g. d==0) to avoid exploding I/O and file size
-            // if (d == 0) {
-            //     static std::ofstream fout("capillary_fringe_debug.csv");
-            //     static bool header_written = false;
-
-            //     if (!header_written) {
-            //         fout << "WTD,l_wt,l_abv_wt,q_wt_supply,water_height_wt,fringe_top_layer,height_fringe,fringe_is_filled\n";
-            //         header_written = true;
-            //     }
-
-            //     // Replace 'step' with your timestep counter / day index / simulation time variable.
-            //     fout << WTD << "," << l_wt << "," << l_abv_wt << ","
-            //         << q_wt_supply << "," << water_height_wt << ","
-            //         << fringe_top_layer << "," << height_fringe << "," << (fringe_is_filled ? 1 : 0) << "\n";
-            // }
-
 
             // --- Step 4: Evaluate the capacities of the layers to donate or receive water ---
             // Establish physical boundaries for the layers. 
@@ -8219,9 +8122,12 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             vector<float> max_loss(nblayers_soil, 0.0f);       // maximum loss possible for the layer (m^3)
             vector<float> receiv_capacity(nblayers_soil, 0.0f); // how much the layer can receive (m^3)
             vector<float> donor_capacity(nblayers_soil, 0.0f); // how much the layer can donate (m^3)
+            vector<float> layer_volume(nblayers_soil, 0.0f); // volume of the layer (m^3)
 
             // loop to set the capacities of each layer
             for (int l = 0; l<nblayers_soil; l++){
+                float voxel_area = LH * LH * sites_per_dcell; // m²
+                layer_volume[l] = layer_thickness_global[l] * voxel_area; // m^3, volume of the layer. It is used to convert the storage limits in volume of water, and also to limit the transfer in case of upward movement (see below), as the receiver layer is the upper layer, that's why we use its thickness and volume to limit the transfer.
 
 // Note: the storage limit depends on the vertical flux scheme.
 // - In the bucket-based scheme, field capacity (FC_SWC) is treated as a hard upper
@@ -8233,12 +8139,12 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 //   emergent state rather than an imposed storage cap.
 if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 
-                max_gain[l] = FC_SWC[l] - SWC3D[l][d];
+                max_gain[l] = (FC_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold, converted in volume of water (m^3)
 } else {
                 // max_gain[l] = FC_SWC[l] - SWC3D[l][d];
-                max_gain[l] = Max_SWC[l] - SWC3D[l][d];
+                max_gain[l] = (Max_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // Here Max_SWC is used instead of FC_SWC because in the unified vertical flux scheme, layers can fill up to saturation, and field capacity is an emergent state rather than an imposed storage cap.
 }                
-                max_loss[l] = SWC3D[l][d] - Min_SWC[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
+                max_loss[l] = (SWC3D[l][d] - Min_SWC[l]) * layer_volume[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
                 // Receiver capacity: cannot exceed saturation
                 receiv_capacity[l] = max(0.0f, max_gain[l]); 
@@ -8260,24 +8166,24 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 
             // --- Step 5: Calculate actual water transfer between layers ---
             // Loop to calculate the fluxes between layers. It is calculated at the INTERFACE between layers (the number of interfaces is nblayers_soil-1)
-            float voxel_area = LH * LH * sites_per_dcell; // m²
-           
             vector<float> water_change_vol(nblayers_soil, 0.0f); // how much the layer donates(if negative)/receives(if positive) in volume of water (m³)
-            water_change_vol.assign(nblayers_soil, 0.0f); // initialize to zero
            
            // Residual capacities: initial donor/receiver capacity updated after each accepted transfer between layers. 
            // This ensures that a layer cannot donate or receive more water than physically allowed during the timestep,
            // preventing multiple interfaces from using the same capacity twice.
-            vector<float> receiv_capacity_residual = receiv_capacity; 
-            vector<float> donor_capacity_residual = donor_capacity;
+            vector<float> receiv_capacity_residual = receiv_capacity;
+            vector<float> donor_capacity_residual  = donor_capacity;
+            float voxel_area = LH * LH * sites_per_dcell; // m²
 
             for (int l = 0; l < nblayers_soil -1; l++){
+
+                //excluir depois que vc consertar o non unified
+                float vol_top = layer_thickness_global[l] * voxel_area;   // m³. It is used to convert the potential water transfer in volume of water, and also to limit the transfer in case of upward movement (see below), as the receiver layer is the upper layer, that's why we use its thickness and volume to limit the transfer.
+                float vol_bottom = layer_thickness_global[l+1] * voxel_area;   // m³. It is used to convert the potential water transfer in volume of water, and also to limit the transfer in case of downward movement (see below), as the receiver layer is the lower layer, that's why we use its thickness and volume to limit the transfer.
 
 if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 // Considering only upward movement
                 // Always limited by the layer above (receiver), that's why volume of the top layer is considered
-                float vol_top = layer_thickness_global[l] * voxel_area;   // m³
-
                 // between the layers, there is a potential transference of water, depending on the amount of water that moved upward during the timestep (water_height_upward), and the thickness of the layer where the water is coming from (layer l+1)
                 float potential_transfer =  std::max(0.0f, water_height_upward[l][d]/layer_thickness_global[l]); 
                 // Transforms the potential water transfer in volume of water
@@ -8323,16 +8229,13 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 water_upward_vol[l][d] = vol_transfer_restricted; // for output purpose, the actual volume of water that moved upward between layers during the timestep (m³)
 
 } else {            
-            
+                // Considering both upward and downward movement
+                float signed_water_height = water_height_upward[l][d]; // m. The sign of water_height_upward encodes the direction of the potential water movement: positive for upward movement and negative for downward movement. The magnitude of water_height_upward gives the potential height of water that can be moved during the timestep in the interface between layers. This new variable is created to keep the original water_height_upward for output purposes, as we will change the sign of water_height_upward to calculate the potential transfer in case of downward movement, but we want to keep the original value to create the output variable water_upward_vol that can be positive (upward movement) or negative (downward movement). 
+               
                 // Considering up and downward movement
-                float vol_top = layer_thickness_global[l] * voxel_area;   // m³
-                float vol_bottom = layer_thickness_global[l+1] * voxel_area;   // m³
-
-                if (water_height_upward[l][d] > 0.0f){
+                if (signed_water_height > 0.0f){
+                    float vol_potential_transfer = signed_water_height * voxel_area; // m³, potential volume of water that can be transfered between the layers, considering the distance that water can move moved during the timestep and the area of the voxel. 
                     // from l+1 to l
-                    float potential_transfer = water_height_upward[l][d] / layer_thickness_global[l];  
-                    float vol_potential_transfer = potential_transfer * vol_top;
-
                     // the actual volume transfered is limited by the potential volume to be transfered, the receiver capacity of the upper layer and the donor capacity of the lower layer
                     float vol_transfer_restricted = std::min(
                                                     vol_potential_transfer,
@@ -8355,17 +8258,14 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                     // output
                     water_upward_vol[l][d] = vol_transfer_restricted;
 
-                } else if (water_height_upward[l][d] < 0.0f){
-                    // from l to l+1
-                    // For downward flow (water_height_upward < 0), -water_height_upward gives the magnitude of the water height
-                    // transported across the interface. Note that the sign of wh encodes the
-                    // flow direction, but the actual transfer volume must be positive.
-                    // The direction is applied later when updating water_change_vol for each layer.
-                    water_height_upward[l][d] = - water_height_upward[l][d];
-                    
-                    // now the receiver is the lower layer, that is why we use its thickness and volume 
-                    float potential_transfer = water_height_upward[l][d]/ layer_thickness_global[l+1];
-                    float vol_potential_transfer = potential_transfer * vol_bottom;
+                } else if (signed_water_height < 0.0f){
+                        // from l to l+1
+                        // For downward flow (signed water height < 0), -signed_water_height gives the magnitude of the water height
+                        // transported across the interface. Note that the sign of wh encodes the
+                        // flow direction, but the actual transfer volume must be positive.
+                        // The direction is applied later when updating water_change_vol for each layer.
+                    float water_height_magnitude = - signed_water_height;
+                    float vol_potential_transfer = water_height_magnitude * voxel_area; // m³, potential volume of water that can be transfered between the layers, considering the distance that water can move moved during the timestep and the area of the voxel. 
 
                     // and here the volume is limited by the potential volume to be transfered, the donor capacity of the upper layer and the receiver capacity of the lower layer
                     float vol_transfer_restricted = std::min(
@@ -8396,15 +8296,21 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 
             // --- Step 6: Update SWC3D after capillary rise ---
             for (int l = 0; l < nblayers_soil; l++){
+                float voxel_area = LH * LH * sites_per_dcell; // m²
+                layer_volume[l] = layer_thickness_global[l] * voxel_area; // m^3, volume of the layer. It is used to convert the storage limits in volume of water, and also to limit the transfer in case of upward movement (see below), as the receiver layer is the upper layer, that's why we use its thickness and volume to limit the transfer.
+
+
                 if (_WATER_TABLE == 1 && layer_depth[l] > WTD) {
                     //deep_drainage[l] = SWC3D[l][d] - Max_SWC[l]; // track the excess water that should be lost by the water table if there is deep drainage (i.e. if SWC3D exceeds Max_SWC for layers below the water table). This is for output purposes and can be used in the future to implement a deep drainage routine that removes this excess water from the system, as currently we just set SWC3D to Max_SWC for layers below the water table without explicitly tracking the excess water.
+                    water_change_cap[l][d] = 0.0f; // m³
                     water_change_vol[l] = 0.0f; // override any calculated change in water content for layers below the water table, as they are already saturated and cannot receive more water. However, they can still donate water if there is upward flux, but this will be reflected in the change of the layer above (if any) and not in their own SWC3D which remains at Max_SWC.
                     SWC3D[l][d] = Max_SWC[l]; // ensure that SWC3D of layers below the water table is set to Max_SWC, as they are saturated. This is a safeguard to prevent any numerical issues that could arise from the flux calculations, ensuring that the physical constraint of saturation below the water table is maintained in the model output.
+                    continue;
                 }
                
-                water_change_cap[l][d] = water_change_vol[l]; //for output purpose
+                water_change_cap[l][d] = water_change_vol[l]; //for output purpose m3
                         
-                SWC3D[l][d] += water_change_vol[l]; //update SWC3D after capillary rise
+                SWC3D[l][d] += water_change_vol[l]/layer_volume[l]; //update SWC3D after capillary rise
 
 
                 // ==============================================================================
