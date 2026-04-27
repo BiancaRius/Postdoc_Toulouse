@@ -509,13 +509,13 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 
 #mixed branches
 experiment_table <- tibble(
-  family = c("maxgain_eq_maxswc", "maxgain_eq_maxswc"),
+  family = c("units_vertmov", "units_vertmov"),
   vegetation = c("veg", "veg"),
-  water_table = c("deepWT", "deepWT"),
+  water_table = c("deepWT", "shallowWT"),
   texture = c("sandy", "sandy"),
   experiment_name = c(
-    "maxgain_maxswc_redprec_epilson",
-    "maxgain_maxswc_epilson_sumk"
+    "corrected_units_deepWT",
+    "corrected_units_shallowWT"
   )
 )
 
