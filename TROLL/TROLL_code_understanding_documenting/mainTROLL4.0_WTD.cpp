@@ -153,6 +153,7 @@ fstream output_track[3];            //!< Global variable: output streams for tra
 
 #ifdef VERTICAL_WATER_FLUX // BR
 fstream output_vertical_flux;       //!< Global variable: output streams for vertical water fluxes between soil layers // BR
+fstream output_debug_hydraulics_by_iter; //!< Global variable: output stream for debugging of hydraulics, by iteration // BR TEMPORARY
 #endif
 
 
@@ -6591,27 +6592,29 @@ if (_WATER_RETENTION_CURVE==1) {
                     sprintf(nnn,"%s_%i_vertical_water_flux.txt",buf, easympi_rank);
                     output_vertical_flux.open(nnn, ios::out);
                     output_vertical_flux << "iter\t"; //write header
-                    for(int l=0;l<nblayers_soil-1;l++) { //interface variables
+                    for(int l=0;l<nblayers_soil-1;l++) {
                         output_vertical_flux << "mean_flux_layers" << l << "_" << (l+1) << "\t";
                         output_vertical_flux << "mean_abs_flux_layers" << l << "_" << (l+1) << "\t";
                         output_vertical_flux << "mean_delta_swp_layers" << l << "_" << (l+1) << "\t";
-
-                        output_vertical_flux << "mean_matric_gradient_layers" << l << "_" << (l+1) << "\t";
-                        output_vertical_flux << "mean_abs_matric_gradient_layers" << l << "_" << (l+1) << "\t";
-                        output_vertical_flux << "mean_hydraulic_gradient_layers" << l << "_" << (l+1) << "\t";
-                        output_vertical_flux << "mean_abs_hydraulic_gradient_layers" << l << "_" << (l+1) << "\t";
-
                         output_vertical_flux << "mean_ks_harmonic_layers" << l << "_" << (l+1) << "\t";
                         output_vertical_flux << "net_volumetric_change_layers" << l << "_" << (l+1) << "\t";
-                        output_vertical_flux << "gross_volumetric_change_layers" << l << "_" << (l+1) << "\t";                        
+                        output_vertical_flux << "gross_volumetric_change_layers" << l << "_" << (l+1) << "\t";
                     }
-                    for(int l=0;l<nblayers_soil;l++) { // layer variables
+                    for(int l=0;l<nblayers_soil;l++) {
                         output_vertical_flux << "mean_swp_layer" << l << "\t";
                         output_vertical_flux << "mean_ks_layer" << l << "\t";
                     }
 
                     output_vertical_flux << endl;  // end of header
 
+                    // identifying bugs to treat hydraulic locking (TEMPORARY) // BR
+                    // It saves (by iter) how many times theta, ks and ks harmonic attain a threshold
+                    sprintf(nnn,"%s_%i_debug_hydraulics_by_iter.txt",buf, easympi_rank);
+                    output_debug_hydraulics_by_iter.open(nnn, ios::out);
+                    output_debug_hydraulics_by_iter << "iter\t"
+                        << "total_voxels\t"
+                        << "total_interfaces\t"
+                        << endl;
 
 #endif
                 }
@@ -9008,37 +9011,11 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 float mean_ks_harmonic_out = 0.0f;
                 float net_vol_change_out = 0.0f;
                 float gross_vol_change_out = 0.0f;
-                float mean_matric_gradient_out = 0.0f;
-                float mean_abs_matric_gradient_out = 0.0f;
-                float mean_hydraulic_gradient_out = 0.0f;
-                float mean_abs_hydraulic_gradient_out = 0.0f;
-
 
                 for (int d=0; d<nbdcells; d++) {
                     mean_q_cap_out += q_cap[l][d]; // in m/s (signed)
                     mean_abs_q_cap_out += fabs(q_cap[l][d]); // in m/s (absolute value)
                     mean_delta_swp_out += (soil_phi3D[l+1][d] - soil_phi3D[l][d]); // in MPa
-
-                    float delta_phi_MPa =
-                        soil_phi3D_cap[l+1][d] - soil_phi3D_cap[l][d];
-
-                    mean_delta_swp_out += delta_phi_MPa;
-
-                    float delta_phi_Pa = delta_phi_MPa * 1e6f;
-                                    float water_density = 1000.0f; // Density of water [kg/m3]
-                    float gravity = 9.81f; // Acceleration due to gravity [m/s2]
-
-                    float matric_gradient =
-                        delta_phi_Pa / (water_density * gravity * delta_z_face[l]);
-
-                    float hydraulic_gradient =
-                        matric_gradient + 1.0f;
-
-                    mean_matric_gradient_out += matric_gradient;
-                    mean_abs_matric_gradient_out += fabs(matric_gradient);
-
-                    mean_hydraulic_gradient_out += hydraulic_gradient;
-                    mean_abs_hydraulic_gradient_out += fabs(hydraulic_gradient);
                     mean_ks_harmonic_out += Ks_cap_harmonic[l][d]; // in m/s, harmonic mean of the conductivities of the two layers
                     net_vol_change_out += water_upward_vol[l][d];  // in m3, net volume change in the layer above due to vertical water movement after considering restrictions (positive when water goes up, negative when water goes down)
                     gross_vol_change_out += fabs(water_upward_vol[l][d]);  // in m3, gross volume change in the layer above due to vertical water movement after considering restrictions (absolute value, that is, the total volume moved, regardless of the direction)
@@ -9048,23 +9025,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 mean_abs_q_cap_out /= float(nbdcells);
                 mean_delta_swp_out /= float(nbdcells);
                 mean_ks_harmonic_out /= float(nbdcells);
-                mean_matric_gradient_out /= float(nbdcells);
-                mean_abs_matric_gradient_out /= float(nbdcells);
-                mean_hydraulic_gradient_out /= float(nbdcells);
-                mean_abs_hydraulic_gradient_out /= float(nbdcells);
-
-                output_vertical_flux
-                    << mean_q_cap_out << "\t"
-                    << mean_abs_q_cap_out << "\t"
-                    << mean_delta_swp_out << "\t"
-                    << mean_matric_gradient_out << "\t"
-                    << mean_abs_matric_gradient_out << "\t"
-                    << mean_hydraulic_gradient_out << "\t"
-                    << mean_abs_hydraulic_gradient_out << "\t"
-                    << mean_ks_harmonic_out << "\t"
-                    << net_vol_change_out << "\t"
-                    << gross_vol_change_out << "\t";
-
+                output_vertical_flux << mean_q_cap_out << "\t" << mean_abs_q_cap_out << "\t" << mean_delta_swp_out << "\t"
+                    << mean_ks_harmonic_out << "\t" << net_vol_change_out << "\t" << gross_vol_change_out << "\t";
 
             }
             
@@ -9082,6 +9044,15 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
             }
             output_vertical_flux << endl;
 
+            // output for debugging hydraulics: number of cells where the capillary rise is below certain thresholds, to track the development of dry conditions in the soil and their impact on the hydraulics
+            int total_voxels = nbdcells * nblayers_soil;
+            int total_interfaces = nbdcells * (nblayers_soil - 1);
+
+            output_debug_hydraulics_by_iter
+                << iter << '\t'
+                << total_voxels << '\t'
+                << total_interfaces << '\t'
+                << endl;
     }        
 #endif
             cout.flush();
@@ -11475,7 +11446,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 #ifdef VERTICAL_WATER_FLUX // BR
             output_vertical_flux.close();
             output_vertical_flux.clear();
-
 #endif
         }
         
