@@ -195,13 +195,20 @@ build_flux_long <- function(flux_all, model_levels = NULL, model_labels = NULL) 
         str_detect(variable, "^mean_flux_layers") ~ "mean_flux",
         str_detect(variable, "^mean_abs_flux_layers") ~ "mean_abs_flux",
         str_detect(variable, "^mean_delta_swp_layers") ~ "mean_delta_swp",
+        
+        str_detect(variable, "^mean_matric_gradient_layers") ~ "mean_matric_gradient",
+        str_detect(variable, "^mean_abs_matric_gradient_layers") ~ "mean_abs_matric_gradient",
+        str_detect(variable, "^mean_hydraulic_gradient_layers") ~ "mean_hydraulic_gradient",
+        str_detect(variable, "^mean_abs_hydraulic_gradient_layers") ~ "mean_abs_hydraulic_gradient",
+        
         str_detect(variable, "^mean_ks_harmonic_layers") ~ "mean_ks_harmonic",
         str_detect(variable, "^net_volumetric_change_layers") ~ "net_volumetric_change",
         str_detect(variable, "^gross_volumetric_change_layers") ~ "gross_volumetric_change",
+        
         str_detect(variable, "^mean_swp_layer") ~ "mean_swp_layer",
         str_detect(variable, "^mean_ks_layer") ~ "mean_ks_layer",
         TRUE ~ NA_character_
-      ),
+  ),
       interface = str_extract(variable, "\\d+_\\d+"),
       layer = str_extract(variable, "(?<=layer)\\d+")
     )
@@ -293,11 +300,12 @@ plot_layer_faceted <- function(data, metric_name, title_txt, y_lab, add_zero = F
 
 # Build all main diagnostic plots
 build_flux_plots <- function(df_interface, df_layer) {
+  
   p_flux <- plot_interface_faceted(
     df_interface,
     metric_name = "mean_flux",
     title_txt = "Mean flux by interface",
-    y_lab = "Mean flux",
+    y_lab = "Mean flux [m s-1]",
     add_zero = TRUE
   )
   
@@ -305,29 +313,59 @@ build_flux_plots <- function(df_interface, df_layer) {
     df_interface,
     metric_name = "mean_abs_flux",
     title_txt = "Mean absolute flux by interface",
-    y_lab = "Mean absolute flux"
+    y_lab = "Mean absolute flux [m s-1]"
   )
   
   p_dphi <- plot_interface_faceted(
     df_interface,
     metric_name = "mean_delta_swp",
     title_txt = "Mean delta SWP by interface",
-    y_lab = "Mean delta SWP",
+    y_lab = "Mean delta SWP [MPa]",
     add_zero = TRUE
+  )
+  
+  p_matric_gradient <- plot_interface_faceted(
+    df_interface,
+    metric_name = "mean_matric_gradient",
+    title_txt = "Mean matric gradient by interface",
+    y_lab = "Mean matric gradient [-]",
+    add_zero = TRUE
+  )
+  
+  p_abs_matric_gradient <- plot_interface_faceted(
+    df_interface,
+    metric_name = "mean_abs_matric_gradient",
+    title_txt = "Mean absolute matric gradient by interface",
+    y_lab = "Mean absolute matric gradient [-]"
+  )
+  
+  p_hydraulic_gradient <- plot_interface_faceted(
+    df_interface,
+    metric_name = "mean_hydraulic_gradient",
+    title_txt = "Mean hydraulic gradient by interface",
+    y_lab = "Mean hydraulic gradient [-]",
+    add_zero = TRUE
+  )
+  
+  p_abs_hydraulic_gradient <- plot_interface_faceted(
+    df_interface,
+    metric_name = "mean_abs_hydraulic_gradient",
+    title_txt = "Mean absolute hydraulic gradient by interface",
+    y_lab = "Mean absolute hydraulic gradient [-]"
   )
   
   p_kharm <- plot_interface_faceted(
     df_interface,
     metric_name = "mean_ks_harmonic",
     title_txt = "Mean harmonic Ks by interface",
-    y_lab = "Mean harmonic Ks"
+    y_lab = "Mean harmonic Ks [m s-1]"
   )
   
   p_net <- plot_interface_faceted(
     df_interface,
     metric_name = "net_volumetric_change",
     title_txt = "Net volumetric change by interface",
-    y_lab = "Net volumetric change",
+    y_lab = "Net volumetric change [m3]",
     add_zero = TRUE
   )
   
@@ -335,21 +373,21 @@ build_flux_plots <- function(df_interface, df_layer) {
     df_interface,
     metric_name = "gross_volumetric_change",
     title_txt = "Gross volumetric change by interface",
-    y_lab = "Gross volumetric change"
+    y_lab = "Gross volumetric change [m3]"
   )
   
   p_swp_layer <- plot_layer_faceted(
     df_layer,
     metric_name = "mean_swp_layer",
     title_txt = "Mean SWP by layer",
-    y_lab = "Mean SWP"
+    y_lab = "Mean SWP [MPa]"
   )
   
   p_ks_layer <- plot_layer_faceted(
     df_layer,
     metric_name = "mean_ks_layer",
     title_txt = "Mean Ks by layer",
-    y_lab = "Mean Ks"
+    y_lab = "Mean Ks [m s-1]"
   )
   
   df_panel_interface <- df_interface %>%
@@ -357,6 +395,10 @@ build_flux_plots <- function(df_interface, df_layer) {
       "mean_flux",
       "mean_abs_flux",
       "mean_delta_swp",
+      "mean_matric_gradient",
+      "mean_abs_matric_gradient",
+      "mean_hydraulic_gradient",
+      "mean_abs_hydraulic_gradient",
       "mean_ks_harmonic",
       "net_volumetric_change",
       "gross_volumetric_change"
@@ -368,6 +410,10 @@ build_flux_plots <- function(df_interface, df_layer) {
           "mean_flux",
           "mean_abs_flux",
           "mean_delta_swp",
+          "mean_matric_gradient",
+          "mean_abs_matric_gradient",
+          "mean_hydraulic_gradient",
+          "mean_abs_hydraulic_gradient",
           "mean_ks_harmonic",
           "net_volumetric_change",
           "gross_volumetric_change"
@@ -376,6 +422,10 @@ build_flux_plots <- function(df_interface, df_layer) {
           "Mean flux",
           "Mean absolute flux",
           "Mean delta SWP",
+          "Mean matric gradient",
+          "Mean absolute matric gradient",
+          "Mean hydraulic gradient",
+          "Mean absolute hydraulic gradient",
           "Mean harmonic Ks",
           "Net volumetric change",
           "Gross volumetric change"
@@ -431,6 +481,10 @@ build_flux_plots <- function(df_interface, df_layer) {
     p_flux = p_flux,
     p_abs_flux = p_abs_flux,
     p_dphi = p_dphi,
+    p_matric_gradient = p_matric_gradient,
+    p_abs_matric_gradient = p_abs_matric_gradient,
+    p_hydraulic_gradient = p_hydraulic_gradient,
+    p_abs_hydraulic_gradient = p_abs_hydraulic_gradient,
     p_kharm = p_kharm,
     p_net = p_net,
     p_gross = p_gross,
@@ -440,7 +494,6 @@ build_flux_plots <- function(df_interface, df_layer) {
     p_panel_layer = p_panel_layer
   )
 }
-
 # Save all plots to disk
 save_flux_plots <- function(plots, plot_dir) {
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
@@ -448,6 +501,12 @@ save_flux_plots <- function(plots, plot_dir) {
   ggsave(file.path(plot_dir, "mean_flux_by_interface_faceted.png"), plots$p_flux, width = 14, height = 8, dpi = 300)
   ggsave(file.path(plot_dir, "mean_abs_flux_by_interface_faceted.png"), plots$p_abs_flux, width = 14, height = 8, dpi = 300)
   ggsave(file.path(plot_dir, "mean_delta_swp_by_interface_faceted.png"), plots$p_dphi, width = 14, height = 8, dpi = 300)
+  
+  ggsave(file.path(plot_dir, "mean_matric_gradient_by_interface_faceted.png"), plots$p_matric_gradient, width = 14, height = 8, dpi = 300)
+  ggsave(file.path(plot_dir, "mean_abs_matric_gradient_by_interface_faceted.png"), plots$p_abs_matric_gradient, width = 14, height = 8, dpi = 300)
+  ggsave(file.path(plot_dir, "mean_hydraulic_gradient_by_interface_faceted.png"), plots$p_hydraulic_gradient, width = 14, height = 8, dpi = 300)
+  ggsave(file.path(plot_dir, "mean_abs_hydraulic_gradient_by_interface_faceted.png"), plots$p_abs_hydraulic_gradient, width = 14, height = 8, dpi = 300)
+  
   ggsave(file.path(plot_dir, "mean_ks_harmonic_by_interface_faceted.png"), plots$p_kharm, width = 14, height = 8, dpi = 300)
   ggsave(file.path(plot_dir, "net_volumetric_change_by_interface_faceted.png"), plots$p_net, width = 14, height = 8, dpi = 300)
   ggsave(file.path(plot_dir, "gross_volumetric_change_by_interface_faceted.png"), plots$p_gross, width = 14, height = 8, dpi = 300)
@@ -455,17 +514,20 @@ save_flux_plots <- function(plots, plot_dir) {
   ggsave(file.path(plot_dir, "mean_swp_by_layer_faceted.png"), plots$p_swp_layer, width = 14, height = 8, dpi = 300)
   ggsave(file.path(plot_dir, "mean_ks_by_layer_faceted.png"), plots$p_ks_layer, width = 14, height = 8, dpi = 300)
   
-  ggsave(file.path(plot_dir, "vertical_water_flux_panel_interface_faceted.png"), plots$p_panel_interface, width = 18, height = 14, dpi = 300)
+  ggsave(file.path(plot_dir, "vertical_water_flux_panel_interface_faceted.png"), plots$p_panel_interface, width = 18, height = 20, dpi = 300)
   ggsave(file.path(plot_dir, "vertical_water_flux_panel_layer_faceted.png"), plots$p_panel_layer, width = 16, height = 8, dpi = 300)
   
   cat("Saved plots in:\n", plot_dir, "\n")
 }
-
 # Print all plots
 print_flux_plots <- function(plots) {
   print(plots$p_flux)
   print(plots$p_abs_flux)
   print(plots$p_dphi)
+  print(plots$p_matric_gradient)
+  print(plots$p_abs_matric_gradient)
+  print(plots$p_hydraulic_gradient)
+  print(plots$p_abs_hydraulic_gradient)
   print(plots$p_kharm)
   print(plots$p_net)
   print(plots$p_gross)
@@ -474,7 +536,6 @@ print_flux_plots <- function(plots) {
   print(plots$p_panel_interface)
   print(plots$p_panel_layer)
 }
-
 # =========================================================
 # 5) DIAGNOSTIC SUMMARY FUNCTIONS
 # =========================================================
@@ -628,6 +689,52 @@ diagnose_ksh_floor <- function(df_interface) {
   })
 }
 
+diagnose_hydraulic_locking <- function(df_interface) {
+  
+  interfaces <- sort(unique(na.omit(as.character(df_interface$interface))))
+  
+  purrr::map_dfr(interfaces, function(intf) {
+    
+    vars <- tibble(
+      variable = c(
+        paste0("mean_ks_harmonic_layers", intf),
+        paste0("mean_abs_hydraulic_gradient_layers", intf),
+        paste0("mean_abs_flux_layers", intf),
+        paste0("gross_volumetric_change_layers", intf),
+        paste0("mean_delta_swp_layers", intf)
+      ),
+      var_name = c(
+        "ks_harmonic",
+        "abs_hydraulic_gradient",
+        "abs_flux",
+        "gross_volumetric_change",
+        "delta_swp"
+      )
+    )
+    
+    df_interface %>%
+      filter(variable %in% vars$variable) %>%
+      left_join(vars, by = "variable") %>%
+      select(model_name, date, sim_year, interface, var_name, value) %>%
+      pivot_wider(names_from = var_name, values_from = value) %>%
+      group_by(model_name, interface) %>%
+      summarise(
+        median_ks_harmonic = median(ks_harmonic, na.rm = TRUE),
+        min_ks_harmonic = min(ks_harmonic, na.rm = TRUE),
+        median_abs_hydraulic_gradient = median(abs_hydraulic_gradient, na.rm = TRUE),
+        median_abs_flux = median(abs_flux, na.rm = TRUE),
+        median_gross_volumetric_change = median(gross_volumetric_change, na.rm = TRUE),
+        median_delta_swp = median(delta_swp, na.rm = TRUE),
+        
+        frac_ksh_lt_1e10 = mean(ks_harmonic < 1e-10, na.rm = TRUE),
+        frac_ksh_lt_1e8 = mean(ks_harmonic < 1e-8, na.rm = TRUE),
+        frac_abs_gradient_lt_001 = mean(abs_hydraulic_gradient < 0.01, na.rm = TRUE),
+        frac_abs_flux_lt_1e12 = mean(abs_flux < 1e-12, na.rm = TRUE),
+        
+        .groups = "drop"
+      )
+  })
+}
 # =========================================================
 # 6) MAIN FUNCTION: SAME BRANCH
 # =========================================================
@@ -724,7 +831,7 @@ analyze_vertical_flux_runs <- function(
   ks_summary <- summarize_ks_layers(df_layer)
   ksh_summary <- summarize_ksh_interfaces(df_interface)
   ksh_floor_diag <- diagnose_ksh_floor(df_interface)
-  
+  hydraulic_locking_diag <- diagnose_hydraulic_locking(df_interface)
   invisible(list(
     files_df = files_df,
     flux_all = flux_all,
@@ -735,7 +842,8 @@ analyze_vertical_flux_runs <- function(
     plot_dir = plot_dir,
     ks_summary = ks_summary,
     ksh_summary = ksh_summary,
-    ksh_floor_diag = ksh_floor_diag
+    ksh_floor_diag = ksh_floor_diag,
+    hydraulic_locking_diag = hydraulic_locking_diag
   ))
 }
 
@@ -789,6 +897,7 @@ analyze_vertical_flux_runs_table <- function(
   ks_summary <- summarize_ks_layers(df_layer)
   ksh_summary <- summarize_ksh_interfaces(df_interface)
   ksh_floor_diag <- diagnose_ksh_floor(df_interface)
+  hydraulic_locking_diag <- diagnose_hydraulic_locking(df_interface)
   
   invisible(list(
     files_df = files_df,
@@ -800,23 +909,25 @@ analyze_vertical_flux_runs_table <- function(
     plot_dir = plot_dir,
     ks_summary = ks_summary,
     ksh_summary = ksh_summary,
-    ksh_floor_diag = ksh_floor_diag
+    ksh_floor_diag = ksh_floor_diag,
+    hydraulic_locking_diag <- hydraulic_locking_diag
+    
   ))
 }
 
 #single run
 project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting"
 # 
-# res1 <- analyze_vertical_flux_runs(
-#   project_dir = project_dir,
-#   family = "theta_w_tests",
-#   vegetation = "veg",
-#   water_table = "deepWT",
-#   texture = "sandy",
-#   experiment_names = "theta1e-3_ksfloor1e-12_noveg_redprec_deepwt_sandy",
-#   mode = 0,
-#   save_plots = FALSE
-# )
+res1 <- analyze_vertical_flux_runs(
+  project_dir = project_dir,
+  family = "units_vertmov",
+  vegetation = "veg",
+  water_table = "deepWT",
+  texture = "sandy",
+  experiment_names = "debug_hydraulic_locking",
+  mode = 0,
+  save_plots = FALSE
+)
 
 # #Example 2: multiple runs in the same branch
 # res2 <- analyze_vertical_flux_runs(
@@ -836,11 +947,11 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 experiment_table <- tibble(
   family = c("units_vertmov", "units_vertmov"),
   vegetation = c("veg", "veg"),
-  water_table = c("deepWT", "shallowWT"),
+  water_table = c("deepWT", "deepWT"),
   texture = c("sandy", "sandy"),
   experiment_name = c(
     "corrected_units_deepWT",
-    "corrected_units_shallowWT"
+    "debug_hydraulic_locking"
   )
 )
 
