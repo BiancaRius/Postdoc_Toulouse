@@ -8052,13 +8052,13 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 float sum_k = k1 + k2;
                 
-                Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
-
 
                 // Check for division by zero to avoid errors 
                 // If both conductivities are zero, the harmonic mean is also zero
                 if (sum_k > 2e-11f){ // BR - changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking. The limit is set to 2 times the limit set for Ks_cap, as the sum of two Ks_cap can be at minimum 2 times the limit set for Ks_cap.
-                    Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                    // Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+
+                    Ks_cap_harmonic[l][d] = sqrt(k1 * k2); // BR TEST- using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
                     // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
                 } else {
@@ -8141,8 +8141,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 
                 max_gain[l] = (FC_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold, converted in volume of water (m^3)
 } else {
-                max_gain[l] = FC_SWC[l] - SWC3D[l][d] * layer_volume[l];;
-                // max_gain[l] = (Max_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // Here Max_SWC is used instead of FC_SWC because in the unified vertical flux scheme, layers can fill up to saturation, and field capacity is an emergent state rather than an imposed storage cap.
+                // max_gain[l] = FC_SWC[l] - SWC3D[l][d] * layer_volume[l];;
+                max_gain[l] = (Max_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // Here Max_SWC is used instead of FC_SWC because in the unified vertical flux scheme, layers can fill up to saturation, and field capacity is an emergent state rather than an imposed storage cap.
 }                
                 max_loss[l] = (SWC3D[l][d] - Min_SWC[l]) * layer_volume[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
