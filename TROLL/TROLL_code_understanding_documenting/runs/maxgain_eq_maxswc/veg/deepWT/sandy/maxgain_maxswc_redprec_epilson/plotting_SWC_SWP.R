@@ -309,7 +309,7 @@ analyze_troll_runs <- function(
     project_dir,
     family,
     vegetation = c("veg", "noveg"),
-    water_table = c("deepWT", "shallowWT"),
+    water_table = c("deepWT", "deepWT"),
     texture = c("sandy", "clayey"),
     experiment_names,
     mode = 0,                 # 0 = single run, 1 = multiple runs in same branch
@@ -511,11 +511,11 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 experiment_table <- tibble(
   family = c("units_vertmov", "units_vertmov"),
   vegetation = c("veg", "veg"),
-  water_table = c("deepWT", "shallowWT"),
+  water_table = c("deepWT", "deepWT"),
   texture = c("sandy", "sandy"),
   experiment_name = c(
-    "corrected_units_deepWT",
-    "corrected_units_shallowWT"
+    "debug_hydraulic_locking",
+    "test_nan"
   )
 )
 

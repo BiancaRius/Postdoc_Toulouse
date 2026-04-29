@@ -950,7 +950,7 @@ experiment_table <- tibble(
   water_table = c("deepWT", "deepWT"),
   texture = c("sandy", "sandy"),
   experiment_name = c(
-    "corrected_units_deepWT",
+    "test_nan",
     "debug_hydraulic_locking"
   )
 )
@@ -958,5 +958,5 @@ experiment_table <- tibble(
 res3 <- analyze_vertical_flux_runs_table(
   project_dir = project_dir,
   experiment_table = experiment_table,
-  save_plots = TRUE
+  save_plots = FALSE
 )
