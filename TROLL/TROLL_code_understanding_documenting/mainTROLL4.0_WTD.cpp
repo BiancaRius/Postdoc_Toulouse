@@ -8141,8 +8141,8 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 
                 max_gain[l] = (FC_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold, converted in volume of water (m^3)
 } else {
-                // max_gain[l] = FC_SWC[l] - SWC3D[l][d];
-                max_gain[l] = (Max_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // Here Max_SWC is used instead of FC_SWC because in the unified vertical flux scheme, layers can fill up to saturation, and field capacity is an emergent state rather than an imposed storage cap.
+                max_gain[l] = FC_SWC[l] - SWC3D[l][d] * layer_volume[l];;
+                // max_gain[l] = (Max_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // Here Max_SWC is used instead of FC_SWC because in the unified vertical flux scheme, layers can fill up to saturation, and field capacity is an emergent state rather than an imposed storage cap.
 }                
                 max_loss[l] = (SWC3D[l][d] - Min_SWC[l]) * layer_volume[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
