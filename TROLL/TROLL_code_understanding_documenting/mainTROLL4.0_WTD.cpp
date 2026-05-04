@@ -7723,7 +7723,7 @@ if (_WATER_RETENTION_CURVE==1) {
                     cout << precip << "\t" << Interception[d] << "\t" << LAI_DCELL[0][d] << endl;
                 }
                 
-                float in=Throughfall[d];
+                float in=Throughfall[d]; //m3
                 
                 /*if(SWC3D[0][d]<Max_SWC[0]) {
                     int l=0;
@@ -7786,99 +7786,62 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
 
 } else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
             
+            // Throughfall (in) is available in m3
+            // First we calculate the volume of a layer
+            float voxel_area = sites_per_dcell * LH * LH;   // m2
+            float layer0_volume = voxel_area * layer_thickness_global[0]; // m3 soil
+
+            // Amount of water that layer 0 can receive in m3/m3
+            float receiv0 = std::max(0.0f, Max_SWC[0] - SWC3D[0][d]);
+            // Transform this amount in volume of water in m3
+            float receiv0_vol = receiv0  * layer0_volume;    // m3 water 
             
-            // espaço disponível na camada 0 até saturação
-                float cap0 = std::max(0.0f, Max_SWC[0] - SWC3D[0][d]);
+            // Actual infiltration into layer 0, in m3 water
+            float infil0_vol = fminf(in, receiv0_vol);
 
-            // quanto realmente entra
-                float infil0 = std::min(in, cap0);
-
-            // atualiza armazenamento da camada 0
-                SWC3D[0][d] += infil0;
-
-            // 
-                float excess = in - infil0;
-                Runoff[d] += excess;   // ou LossRain[d] += excess, se você preferir separar
-
-            // zera in para não ser usado depois
-            in = 0.0f;
-
-            // opcional: não usar Leakage neste esquema
-            Leakage[d] = 0.0f;
-
-            // opcional: segurança numérica
-            if (SWC3D[0][d] > Max_SWC[0]) {
-                cout << SWC3D[0][d] << " is greater than Max_SWC[0]=" << Max_SWC[0] << " at d=" << d << ". Capping to Max_SWC[0]." << endl;
-                SWC3D[0][d] = Max_SWC[0]; 
+            // Update SWC in layer 0
+            if (layer0_volume > 0.0f) {
+                SWC3D[0][d] += infil0_vol / layer0_volume;
+            } else {
+                cout << "ERROR: layer0_volume <= 0 at d=" << d << endl;     
             }
 
-            // ******* Infiltration calculation following a Darcy-based approach ********
-            // Unlike the bucket model above, infiltration here is not limited only by the
-            // remaining storage capacity of the first soil layer. We also limit the water
-            // entering the soil by the hydraulic conductivity of this layer (K), which 
-            // sets the maximum infiltration flux that the soil can physically accept during the timestep.
-
-// ATTENTION: INFILTRATION TEMPORARY
-
-//             // 1. Calculate soil hydraulic properties for the layer 0 in order to compute Infiltration
-//                 // Computes relative soil water content (that_w_inf), soil water potential (soil_phi3D_inf), 
-//                 // and hydraulic conductivity (Ks_inf) based on the chosen water retention model.
-    
-//                 float theta_w_inf=(SWC3D[0][d]-Min_SWC[0])/(Max_SWC[0]-Min_SWC[0]); // relative soil water content for infiltration calculation
-                
-//                 if(theta_w_inf == 0) {
-//                         theta_w_inf = 0.001; // following SS addition for limit value //BR
-//                         cout << "Warning theta_w = 0 " << endl ;
-//                 }
-
-//                 // cout << "Relative soil water content (infiltration): dcell " << d << " theta_w_inf=" << theta_w_inf << endl ;
-
-//                 //
-//                 //Initialize internal variables to calculate hydraulic potential for the first layer
-//                 float soil_phi3D_inf = 0.0;
-//                 float Ks_inf = 0.0;
-
-// if (_WATER_RETENTION_CURVE==1) {
-                
-//                 soil_phi3D_inf = a_vgm[0]*pow((pow(theta_w_inf,-b_vgm[0])-1), c_vgm[0]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
-//                 float inter = 1-pow((1-pow(theta_w_inf, b_vgm[0])),m_vgm[0]);
-//                 Ks_inf = Ksat[0]*pow(theta_w_inf, 0.5)*inter*inter; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
-                    
-//                 if (isnan(soil_phi3D_inf) || isnan(Ks_inf) ||  (SWC3D[0][d]-Min_SWC[0])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
-//                     cout << "In bucket model, first layer (layer 0) " << " dcell " << d << " theta_w=" << theta_w_inf << " SWC3D[0][d]-Min_SWC[0]=" << (SWC3D[0][d]-Min_SWC[0]) << " soil_phi3D[0][d]=" << soil_phi3D[0][d] << " Ksat=" << Ksat[0] << " Ks[0][d]=" << Ks[0][d] << endl ;
-                    
-//                 // cout << "Infiltration calculation: dcell " << d << " soil_phi3D_inf=" << soil_phi3D_inf << " Ks_inf=" << Ks_inf << endl ;
-
-// } else if (_WATER_RETENTION_CURVE==0) {
-//                 soil_phi3D_inf = phi_e[0]*pow(theta_w_inf, -b[0]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
-//                 Ks_inf = Ksat[0]*pow(theta_w_inf, 2.5+2*b[0]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
-//                 float KsPhi_inf = Ksat[0]*phi_e[0]*pow(theta_w_inf, 2.5+b[0]); //Ks times soil_phi3D, computed directly as the exact power of theta.
+             //Excess becomes runoff, in m3 water
+            float excess_vol = in - infil0_vol;
+            Runoff[d] += std::max(0.0f, excess_vol);
             
-//                 if (isnan(soil_phi3D_inf) || isnan(Ks_inf) ||  isnan(KsPhi_inf) || (SWC3D[0][d]-Min_SWC[0])<0) //|| KsPhi[l][d]==0.0 || Ks[l][d]==0.0 || soil_phi3D[l][d]==0.0)
-//                     cout << "In bucket model, first layer (layer 0) " << " dcell " << d << " theta_w=" << theta_w_inf << " SWC3D[0][d]-Min_SWC[0]=" << (SWC3D[0][d]-Min_SWC[0]) << " soil_phi3D[0][d]=" << soil_phi3D[0][d] << " Ksat=" << Ksat[0] << " phi_e=" << phi_e[0] <<" b[0]=" << b[0] << " KsPhi_inf=" << KsPhi[0][d] << " Ks[0][d]=" << Ks_inf << endl ;
-//                     //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
-//                     // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
-                    
-// } // end of water retention curve choice
+            // Set in to 0 in order to avoid double counting of water entering the soil in the next steps
+            in = 0.0f;
 
-//             // 2. Compute Potential Maximum amount of water that layer 0 can absorb from throughfall, i.e. without considering the layer hydraulic conductivity (Ks)
-//                 float pot_max_gain = FC_SWC[0] - SWC3D[0][d]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold. NOTE: Here, the maximum water storage capacity of a layer(l) == Max_SWC[l] not FC_SWC[l]. Field capacity is used only in bucket schemes; under Darcy, gravitational drainage emerges from the (ψ + z) gradient.
-//                 pot_max_gain = fmaxf(0.0f, pot_max_gain); // to avoid negative values due to numerical approximations
+            // Numerical safety
+            if (SWC3D[0][d] > Max_SWC[0]) {
+                cout << SWC3D[0][d]
+                    << " is greater than Max_SWC[0]=" << Max_SWC[0]
+                    << " at d=" << d
+                    << ". Capping to Max_SWC[0]." << endl;
+                SWC3D[0][d] = Max_SWC[0];
+            }
 
-//             // 3. Compute maximum volume of water that can infiltrate the soil layer during the timestep, limited by the layer hydraulic conductivity // m3 
-//                 float voxel_area = LH*LH*sites_per_dcell; // m2
-//                 float delta_t_sec = 86400.0f; // s
+            if (SWC3D[0][d] < Min_SWC[0]) {
+                cout << SWC3D[0][d]
+                    << " is lower than Min_SWC[0]=" << Min_SWC[0]
+                    << " at d=" << d
+                    << ". Capping to Min_SWC[0]." << endl;
+                SWC3D[0][d] = Min_SWC[0];
+            }
 
-//                 float vol_inf_K = Ks_inf * voxel_area * delta_t_sec; // m3
+            // 12. Optional mass-balance check for this infiltration step
+            float mb_error = Throughfall[d] - infil0_vol - std::max(0.0f, excess_vol);
 
+            if (fabs(mb_error) > 1e-6f) {
+                cout << "WARNING infiltration mass balance error at d=" << d
+                    << " | Throughfall=" << Throughfall[d]
+                    << " | infil0_vol=" << infil0_vol
+                    << " | excess_vol=" << excess_vol
+                    << " | error=" << mb_error
+                    << endl;
+            }
 
-//             // 4. Actual infiltration is the minimum between the water available from throughfall, the potential maximum gain of the layer, and the maximum volume that can infiltrate limited by Ks    
-//                 float actual_infiltration = fminf(in, fminf(vol_inf_K, pot_max_gain)); // m3                
-
-//             // 5. Update soil water content of layer 0 after infiltration
-//                 SWC3D[0][d] += actual_infiltration;
-//                 Runoff[d]   += in - actual_infiltration; // excess water that cannot infiltrate becomes runoff
-//                 Leakage[d]   = 0.0f; // TEMPORARY? in the unified vertical water flux scheme, leakage is not considered as a separate term, but emerges from the water potential gradients between layers.
 
 } //endif unified vert water flux
 
