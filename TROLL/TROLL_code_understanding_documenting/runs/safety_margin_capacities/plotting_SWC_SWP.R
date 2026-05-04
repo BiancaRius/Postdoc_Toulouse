@@ -509,20 +509,19 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 
 #mixed branches
 experiment_table <- tibble(
-  family = c("units_vertmov", "safety_margin_capacities", "units_vertmov", "safety_margin_capacities", "units_vertmov", "safety_margin_capacities", "units_vertmov", "safety_margin_capacities"),
+  family = c("safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities"),
   vegetation = c("veg", "veg", "veg", "veg", "veg", "veg", "veg", "veg"),
   water_table = c("shallowWT", "shallowWT", "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
   texture = c("sandy", "sandy","sandy", "sandy", "clayey","clayey","clayey","clayey"),
   experiment_name = c(
-    "shallowWT_sandy_ksgeom",
-    "safetymargin_shallowWT_sandy",
-    "deepWT_sandy_ksgeom",
-    "safetymargin_deepWT_sandy",
-    "shallowWT_clayey_ksgeom",
-    "safetymargin_shallowWT_clayey",
-    "deepWT_clayey_ksgeom",
-    "safetymargin_deepWT_clayey"
-    
+    "safetymargin_shallowWT_sandy_regclim",
+    "safetymargin_shallowWT_sandy_redprec",
+    "safetymargin_deepWT_sandy_regclim",
+    "safetymargin_deepWT_sandy_redprec",
+    "safetymargin_shallowWT_clayey_regclim",
+    "safetymargin_shallowWT_clayey_redprec",
+    "safetymargin_deepWT_clayey_regclim",
+    "safetymargin_deepWT_clayey_redprec"
   )
 )
 
