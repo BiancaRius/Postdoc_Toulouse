@@ -8055,7 +8055,7 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // Check for division by zero to avoid errors 
                 // If both conductivities are zero, the harmonic mean is also zero
-                if (sum_k > 2e-11f){ // BR - changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking. The limit is set to 2 times the limit set for Ks_cap, as the sum of two Ks_cap can be at minimum 2 times the limit set for Ks_cap.
+                if (sum_k > 2e-11f){ // BR - changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking. 
                     // Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
 
                     Ks_cap_harmonic[l][d] = sqrt(k1 * k2); // BR TEST- using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
@@ -8129,6 +8129,11 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
                 float voxel_area = LH * LH * sites_per_dcell; // m²
                 layer_volume[l] = layer_thickness_global[l] * voxel_area; // m^3, volume of the layer. It is used to convert the storage limits in volume of water, and also to limit the transfer in case of upward movement (see below), as the receiver layer is the upper layer, that's why we use its thickness and volume to limit the transfer.
 
+                const float epsilon_swc = 1e-5f; // safety margin. It avoids the layers to reach their physical limit
+
+                float lower_bound = Min_SWC[l] + epsilon_swc;
+                float upper_bound = Max_SWC[l] - epsilon_swc;
+
 // Note: the storage limit depends on the vertical flux scheme.
 // - In the bucket-based scheme, field capacity (FC_SWC) is treated as a hard upper
 //   limit: any water above FC is removed by gravity drainage in a separate bucket
@@ -8138,18 +8143,26 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 //   are allowed to fill up to saturation (Max_SWC), and "field capacity" is an
 //   emergent state rather than an imposed storage cap.
 if (_UNIFIED_VERT_WATER_FLUX == 0) {
-                
-                max_gain[l] = (FC_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold, converted in volume of water (m^3)
+                float upper_bound = FC_SWC[l] - epsilon_swc;
+                // max_gain[l] = (upper_bound - SWC3D[l][d]) * layer_volume[l]; // How much water the layer can still hold considering its actual amount of water and the maximum it can hold, converted in volume of water (m^3)
+                max_gain[l] = std::max(0.0f, upper_bound - SWC3D[l][d]); // How much water the layer can still hold considering its actual amount of water and the maximum it can hold (m3/m3)
+
 } else {
-                // max_gain[l] = FC_SWC[l] - SWC3D[l][d] * layer_volume[l];;
-                max_gain[l] = (Max_SWC[l] - SWC3D[l][d]) * layer_volume[l]; // Here Max_SWC is used instead of FC_SWC because in the unified vertical flux scheme, layers can fill up to saturation, and field capacity is an emergent state rather than an imposed storage cap.
-}                
-                max_loss[l] = (SWC3D[l][d] - Min_SWC[l]) * layer_volume[l]; // How much water the layer can lose considering its actual amount of water and the minimum it must hold
                 
+                //float upper_bound = FC_SWC[l] - epsilon_swc;
+                // max_gain[l] = FC_SWC[l] - SWC3D[l][d] * layer_volume[l];;
+               
+                float upper_bound = Max_SWC[l] - epsilon_swc;
+                max_gain[l] = std::max(0.0f, upper_bound - SWC3D[l][d]); // Here Max_SWC is used instead of FC_SWC because in the unified vertical flux scheme, layers can fill up to saturation, and field capacity is an emergent state rather than an imposed storage cap.
+
+}                
+                float lower_bound = Min_SWC[l] + epsilon_swc;
+                max_loss[l] = max(0.0f, SWC3D[l][d] - lower_bound); // How much water the layer can lose considering its actual amount of water and the minimum it must hold
+
                 // Receiver capacity: cannot exceed saturation
-                receiv_capacity[l] = max(0.0f, max_gain[l]); 
+                receiv_capacity[l] = max_gain[l] * layer_volume[l]; // how much the layer can receive in volume of water (m^3)
                 // Donor capacity: cannot go below residual
-                donor_capacity[l] = max(0.0f, max_loss[l]);
+                donor_capacity[l] = max_loss[l] * layer_volume[l]; // how much the layer can donate in volume of water (m^3)
 
                 // Special case for the WT layer:
                 // WT (water table) layers can donate unlimited water (only limited by potential and receiver capacity).
