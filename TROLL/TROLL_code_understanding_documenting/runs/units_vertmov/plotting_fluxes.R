@@ -880,13 +880,15 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 # )
 
 experiment_table <- tibble(
-  family = c("units_vertmov", "units_vertmov"),
-  vegetation = c("veg", "veg"),
-  water_table = c("deepWT", "deepWT"),
-  texture = c("sandy", "clayey"),
+  family = c("units_vertmov", "units_vertmov", "units_vertmov", "units_vertmov"),
+  vegetation = c("veg", "veg", "veg", "veg"),
+  water_table = c("deepWT", "deepWT","shallowWT", "shallowWT"),
+  texture = c("sandy", "clayey", "sandy", "clayey"),
   experiment_name = c(
     "deepWT_sandy_ksgeom",
-    "deepWT_clayey_ksgeom"
+    "deepWT_clayey_ksgeom",
+    "shallowWT_sandy_ksgeom",
+    "shallowWT_clayey_ksgeom"
   )
 )
 
@@ -895,3 +897,182 @@ res3 <- analyze_vertical_flux_runs_table(
   experiment_table = experiment_table,
   save_plots = FALSE
 )
+
+# =========================================================
+# Directional vertical water flux diagnostics
+# =========================================================
+
+build_directional_flux_table <- function(df_interface) {
+  
+  net_df <- df_interface %>%
+    filter(metric == "net_volumetric_change") %>%
+    select(model_name, date, sim_year, interface, net_vol_m3 = value)
+  
+  gross_df <- df_interface %>%
+    filter(metric == "gross_volumetric_change") %>%
+    select(model_name, date, sim_year, interface, gross_vol_m3 = value)
+  
+  directional_df <- net_df %>%
+    left_join(
+      gross_df,
+      by = c("model_name", "date", "sim_year", "interface")
+    ) %>%
+    mutate(
+      # Reconstruct directional components from net and gross
+      upward_vol_m3 = pmax(0, (gross_vol_m3 + net_vol_m3) / 2),
+      downward_vol_m3 = pmax(0, (gross_vol_m3 - net_vol_m3) / 2),
+      
+      # Signed version for plotting:
+      # upward positive, downward negative
+      upward_signed_m3 = upward_vol_m3,
+      downward_signed_m3 = -downward_vol_m3,
+      
+      ratio_net_gross = if_else(
+        gross_vol_m3 > 0,
+        net_vol_m3 / gross_vol_m3,
+        NA_real_
+      ),
+      
+      dominant_direction = case_when(
+        net_vol_m3 > 0 ~ "upward",
+        net_vol_m3 < 0 ~ "downward",
+        TRUE ~ "neutral"
+      )
+    )
+  
+  directional_df
+}
+
+summarize_directional_flux <- function(directional_df) {
+  
+  directional_df %>%
+    group_by(model_name, interface) %>%
+    summarise(
+      median_upward_m3 = median(upward_vol_m3, na.rm = TRUE),
+      median_downward_m3 = median(downward_vol_m3, na.rm = TRUE),
+      median_net_m3 = median(net_vol_m3, na.rm = TRUE),
+      median_gross_m3 = median(gross_vol_m3, na.rm = TRUE),
+      
+      total_upward_m3 = sum(upward_vol_m3, na.rm = TRUE),
+      total_downward_m3 = sum(downward_vol_m3, na.rm = TRUE),
+      total_net_m3 = sum(net_vol_m3, na.rm = TRUE),
+      total_gross_m3 = sum(gross_vol_m3, na.rm = TRUE),
+      
+      frac_upward_dominant = mean(net_vol_m3 > 0, na.rm = TRUE),
+      frac_downward_dominant = mean(net_vol_m3 < 0, na.rm = TRUE),
+      
+      median_ratio_net_gross = median(ratio_net_gross, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+plot_directional_flux_signed <- function(directional_df) {
+  
+  plot_df <- directional_df %>%
+    select(
+      model_name,
+      sim_year,
+      interface,
+      upward_signed_m3,
+      downward_signed_m3
+    ) %>%
+    pivot_longer(
+      cols = c(upward_signed_m3, downward_signed_m3),
+      names_to = "direction",
+      values_to = "volume_m3"
+    ) %>%
+    mutate(
+      direction = recode(
+        direction,
+        upward_signed_m3 = "Upward flux",
+        downward_signed_m3 = "Downward flux"
+      )
+    )
+  
+  ggplot(plot_df, aes(x = sim_year, y = volume_m3, color = direction)) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_line(linewidth = 0.4) +
+    facet_grid(model_name ~ interface, scales = "free_y") +
+    theme_bw() +
+    labs(
+      title = "Directional vertical water transfer by interface",
+      x = "Time [years]",
+      y = "Water transfer [m3]",
+      color = "Direction"
+    ) +
+    theme(
+      strip.text = element_text(face = "bold"),
+      plot.title = element_text(face = "bold")
+    )
+}
+
+plot_annual_directional_flux <- function(directional_df) {
+  
+  annual_df <- directional_df %>%
+    mutate(simulation_year = floor(sim_year) + 1) %>%
+    group_by(model_name, interface, simulation_year) %>%
+    summarise(
+      upward_m3 = sum(upward_vol_m3, na.rm = TRUE),
+      downward_m3 = sum(downward_vol_m3, na.rm = TRUE),
+      net_m3 = sum(net_vol_m3, na.rm = TRUE),
+      gross_m3 = sum(gross_vol_m3, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    select(model_name, interface, simulation_year, upward_m3, downward_m3) %>%
+    pivot_longer(
+      cols = c(upward_m3, downward_m3),
+      names_to = "direction",
+      values_to = "volume_m3"
+    ) %>%
+    mutate(
+      volume_signed_m3 = if_else(direction == "downward_m3", -volume_m3, volume_m3),
+      direction = recode(
+        direction,
+        upward_m3 = "Upward",
+        downward_m3 = "Downward"
+      )
+    )
+  
+  ggplot(annual_df, aes(x = simulation_year, y = volume_signed_m3, fill = direction)) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    geom_col(position = "identity", alpha = 0.75) +
+    facet_grid(model_name ~ interface, scales = "free_y") +
+    theme_bw() +
+    labs(
+      title = "Annual upward and downward vertical water transfer",
+      x = "Simulation year",
+      y = "Annual water transfer [m3]",
+      fill = "Direction"
+    ) +
+    theme(
+      strip.text = element_text(face = "bold"),
+      plot.title = element_text(face = "bold")
+    )
+}
+
+directional_df <- build_directional_flux_table(res3$df_interface)
+
+directional_summary <- summarize_directional_flux(directional_df)
+
+directional_summary
+
+p_directional <- plot_directional_flux_signed(directional_df)
+print(p_directional)
+
+p_annual_directional <- plot_annual_directional_flux(directional_df)
+print(p_annual_directional)
+
+directional_summary %>%
+  select(
+    model_name,
+    interface,
+    median_upward_m3,
+    median_downward_m3,
+    median_net_m3,
+    median_gross_m3,
+    frac_upward_dominant,
+    frac_downward_dominant,
+    median_ratio_net_gross
+  ) %>%
+  arrange(model_name, interface)
+

@@ -8131,9 +8131,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 
                 const float epsilon_swc = 1e-5f; // safety margin. It avoids the layers to reach their physical limit
 
-                float lower_bound = Min_SWC[l] + epsilon_swc;
-                float upper_bound = Max_SWC[l] - epsilon_swc;
-
 // Note: the storage limit depends on the vertical flux scheme.
 // - In the bucket-based scheme, field capacity (FC_SWC) is treated as a hard upper
 //   limit: any water above FC is removed by gravity drainage in a separate bucket
@@ -8157,7 +8154,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 
 }                
                 float lower_bound = Min_SWC[l] + epsilon_swc;
-                max_loss[l] = max(0.0f, SWC3D[l][d] - lower_bound); // How much water the layer can lose considering its actual amount of water and the minimum it must hold
+                max_loss[l] = std::max(0.0f, SWC3D[l][d] - lower_bound); // How much water the layer can lose considering its actual amount of water and the minimum it must hold
 
                 // Receiver capacity: cannot exceed saturation
                 receiv_capacity[l] = max_gain[l] * layer_volume[l]; // how much the layer can receive in volume of water (m^3)
