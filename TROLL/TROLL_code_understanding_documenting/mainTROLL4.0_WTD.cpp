@@ -7995,8 +7995,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
 
-                if(Ks_cap[l][d] < 1e-10) {
-                    Ks_cap[l][d] = 1e-10; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
+                if(Ks_cap[l][d] < 1e-20) {
+                    Ks_cap[l][d] = 1e-20; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
                 }
 
                 // Update soil phi
@@ -8010,24 +8010,31 @@ if (_WATER_RETENTION_CURVE==1) {
             // The harmonic mean is used to find the effective conductivity at the interface between layers.
             for (int l=0; l<nblayers_soil-1; l++) {
 
-                float k1 = Ks_cap[l][d];
-                float k2 = Ks_cap[l+1][d];
+                // float k1 = Ks_cap[l][d];
+                // float k2 = Ks_cap[l+1][d];
 
-                float sum_k = k1 + k2;
-                
+                // float sum_k = k1 + k2;
+                double k1d = static_cast<double>(Ks_cap[l][d]);
+                double k2d = static_cast<double>(Ks_cap[l+1][d]);
+
+                if (k1d > 0.0 && k2d > 0.0) {
+                    Ks_cap_harmonic[l][d] = static_cast<float>(sqrt(k1d * k2d));
+                } else {
+                    Ks_cap_harmonic[l][d] = 0.0f;
+                }
 
                 // Check for division by zero to avoid errors 
                 // If both conductivities are zero, the harmonic mean is also zero
-                if (sum_k > 2e-11f){ // BR - changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking. 
-                    // Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
+                // if (sum_k > 2e-11f){ // BR - changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking. 
+                //     // Ks_cap_harmonic[l][d] = (2.0f * k1 * k2) / sum_k;
 
-                    Ks_cap_harmonic[l][d] = sqrt(k1 * k2); // BR TEST- using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
-                    // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
+                //     Ks_cap_harmonic[l][d] = sqrt(k1 * k2); // BR TEST- using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
+                //     // cout << "--- Cell d=" << d << ", Interface btwn layers " << l << " e " << l+1 << " ---" << endl;
 
-                } else {
-                    Ks_cap_harmonic[l][d] = 0.0f;
-                    cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << "k1=" << k1 << "k2="<< k2<< endl;
-                }
+                // } else {
+                //     Ks_cap_harmonic[l][d] = 0.0f;
+                //     cout << "Warning: Both Ks_cap are zero at layer " << l << " and " << l+1 << "k1=" << k1 << "k2="<< k2<< endl;
+                // }
 
             } // End for layers interface (step 2)
 
