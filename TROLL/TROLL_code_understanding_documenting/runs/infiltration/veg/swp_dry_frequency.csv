@@ -1,0 +1,9 @@
+"","scenario_base","climate","n_days","prop_SWP_below_500","prop_SWP_below_1000","prop_SWP_below_2000","prop_SWP_below_4000","prop_SWP_below_6000"
+"1","inf_deepWT_clayey","redprec",10000,0.6621,0.5273,0.243,0.0126,0
+"2","inf_deepWT_clayey","regclim",10000,0.5867,0.4604,0.1986,0.0184,0
+"3","inf_deepWT_sandy","redprec",10000,0.0051,0.0051,0.0051,0.0051,0.0051
+"4","inf_deepWT_sandy","regclim",10000,0.0051,0.0051,0.0051,0.0051,0.0051
+"5","inf_shallowWT_clayey","redprec",10000,0.0718,0.0519,0.0229,2e-04,0
+"6","inf_shallowWT_clayey","regclim",10000,0.0477,0.0394,0.0166,0,0
+"7","inf_shallowWT_sandy","redprec",10000,0.0056,0.0056,0.0056,0.0056,0.0056
+"8","inf_shallowWT_sandy","regclim",10000,0.0056,0.0056,0.0056,0.0056,0.0056

@@ -508,20 +508,31 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 # )
 
 #mixed branches
+# experiment_table <- tibble(
+#   family = c("infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration"),
+#   vegetation = c("veg", "veg", "veg", "veg", "veg", "veg", "veg", "veg" ),
+#   water_table = c("shallowWT", "shallowWT", "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
+#   texture = c("sandy", "clayey", "sandy",  "clayey", "sandy", "clayey", "sandy",  "clayey"),
+#   experiment_name = c(
+#     "inf_shallowWT_sandy_regclim",
+#     "inf_shallowWT_clayey_regclim",
+#     "inf_deepWT_sandy_regclim",
+#     "inf_deepWT_clayey_regclim",
+#     "inf_shallowWT_sandy_redprec",
+#     "inf_shallowWT_clayey_redprec",
+#     "inf_deepWT_sandy_redprec",
+#     "inf_deepWT_clayey_redprec"
+#   )
+# )
+
 experiment_table <- tibble(
-  family = c("safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities", "safety_margin_capacities"),
-  vegetation = c("veg", "veg", "veg", "veg", "veg", "veg", "veg", "veg"),
-  water_table = c("shallowWT", "shallowWT", "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
-  texture = c("sandy", "sandy","sandy", "sandy", "clayey","clayey","clayey","clayey"),
+  family = c("infiltration", "infiltration"),#, "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration"),
+  vegetation = c("veg", "veg"),#, "veg", "veg", "veg", "veg", "veg", "veg" ),
+  water_table = c("shallowWT", "shallowWT"),#, "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
+  texture = c("sandy", "sandy"),#, "sandy",  "clayey", "sandy", "clayey", "sandy",  "clayey"),
   experiment_name = c(
-    "safetymargin_shallowWT_sandy_regclim",
-    "safetymargin_shallowWT_sandy_redprec",
-    "safetymargin_deepWT_sandy_regclim",
-    "safetymargin_deepWT_sandy_redprec",
-    "safetymargin_shallowWT_clayey_regclim",
-    "safetymargin_shallowWT_clayey_redprec",
-    "safetymargin_deepWT_clayey_regclim",
-    "safetymargin_deepWT_clayey_redprec"
+    "inf_shallowWT_sandy_regclim",
+    "inf_shallowWT_sandy_redprec"
   )
 )
 
@@ -530,3 +541,571 @@ res3 <- analyze_troll_runs_table(
   experiment_table = experiment_table,
   save_figures = FALSE
 )
+
+# ============================================================
+# Compare SWC and SWP in the first soil layer: regclim vs redprec
+# ============================================================
+
+library(tidyverse)
+library(lubridate)
+
+# ============================================================
+# Create wide water_balance object from the runs used in res3
+# ============================================================
+
+load_water_balance_wide <- function(files_df, start_date = as.Date("2004-01-01")) {
+  purrr::map_dfr(seq_len(nrow(files_df)), function(i) {
+    
+    wb <- read_waterbal_clean(files_df$waterbal_path[i])
+    
+    if (!"iter" %in% names(wb)) {
+      stop("Column 'iter' not found in water balance file: ", files_df$waterbal_path[i])
+    }
+    
+    wb %>%
+      mutate(
+        scenario = files_df$model_name[i],
+        date = start_date + iter,
+        sim_day = as.numeric(iter),
+        sim_year = sim_day / 365
+      )
+  })
+}
+
+water_balance <- load_water_balance_wide(
+  files_df = res3$files_df,
+  start_date = as.Date("2004-01-01")
+)
+
+names(water_balance)
+
+# ------------------------------------------------------------
+# 1. Check if water_balance exists
+# ------------------------------------------------------------
+
+if (!exists("water_balance")) {
+  stop("Object 'water_balance' not found. Load water_balance before running this block.")
+}
+
+# ------------------------------------------------------------
+# 2. Define first-layer variables
+# ------------------------------------------------------------
+
+first_layer_vars <- c("SWC_0", "SWP_0")
+
+missing_first_layer_vars <- setdiff(first_layer_vars, names(water_balance))
+
+if (length(missing_first_layer_vars) > 0) {
+  stop(
+    "These first-layer variables were not found in water_balance: ",
+    paste(missing_first_layer_vars, collapse = ", "),
+    "\nAvailable variables are:\n",
+    paste(names(water_balance), collapse = ", ")
+  )
+}
+
+# ------------------------------------------------------------
+# 3. Prepare first-layer data
+# ------------------------------------------------------------
+
+first_layer_water <- water_balance %>%
+  mutate(
+    scenario_chr = as.character(scenario),
+    climate = case_when(
+      str_detect(scenario_chr, "regclim") ~ "regclim",
+      str_detect(scenario_chr, "redprec") ~ "redprec",
+      TRUE ~ NA_character_
+    ),
+    scenario_base = scenario_chr %>%
+      str_remove("_regclim$") %>%
+      str_remove("_redprec$")
+  ) %>%
+  filter(!is.na(climate)) %>%
+  select(
+    scenario,
+    scenario_base,
+    climate,
+    date,
+    sim_day,
+    sim_year,
+    SWC_0,
+    SWP_0
+  ) %>%
+  pivot_longer(
+    cols = c(SWC_0, SWP_0),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  mutate(
+    variable = factor(variable, levels = c("SWC_0", "SWP_0")),
+    climate = factor(climate, levels = c("regclim", "redprec"))
+  )
+
+# ------------------------------------------------------------
+# 4. Monthly means — lighter and clearer than daily plots
+# ------------------------------------------------------------
+
+first_layer_monthly <- first_layer_water %>%
+  mutate(
+    year = year(date),
+    month = month(date),
+    month_date = as.Date(sprintf("%04d-%02d-01", year, month))
+  ) %>%
+  group_by(scenario_base, climate, month_date, variable) %>%
+  summarise(
+    value = mean(value, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# ------------------------------------------------------------
+# 5. Plot monthly SWC_0 and SWP_0: regclim vs redprec
+# ------------------------------------------------------------
+
+p_first_layer_monthly <- ggplot(
+  first_layer_monthly,
+  aes(x = month_date, y = value, color = climate)
+) +
+  geom_line(linewidth = 0.7) +
+  facet_grid(variable ~ scenario_base, scales = "free_y") +
+  theme_bw(base_size = 13) +
+  labs(
+    x = "Date",
+    y = "Value",
+    title = "First soil layer: SWC and SWP under regclim vs redprec",
+    color = "Climate"
+  )
+
+print(p_first_layer_monthly)
+
+# ------------------------------------------------------------
+# 6. Difference redprec - regclim
+# ------------------------------------------------------------
+
+first_layer_diff <- first_layer_monthly %>%
+  pivot_wider(
+    names_from = climate,
+    values_from = value
+  ) %>%
+  mutate(
+    diff_redprec_minus_regclim = redprec - regclim,
+    relative_diff = redprec / regclim
+  )
+
+# ------------------------------------------------------------
+# 7. Plot absolute difference
+# ------------------------------------------------------------
+
+p_first_layer_diff <- ggplot(
+  first_layer_diff,
+  aes(x = month_date, y = diff_redprec_minus_regclim)
+) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_line(linewidth = 0.7) +
+  facet_grid(variable ~ scenario_base, scales = "free_y") +
+  theme_bw(base_size = 13) +
+  labs(
+    x = "Date",
+    y = "redprec - regclim",
+    title = "Difference in first-layer SWC and SWP: redprec minus regclim"
+  )
+
+print(p_first_layer_diff)
+
+# ------------------------------------------------------------
+# 8. Summary table
+# ------------------------------------------------------------
+
+first_layer_summary <- first_layer_diff %>%
+  group_by(scenario_base, variable) %>%
+  summarise(
+    mean_regclim = mean(regclim, na.rm = TRUE),
+    mean_redprec = mean(redprec, na.rm = TRUE),
+    mean_difference = mean(diff_redprec_minus_regclim, na.rm = TRUE),
+    min_difference = min(diff_redprec_minus_regclim, na.rm = TRUE),
+    max_difference = max(diff_redprec_minus_regclim, na.rm = TRUE),
+    mean_relative_diff = mean(relative_diff, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(first_layer_summary)
+# write.csv(first_layer_summary, "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/infiltration/veg/first_layer_summary.csv")
+
+
+# ============================================================
+# Diagnostic: does SWP_0 behave consistently with SWC_0?
+# ============================================================
+
+first_layer_daily <- water_balance %>%
+  mutate(
+    scenario_chr = as.character(scenario),
+    climate = case_when(
+      str_detect(scenario_chr, "regclim") ~ "regclim",
+      str_detect(scenario_chr, "redprec") ~ "redprec",
+      TRUE ~ NA_character_
+    ),
+    scenario_base = scenario_chr %>%
+      str_remove("_regclim$") %>%
+      str_remove("_redprec$")
+  ) %>%
+  filter(!is.na(climate)) %>%
+  select(
+    scenario,
+    scenario_base,
+    climate,
+    date,
+    sim_day,
+    sim_year,
+    SWC_0,
+    SWP_0
+  )
+
+# 1. Print full summary without truncation
+print(first_layer_summary, n = Inf, width = Inf)
+
+
+# 2. Scatterplot SWC_0 vs SWP_0
+p_swc_swp_relation <- ggplot(
+  first_layer_daily,
+  aes(x = SWC_0, y = SWP_0, color = climate)
+) +
+  geom_point(alpha = 0.25, size = 0.7) +
+  facet_wrap(~ scenario_base, scales = "free") +
+  theme_bw(base_size = 13) +
+  labs(
+    x = "SWC_0",
+    y = "SWP_0",
+    title = "Relationship between first-layer SWC and SWP",
+    color = "Climate"
+  )
+
+print(p_swc_swp_relation)
+
+# 3. Correlation by scenario
+swc_swp_correlation <- first_layer_daily %>%
+  group_by(scenario_base, climate) %>%
+  summarise(
+    cor_swc_swp = cor(SWC_0, SWP_0, use = "complete.obs"),
+    mean_SWC_0 = mean(SWC_0, na.rm = TRUE),
+    mean_SWP_0 = mean(SWP_0, na.rm = TRUE),
+    min_SWP_0 = min(SWP_0, na.rm = TRUE),
+    max_SWP_0 = max(SWP_0, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(swc_swp_correlation, n = Inf, width = Inf)
+# write.csv(swc_swp_correlation,"/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/infiltration/veg/swc_swp_correlation.csv")
+
+# ============================================================
+# Distribution of SWC_0 and SWP_0 by climate
+# ============================================================
+
+first_layer_distribution <- first_layer_daily %>%
+  pivot_longer(
+    cols = c(SWC_0, SWP_0),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  group_by(scenario_base, climate, variable) %>%
+  summarise(
+    mean = mean(value, na.rm = TRUE),
+    median = median(value, na.rm = TRUE),
+    q01 = quantile(value, 0.01, na.rm = TRUE),
+    q05 = quantile(value, 0.05, na.rm = TRUE),
+    q10 = quantile(value, 0.10, na.rm = TRUE),
+    q25 = quantile(value, 0.25, na.rm = TRUE),
+    q75 = quantile(value, 0.75, na.rm = TRUE),
+    q90 = quantile(value, 0.90, na.rm = TRUE),
+    q95 = quantile(value, 0.95, na.rm = TRUE),
+    q99 = quantile(value, 0.99, na.rm = TRUE),
+    min = min(value, na.rm = TRUE),
+    max = max(value, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(first_layer_distribution, n = Inf, width = Inf)
+# write.csv(first_layer_distribution,"/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/infiltration/veg/firts_layer_distribution.csv")
+
+# ============================================================
+# Frequency of dry SWP_0 conditions
+# ============================================================
+
+swp_dry_frequency <- first_layer_daily %>%
+  group_by(scenario_base, climate) %>%
+  summarise(
+    n_days = n(),
+    
+    prop_SWP_below_500  = mean(SWP_0 < -500, na.rm = TRUE),
+    prop_SWP_below_1000 = mean(SWP_0 < -1000, na.rm = TRUE),
+    prop_SWP_below_2000 = mean(SWP_0 < -2000, na.rm = TRUE),
+    prop_SWP_below_4000 = mean(SWP_0 < -4000, na.rm = TRUE),
+    prop_SWP_below_6000 = mean(SWP_0 < -6000, na.rm = TRUE),
+    
+    .groups = "drop"
+  )
+
+print(swp_dry_frequency, n = Inf, width = Inf)
+# write.csv(swp_dry_frequency,"/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/infiltration/veg/swp_dry_frequency.csv")
+
+# ============================================================
+# Density plots: SWC_0 and SWP_0
+# ============================================================
+
+first_layer_density <- first_layer_daily %>%
+  pivot_longer(
+    cols = c(SWC_0, SWP_0),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+p_first_layer_density <- ggplot(
+  first_layer_density,
+  aes(x = value, fill = climate)
+) +
+  geom_density(alpha = 0.35) +
+  facet_grid(variable ~ scenario_base, scales = "free") +
+  theme_bw(base_size = 13) +
+  labs(
+    x = "Value",
+    y = "Density",
+    title = "Distribution of first-layer SWC and SWP",
+    fill = "Climate"
+  )
+
+print(p_first_layer_density)
+
+library(tidyverse)
+library(lubridate)
+
+wb_all = water_balance
+wb_inf <- wb_all %>%
+  mutate(
+    date = as.Date("2004-01-01") + iter - 1,
+    year = year(date),
+    
+    # same unit as throughfall/runoff, probably m water per timestep
+    infiltration_real = pmax(throughfall - runoff, 0),
+    
+    # fractions only when there is water reaching the soil
+    infil_frac = if_else(throughfall > 0, infiltration_real / throughfall, NA_real_),
+    runoff_frac = if_else(throughfall > 0, runoff / throughfall, NA_real_)
+  )
+
+inf_summary <- wb_inf %>%
+  group_by(scenario_base, climate) %>%
+  summarise(
+    total_throughfall = sum(throughfall, na.rm = TRUE),
+    total_infiltration = sum(infiltration_real, na.rm = TRUE),
+    total_runoff = sum(runoff, na.rm = TRUE),
+    
+    infil_frac_total = total_infiltration / total_throughfall,
+    runoff_frac_total = total_runoff / total_throughfall,
+    
+    mean_daily_throughfall = mean(throughfall, na.rm = TRUE),
+    mean_daily_infiltration = mean(infiltration_real, na.rm = TRUE),
+    mean_daily_runoff = mean(runoff, na.rm = TRUE),
+    
+    wet_days = sum(throughfall > 0, na.rm = TRUE),
+    runoff_days = sum(runoff > 0 & throughfall > 0, na.rm = TRUE),
+    frac_wet_days_with_runoff = runoff_days / wet_days,
+    
+    .groups = "drop"
+  )
+
+print(inf_summary, n = Inf, width = Inf)
+
+# ============================================================
+# 2 & 3. Prepare data for ALL layers
+# ============================================================
+
+# We use regex to select all columns like SWC_0, SWC_1, SWP_0, SWP_1, etc.
+all_layers_water <- water_balance %>%
+  mutate(
+    scenario_chr = as.character(scenario),
+    climate = case_when(
+      str_detect(scenario_chr, "regclim") ~ "regclim",
+      str_detect(scenario_chr, "redprec") ~ "redprec",
+      TRUE ~ NA_character_
+    ),
+    scenario_base = scenario_chr %>%
+      str_remove("_regclim$") %>%
+      str_remove("_redprec$")
+  ) %>%
+  filter(!is.na(climate)) %>%
+  # Select metadata and ALL columns matching SWC_x or SWP_x
+  select(
+    scenario, scenario_base, climate, date, sim_day, sim_year,
+    matches("^(SWC|SWP)_[0-9]+$")
+  ) %>%
+  # This is the MAGIC STEP: 
+  # It takes "SWC_3", puts "SWC" in 'variable' and "3" in 'layer'
+  pivot_longer(
+    cols = matches("^(SWC|SWP)_[0-9]+$"),
+    names_to = c("variable", "layer"),
+    names_pattern = "^(SWC|SWP)_([0-9]+)$",
+    values_to = "value"
+  ) %>%
+  mutate(
+    variable = factor(variable, levels = c("SWC", "SWP")),
+    climate = factor(climate, levels = c("regclim", "redprec")),
+    layer = as.numeric(layer) # Make layer numeric so it sorts correctly 0, 1, 2...
+  )
+
+# ============================================================
+# 4. Monthly means for ALL layers
+# ============================================================
+
+all_layers_monthly <- all_layers_water %>%
+  mutate(
+    year = year(date),
+    month = month(date),
+    month_date = as.Date(sprintf("%04d-%02d-01", year, month))
+  ) %>%
+  # Notice we added 'layer' to the grouping
+  group_by(scenario_base, climate, layer, month_date, variable) %>%
+  summarise(
+    value = mean(value, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# ============================================================
+# 5. Plotting (Tip: Filter layers to avoid overcrowded plots)
+# ============================================================
+
+# Plotting all 6 layers * 4 scenarios * 2 variables is too much for one figure.
+# Let's filter to plot specific layers of interest (e.g., surface, middle, bottom)
+layers_to_plot <- c(0, 2, 5) 
+
+p_layers_monthly <- all_layers_monthly %>%
+  filter(layer %in% layers_to_plot) %>%
+  ggplot(aes(x = month_date, y = value, color = climate)) +
+  geom_line(linewidth = 0.7) +
+  # Facet by Variable (Row) and Scenario + Layer (Column)
+  facet_grid(variable ~ scenario_base + paste("Layer", layer), scales = "free_y") +
+  theme_bw(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    x = "Date",
+    y = "Value",
+    title = "SWC and SWP across selected depths: regclim vs redprec",
+    color = "Climate"
+  )
+
+print(p_layers_monthly)
+
+# ============================================================
+# 6 & 7. Difference redprec - regclim across layers
+# ============================================================
+
+all_layers_diff <- all_layers_monthly %>%
+  pivot_wider(
+    names_from = climate,
+    values_from = value
+  ) %>%
+  mutate(
+    diff_redprec_minus_regclim = redprec - regclim,
+    relative_diff = redprec / regclim
+  )
+
+p_layers_diff <- all_layers_diff %>%
+  filter(layer %in% layers_to_plot) %>%
+  ggplot(aes(x = month_date, y = diff_redprec_minus_regclim, color = as.factor(layer))) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_line(linewidth = 0.7, alpha = 0.8) +
+  facet_grid(variable ~ scenario_base, scales = "free_y") +
+  theme_bw(base_size = 12) +
+  labs(
+    x = "Date",
+    y = "redprec - regclim",
+    title = "Difference in SWC/SWP (redprec - regclim) by Layer",
+    color = "Layer"
+  )
+
+print(p_layers_diff)
+
+# ============================================================
+# 8. Summary Table for ALL layers
+# ============================================================
+
+# Now you get the statistics for every single layer independently
+all_layers_summary <- all_layers_diff %>%
+  group_by(scenario_base, layer, variable) %>%
+  summarise(
+    mean_regclim = mean(regclim, na.rm = TRUE),
+    mean_redprec = mean(redprec, na.rm = TRUE),
+    mean_difference = mean(diff_redprec_minus_regclim, na.rm = TRUE),
+    min_difference = min(diff_redprec_minus_regclim, na.rm = TRUE),
+    max_difference = max(diff_redprec_minus_regclim, na.rm = TRUE),
+    mean_relative_diff = mean(relative_diff, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(scenario_base, variable, layer)
+
+print(all_layers_summary, n = Inf, width = Inf)
+# write.csv(all_layers_summary,"/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/infiltration/veg/all_layers_summary.csv")
+
+
+library(tidyverse)
+
+wb_inf2 <- wb_inf %>%
+  mutate(
+    scenario = as.character(scenario),
+    
+    climate = case_when(
+      str_detect(scenario, regex("redprec", ignore_case = TRUE)) ~ "redprec",
+      str_detect(scenario, regex("regclim", ignore_case = TRUE)) ~ "regclim",
+      TRUE ~ NA_character_
+    ),
+    
+    scenario_base = scenario %>%
+      str_replace_all(regex("redprec|regclim", ignore_case = TRUE), "") %>%
+      str_replace_all("__+", "_") %>%
+      str_remove("^_") %>%
+      str_remove("_$")
+  )
+
+inf_summary <- wb_inf2 %>%
+  group_by(scenario_base, climate) %>%
+  summarise(
+    total_throughfall = sum(throughfall, na.rm = TRUE),
+    total_infiltration = sum(infiltration_real, na.rm = TRUE),
+    total_runoff = sum(runoff, na.rm = TRUE),
+    
+    infil_frac_total = total_infiltration / total_throughfall,
+    runoff_frac_total = total_runoff / total_throughfall,
+    
+    mean_daily_throughfall = mean(throughfall, na.rm = TRUE),
+    mean_daily_infiltration = mean(infiltration_real, na.rm = TRUE),
+    mean_daily_runoff = mean(runoff, na.rm = TRUE),
+    
+    wet_days = sum(throughfall > 0, na.rm = TRUE),
+    runoff_days = sum(runoff > 0 & throughfall > 0, na.rm = TRUE),
+    frac_wet_days_with_runoff = runoff_days / wet_days,
+    
+    .groups = "drop"
+  )
+
+print(inf_summary, n = Inf, width = Inf)
+
+wb_budget_summary <- wb_inf2 %>%
+  mutate(
+    transpiration_total =
+      transpiration_0 + transpiration_1 + transpiration_2 +
+      transpiration_3 + transpiration_4 + transpiration_5 +
+      transpiration1016
+  ) %>%
+  group_by(scenario_base, climate) %>%
+  summarise(
+    total_throughfall = sum(throughfall, na.rm = TRUE),
+    total_infiltration = sum(infiltration_real, na.rm = TRUE),
+    total_runoff = sum(runoff, na.rm = TRUE),
+    total_evaporation = sum(evaporation, na.rm = TRUE),
+    total_transpiration = sum(transpiration_total, na.rm = TRUE),
+    total_leak = sum(leak, na.rm = TRUE),
+    
+    mean_SWC_0 = mean(SWC_0, na.rm = TRUE),
+    mean_SWP_0 = mean(SWP_0, na.rm = TRUE),
+    
+    .groups = "drop"
+  )
+
+print(wb_budget_summary, n = Inf, width = Inf)

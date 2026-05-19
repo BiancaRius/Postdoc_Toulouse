@@ -7013,8 +7013,8 @@ if (_WATER_RETENTION_CURVE==1) {
                     //     cout << "Warning theta_w = 0 " << endl ;
                     // }
 
-                    if(theta_w < 1e-3) {
-                        theta_w = 1e-3; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
+                    if(theta_w < 1e-6) {
+                        theta_w = 1e-6; // BR - changing limit value added by SS to detect very small values but that are not precisely 0
                     } else if(theta_w > 1.0) {
                         theta_w = 1.0; // BR - changing limit value added by SS to detect very large values but that are not precisely 1
                     }

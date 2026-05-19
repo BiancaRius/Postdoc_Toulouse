@@ -918,16 +918,16 @@ analyze_vertical_flux_runs_table <- function(
 #single run
 project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting"
 # 
-res1 <- analyze_vertical_flux_runs(
-  project_dir = project_dir,
-  family = "units_vertmov",
-  vegetation = "veg",
-  water_table = "deepWT",
-  texture = "sandy",
-  experiment_names = "debug_hydraulic_locking",
-  mode = 0,
-  save_plots = FALSE
-)
+# res1 <- analyze_vertical_flux_runs(
+#   project_dir = project_dir,
+#   family = "units_vertmov",
+#   vegetation = "veg",
+#   water_table = "deepWT",
+#   texture = "sandy",
+#   experiment_names = "debug_hydraulic_locking",
+#   mode = 0,
+#   save_plots = FALSE
+# )
 
 # #Example 2: multiple runs in the same branch
 # res2 <- analyze_vertical_flux_runs(
@@ -945,13 +945,19 @@ res1 <- analyze_vertical_flux_runs(
 # )
 
 experiment_table <- tibble(
-  family = c("units_vertmov", "units_vertmov"),
-  vegetation = c("veg", "veg"),
-  water_table = c("deepWT", "deepWT"),
-  texture = c("sandy", "sandy"),
+  family = c("infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration"),
+  vegetation = c("veg", "veg", "veg", "veg", "veg", "veg", "veg", "veg" ),
+  water_table = c("shallowWT", "shallowWT", "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
+  texture = c("sandy", "clayey", "sandy",  "clayey", "sandy", "clayey", "sandy",  "clayey"),
   experiment_name = c(
-    "test_nan",
-    "debug_hydraulic_locking"
+    "inf_shallowWT_sandy_regclim",
+    "inf_shallowWT_clayey_regclim",
+    "inf_deepWT_sandy_regclim",
+    "inf_deepWT_clayey_regclim",
+    "inf_shallowWT_sandy_redprec",
+    "inf_shallowWT_clayey_redprec",
+    "inf_deepWT_sandy_redprec",
+    "inf_deepWT_clayey_redprec"
   )
 )
 

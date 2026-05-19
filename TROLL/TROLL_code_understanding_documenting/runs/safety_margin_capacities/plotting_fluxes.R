@@ -465,16 +465,16 @@ save_flux_plots <- function(plots, plot_dir) {
 }
 # Print all plots
 print_flux_plots <- function(plots) {
-  print(plots$p_flux)
-  print(plots$p_abs_flux)
-  print(plots$p_dphi)
-  print(plots$p_kharm)
+  # print(plots$p_flux)
+  # print(plots$p_abs_flux)
+  # print(plots$p_dphi)
+  # print(plots$p_kharm)
   print(plots$p_net)
-  print(plots$p_gross)
-  print(plots$p_swp_layer)
-  print(plots$p_ks_layer)
-  print(plots$p_panel_interface)
-  print(plots$p_panel_layer)
+  # print(plots$p_gross)
+  # print(plots$p_swp_layer)
+  # print(plots$p_ks_layer)
+  # print(plots$p_panel_interface)
+  # print(plots$p_panel_layer)
 }
 # =========================================================
 # 5) DIAGNOSTIC SUMMARY FUNCTIONS
@@ -797,7 +797,8 @@ analyze_vertical_flux_runs_table <- function(
     out_prefix = "(null)",
     model_levels = NULL,
     model_labels = NULL,
-    plot_dir = NULL
+    plot_dir = NULL,
+    min_sim_year = 0
 ) {
   files_df <- make_flux_files_df_from_table(
     project_dir = project_dir,
@@ -818,6 +819,12 @@ analyze_vertical_flux_runs_table <- function(
   split_tables <- split_flux_tables(flux_long)
   df_interface <- split_tables$df_interface
   df_layer <- split_tables$df_layer
+  
+  df_interface <- df_interface %>%
+    filter(sim_year >= min_sim_year)
+  
+  df_layer <- df_layer %>%
+    filter(sim_year >= min_sim_year)
   
   plots <- build_flux_plots(df_interface, df_layer)
   print_flux_plots(plots)
@@ -880,18 +887,25 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 # )
 
 experiment_table <- tibble(
-  family = c("units_vertmov", "units_vertmov"),
-  vegetation = c("veg", "veg"),
-  water_table = c("deepWT", "deepWT"),
-  texture = c("sandy", "clayey"),
+  family = c("infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration"),
+  vegetation = c("veg", "veg", "veg", "veg", "veg", "veg", "veg", "veg" ),
+  water_table = c("shallowWT", "shallowWT", "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
+  texture = c("sandy", "clayey", "sandy",  "clayey", "sandy", "clayey", "sandy",  "clayey"),
   experiment_name = c(
-    "deepWT_sandy_ksgeom",
-    "deepWT_clayey_ksgeom"
+    "inf_shallowWT_sandy_regclim",
+    "inf_shallowWT_clayey_regclim",
+    "inf_deepWT_sandy_regclim",
+    "inf_deepWT_clayey_regclim",
+    "inf_shallowWT_sandy_redprec",
+    "inf_shallowWT_clayey_redprec",
+    "inf_deepWT_sandy_redprec",
+    "inf_deepWT_clayey_redprec"
   )
 )
 
 res3 <- analyze_vertical_flux_runs_table(
   project_dir = project_dir,
   experiment_table = experiment_table,
-  save_plots = FALSE
+  save_plots = FALSE,
+  min_sim_year = 10
 )
