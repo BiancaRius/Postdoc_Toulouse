@@ -298,42 +298,6 @@ save_profile_plots <- function(p_swc, p_swp, figure_dir, figure_suffix) {
   cat("Saved figures in:\n", figure_dir, "\n")
 }
 
-save_profile_plots_by_experiment <- function(raster_all, files_df, ncol_facets = 1) {
-  
-  purrr::pwalk(
-    list(files_df$model_name, files_df$run_dir),
-    function(exp_name, run_dir) {
-      
-      raster_one <- raster_all %>%
-        filter(as.character(model_name) == exp_name)
-      
-      if (nrow(raster_one) == 0) {
-        warning("No raster data found for experiment: ", exp_name)
-        return(NULL)
-      }
-      
-      p_swc_one <- plot_swc_profiles(
-        raster_one,
-        ncol_facets = ncol_facets
-      )
-      
-      p_swp_one <- plot_swp_profiles(
-        raster_one,
-        ncol_facets = ncol_facets
-      )
-      
-      figure_dir_one <- file.path(run_dir, "_figures")
-      
-      save_profile_plots(
-        p_swc = p_swc_one,
-        p_swp = p_swp_one,
-        figure_dir = figure_dir_one,
-        figure_suffix = exp_name
-      )
-    }
-  )
-}
-
 # =========================================================
 # 5) MAIN FUNCTION: SAME BRANCH
 # =========================================================
@@ -350,7 +314,7 @@ analyze_troll_runs <- function(
     experiment_names,
     mode = 0,                 # 0 = single run, 1 = multiple runs in same branch
     save_figures = FALSE,
-    resolution = 0.5,
+    resolution = 0.1,
     start_date = as.Date("2004-01-01"),
     out_prefix = "(null)",
     ncol_facets = 2
@@ -461,8 +425,6 @@ analyze_troll_runs_table <- function(
     project_dir,
     experiment_table,
     save_figures = FALSE,
-    save_separate_figures = TRUE,
-    show_plots = FALSE,
     resolution = 0.1,
     start_date = as.Date("2004-01-01"),
     out_prefix = "(null)",
@@ -490,35 +452,22 @@ analyze_troll_runs_table <- function(
   p_swc_all <- plot_swc_profiles(raster_all, ncol_facets = ncol_facets)
   p_swp_all <- plot_swp_profiles(raster_all, ncol_facets = ncol_facets)
   
-  if (show_plots) {
-    print(p_swc_all)
-    print(p_swp_all)
-  }
+  print(p_swc_all)
+  print(p_swp_all)
   
   if (save_figures) {
-    
-    if (save_separate_figures) {
-      
-      save_profile_plots_by_experiment(
-        raster_all = raster_all,
-        files_df = files_df,
-        ncol_facets = 1
-      )
-      
-    } else {
-      
-      if (is.null(figure_dir)) {
-        figure_dir <- file.path(project_dir, "runs", "_figures_compare")
-      }
-      
-      save_profile_plots(
-        p_swc = p_swc_all,
-        p_swp = p_swp_all,
-        figure_dir = figure_dir,
-        figure_suffix = figure_suffix
-      )
+    if (is.null(figure_dir)) {
+      figure_dir <- file.path(project_dir, "runs", "_figures_compare")
     }
-  }  
+    
+    save_profile_plots(
+      p_swc = p_swc_all,
+      p_swp = p_swp_all,
+      figure_dir = figure_dir,
+      figure_suffix = figure_suffix
+    )
+  }
+  
   invisible(list(
     files_df = files_df,
     data_long_all = data_long_all,
@@ -577,22 +526,6 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 # )
 
 # experiment_table <- tibble(
-#   family = c("infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration"),
-#   vegetation = c("veg", "veg", "veg", "veg", "veg", "veg", "veg", "veg" ),
-#   water_table = c("shallowWT", "shallowWT", "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
-#   texture = c("sandy", "clayey", "sandy",  "clayey", "sandy", "clayey", "sandy",  "clayey"),
-#   experiment_name = c(
-#     "inf_shallowWT_sandy_regclim",
-#     "inf_shallowWT_clayey_regclim",
-#     "inf_deepWT_sandy_regclim",
-#     "inf_deepWT_clayey_regclim",
-#     "inf_shallowWT_sandy_redprec",
-#     "inf_shallowWT_clayey_redprec",
-#     "inf_deepWT_sandy_redprec",
-#     "inf_deepWT_clayey_redprec"
-#   )
-# )
-# experiment_table <- tibble(
 #   family = c("infiltration", "infiltration", "infiltration", "infiltration"),
 #   vegetation = c("veg", "veg", "veg", "veg"),
 #   water_table = c("deepWT", "deepWT", "deepWT", "deepWT"),
@@ -604,28 +537,24 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 #     "redprec_highertheta_lowerks"
 #   )
 # )
-
 experiment_table <- tibble(
-  family = c("infiltration", "infiltration", "infiltration", "infiltration"),
-  vegetation = c("veg", "veg", "veg", "veg"),
-  water_table = c("deepWT", "deepWT", "deepWT", "deepWT"),
-  texture = c("sandy", "sandy", "sandy", "sandy"),
+  family = c("infiltration"),
+  vegetation = c("veg"),
+  water_table = c("deepWT"),
+  texture = c("sandy"),
   experiment_name = c(
-    "redprec_lowertheta",
-    "redprec_highertheta",
-    "regclim_highertheta_lowerks",
-    "redprec_highertheta_lowerks"
+    "regclim_highertheta_lowerks"
   )
 )
+
+
 res3 <- analyze_troll_runs_table(
   project_dir = project_dir,
   experiment_table = experiment_table,
-  save_figures = TRUE,
-  save_separate_figures = TRUE,
-  show_plots = FALSE
+  save_figures = FALSE
 )
 
-# # ============================================================
+# ============================================================
 # # Compare SWC and SWP in the first soil layer: regclim vs redprec
 # # ============================================================
 # 

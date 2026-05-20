@@ -470,8 +470,8 @@ print_flux_plots <- function(plots) {
   # print(plots$p_dphi)
   # print(plots$p_kharm)
   print(plots$p_net)
-  # print(plots$p_gross)
-  # print(plots$p_swp_layer)
+  print(plots$p_gross)
+  print(plots$p_swp_layer)
   # print(plots$p_ks_layer)
   # print(plots$p_panel_interface)
   # print(plots$p_panel_layer)
@@ -860,16 +860,16 @@ analyze_vertical_flux_runs_table <- function(
 #single run
 project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting"
 # 
-# res1 <- analyze_vertical_flux_runs(
-#   project_dir = project_dir,
-#   family = "units_vertmov",
-#   vegetation = "veg",
-#   water_table = "deepWT",
-#   texture = "sandy",
-#   experiment_names = "debug_hydraulic_locking",
-#   mode = 0,
-#   save_plots = FALSE
-# )
+res1 <- analyze_vertical_flux_runs(
+  project_dir = project_dir,
+  family = "infiltration",
+  vegetation = "veg",
+  water_table = "deepWT",
+  texture = "sandy",
+  experiment_names = "redprec_theta1e_3_ks1e_16",
+  mode = 0,
+  save_plots = FALSE
+)
 
 # #Example 2: multiple runs in the same branch
 # res2 <- analyze_vertical_flux_runs(
@@ -886,20 +886,55 @@ project_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROL
 #   save_plots = FALSE
 # )
 
+# experiment_table <- tibble(
+#   family = c("infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration"),
+#   vegetation = c("veg", "veg", "veg", "veg", "veg", "veg", "veg", "veg" ),
+#   water_table = c("shallowWT", "shallowWT", "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
+#   texture = c("sandy", "clayey", "sandy",  "clayey", "sandy", "clayey", "sandy",  "clayey"),
+#   experiment_name = c(
+#     "inf_shallowWT_sandy_regclim",
+#     "inf_shallowWT_clayey_regclim",
+#     "inf_deepWT_sandy_regclim",
+#     "inf_deepWT_clayey_regclim",
+#     "inf_shallowWT_sandy_redprec",
+#     "inf_shallowWT_clayey_redprec",
+#     "inf_deepWT_sandy_redprec",
+#     "inf_deepWT_clayey_redprec"
+#   )
+# )
+
+# experiment_table <- tibble(
+#   family = c("infiltration", "infiltration", "infiltration", "infiltration"),
+#   vegetation = c("veg", "veg", "veg", "veg"),
+#   water_table = c("deepWT", "deepWT", "deepWT", "deepWT"),
+#   texture = c("sandy", "sandy", "sandy", "sandy"),
+#   experiment_name = c(
+#     "redprec_lowertheta",
+#     "redprec_highertheta",
+#     "regclim_highertheta_lowerks",
+#     "redprec_highertheta_lowerks_longterm"
+#   )
+# )
+
+# experiment_table <- tibble(
+#   family = c("infiltration","infiltration", "infiltration"),
+#   vegetation = c("veg", "veg", "veg"),
+#   water_table = c("deepWT", "deepWT", "deepWT"),
+#   texture = c("sandy", "sandy", "sandy"),
+#   experiment_name = c(
+#     "regclim_highertheta_higherks",
+#     "redprec_highertheta_higherks",
+#     "redprec_theta1e_3_ks1e_16"
+#   )
+# )
+
 experiment_table <- tibble(
-  family = c("infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration", "infiltration"),
-  vegetation = c("veg", "veg", "veg", "veg", "veg", "veg", "veg", "veg" ),
-  water_table = c("shallowWT", "shallowWT", "deepWT", "deepWT", "shallowWT", "shallowWT", "deepWT", "deepWT"),
-  texture = c("sandy", "clayey", "sandy",  "clayey", "sandy", "clayey", "sandy",  "clayey"),
+  family = c("infiltration"),
+  vegetation = c("veg"),
+  water_table = c("deepWT"),
+  texture = c("sandy"),
   experiment_name = c(
-    "inf_shallowWT_sandy_regclim",
-    "inf_shallowWT_clayey_regclim",
-    "inf_deepWT_sandy_regclim",
-    "inf_deepWT_clayey_regclim",
-    "inf_shallowWT_sandy_redprec",
-    "inf_shallowWT_clayey_redprec",
-    "inf_deepWT_sandy_redprec",
-    "inf_deepWT_clayey_redprec"
+    "regclim_theta1e_3_ks1e_16"
   )
 )
 
@@ -909,3 +944,4 @@ res3 <- analyze_vertical_flux_runs_table(
   save_plots = FALSE,
   min_sim_year = 10
 )
+
