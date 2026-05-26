@@ -8010,18 +8010,13 @@ if (_WATER_RETENTION_CURVE==1) {
             // The harmonic mean is used to find the effective conductivity at the interface between layers.
             for (int l=0; l<nblayers_soil-1; l++) {
 
-                // float k1 = Ks_cap[l][d];
-                // float k2 = Ks_cap[l+1][d];
-
-                // float sum_k = k1 + k2;
-
                 double k1d = static_cast<double>(Ks_cap[l][d]);
                 double k2d = static_cast<double>(Ks_cap[l+1][d]);
 
                 if (std::isfinite(k1d) && std::isfinite(k2d) && k1d > 0.0 && k2d > 0.0) {
-                    // Ks_cap_harmonic[l][d] = static_cast<float>(std::sqrt(k1d * k2d));
-                    double sum_k = k1d + k2d;
-                    Ks_cap_harmonic[l][d] = static_cast<float>((2.0 * k1d * k2d) / sum_k);
+                    Ks_cap_harmonic[l][d] = static_cast<float>(std::sqrt(k1d * k2d));  // BR Using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
+                    // double sum_k = k1d + k2d;
+                    // Ks_cap_harmonic[l][d] = static_cast<float>((2.0 * k1d * k2d) / sum_k);
 
                 } else {
                     Ks_cap_harmonic[l][d] = 0.0f;
