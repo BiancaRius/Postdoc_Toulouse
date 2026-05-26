@@ -35,3 +35,7 @@ TROLL/TROLL_code_understanding_documenting/debug_troll.log
 myenv/
 build/
 .DS_Store
+
+*.rds
+
+interface_diagnostics_summary_full.csv
