@@ -1,0 +1,621 @@
+---
+title: "longterm_analysis"
+author: "BiancaRius"
+date: "2026-05-21"
+output: html_document
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+# Loading required packages
+library(tidyverse)
+library(data.table) 
+library(fs)         
+```
+
+```{r}
+# Load data
+# script to generate the .rds files: "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/ksfloor/save_data_rds.R"
+
+# You can change here if you need to assess other analysis
+# base_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/ksfloor/veg/deep_WT/sandy"
+
+base_dir <- "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/ksfloor/veg/deep_WT/sandy/longterm"
+
+cache_dir <- path(base_dir, "_rds")
+
+plot_dir <- path(base_dir, "plots")
+dir_create(plot_dir)
+
+# Daily data
+# df_water_balance_daily <- readRDS(path(cache_dir, "df_water_balance_daily.rds"))
+# df_vertical_flux_daily <- readRDS(path(cache_dir, "df_vertical_flux_daily.rds"))
+
+# Annual data
+df_water_balance_annual <- readRDS(path(cache_dir, "df_water_balance_annual.rds"))
+df_vertical_flux_annual <- readRDS(path(cache_dir, "df_vertical_flux_annual.rds"))
+df_biogem_annual <- readRDS(path(cache_dir, "df_biogeochemical_annual.rds"))
+```
+
+Full Timeline and Stabilization Point
+
+Before looking at the final state, we need to determine *if* and *when* the system stabilizes. A hydrological model is considered stable (having surpassed the spin-up phase) 
+
+# The Full 274-Year Trajectory
+
+First, let's plot the entire time series to visually identify the spin-up period and whether the curves flatten out.
+
+To consider in the analysis:
+Increasing ksfloor reduces the risk of numerical hydraulic locking by preventing extremely low hydraulic conductivity values. However, higher ksfloor values also impose an increasingly artificial lower bound on soil-water movement. If the imposed floor is too high, vertical connectivity may be maintained even when the soil profile should physically become hydraulically disconnected, especially under deep water table and sandy soil conditions. Therefore, the sensitivity analysis should identify the lowest ksfloor that stabilizes the model without artificially increasing vertical water exchange.
+
+```{r plot-full-swc-trajectory}
+swc_full_allks <- df_water_balance_annual %>%
+  filter(variable == "SWC") %>%
+  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ layer, scales = "free_y") +
+  labs(
+    title = "SWC",
+    x = "Simulation year",
+    y = "Annual mean SWC",
+    color = "scenario"
+  ) +
+  theme_bw()
+
+swc_full_allks
+
+ggsave(
+filename = path(plot_dir, "SWC_fullTrajectory_allKsfloor.png"),
+plot = swc_full_allks,
+width = 10,
+height = 7,
+dpi = 300
+)
+
+```
+
+```{r plot-full-swp-trajectory}
+
+swp_full_allks <-  df_water_balance_annual %>%
+  filter(variable == "SWP") %>%
+  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ layer, scales = "free_y") +
+  labs(
+    title = "SWP",
+    x = "Simulation year",
+    y = "Annual mean SWP",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+swp_full_allks
+
+ggsave(
+  filename = path(plot_dir, "SWP_fullTrajectory_allKsfloor.png"),
+  plot = swp_full_allks,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
+```
+
+```{r plot-full-transpiration-trajectory}
+
+transpiration_full_allks <- df_water_balance_annual %>%
+  filter(variable == "transpiration") %>%
+  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ layer, scales = "free_y") +
+  labs(
+    title = "Transpiration",
+    x = "Simulation year",
+    y = "Annual mean transpiration",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+transpiration_full_allks
+
+ggsave(
+  filename = path(plot_dir, "transpiration_fullTrajectory_allKsfloor.png"),
+  plot = transpiration_full_allks,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
+```
+
+
+
+Plotting layer interface variables
+
+```{r}
+mean_ksgeometric_full_allks <- df_vertical_flux_annual %>%
+  filter(metric == "mean_ks_harmonic") %>% # actually this is the ks geometric
+  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ interface, scales = "free_y") +
+  scale_y_log10() +
+  labs(
+    title = "Mean harmonic hydraulic conductivity by interface",
+    subtitle = "Annual mean values over the full 274-year simulation",
+    x = "Simulation year",
+    y = "Annual mean Ks geometric",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+mean_ksgeometric_full_allks
+
+ggsave(
+  filename = path(plot_dir, "mean_ksgeometric_fullTrajectory_allKsfloor.png"),
+  plot = mean_ksgeometric_full_allks,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
+```
+
+
+```{r}
+gross_volumetricchange_full_allks <- df_vertical_flux_annual %>%
+  filter(metric == "gross_volumetric_change") %>%
+  ggplot(aes(x = year, y = sum_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ interface, scales = "free_y") +
+  labs(
+    title = "Gross vertical water exchange by interface",
+    subtitle = "Annual sums over the full 274-year simulation",
+    x = "Simulation year",
+    y = "Annual gross volumetric change",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+gross_volumetricchange_full_allks
+
+ggsave(
+  filename = path(plot_dir, "gross_volumetricchange_fullTrajectory_allKsfloor.png"),
+  plot = gross_volumetricchange_full_allks,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
+```
+
+
+```{r}
+# Log scale
+gross_volumetricchange_full_ksgt10_log <- df_vertical_flux_annual %>%
+  filter(metric == "gross_volumetric_change",
+         ksfloor_factor != "1e_10") %>%
+  mutate(
+    sum_value_plot = if_else(sum_value <= 0, NA_real_, sum_value)
+  ) %>%
+  ggplot(aes(x = year, y = sum_value_plot, color = scenario)) +
+  geom_line(linewidth = 0.7, na.rm = TRUE) +
+  facet_wrap(~ interface, scales = "free_y") +
+  scale_y_log10() +
+  labs(
+    title = "Gross vertical water exchange by interface",
+    subtitle = "Annual sums, log scale",
+    x = "Simulation year",
+    y = "Annual gross volumetric change, log scale",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+gross_volumetricchange_full_ksgt10_log
+
+ggsave(
+  filename = path(plot_dir, "gross_volumetricchange_fullTrajectory_Ksfloor_gt10_log.png"),
+  plot = gross_volumetricchange_full_ksgt10_log,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
+```
+
+
+```{r}
+net_volumetricchange_full_ksgt10 <- df_vertical_flux_annual %>%
+  filter(
+    metric == "net_volumetric_change"
+  ) %>%
+  ggplot(aes(x = year, y = sum_value, color = scenario)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ interface, scales = "free_y") +
+  labs(
+    title = "Net vertical water exchange by interface",
+    subtitle = "Annual sums excluding ksfloor = 1e-10",
+    x = "Simulation year",
+    y = "Annual net volumetric change",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+net_volumetricchange_full_ksgt10
+
+ggsave(
+  filename = path(plot_dir, "net_volumetricchange_fullTrajectory_Ksfloor_gt10.png"),
+  plot = net_volumetricchange_full_ksgt10,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
+
+```
+
+Looking to directionality
+```{r}
+df_directionality_annual <- df_vertical_flux_annual %>%
+  filter(metric %in% c("net_volumetric_change", "gross_volumetric_change")) %>%
+  select(
+    scenario,
+    ksfloor_val,
+    ksfloor_factor,
+    year,
+    interface,
+    layer_upper,
+    layer_lower,
+    metric,
+    sum_value
+  ) %>%
+  pivot_wider(
+    names_from = metric,
+    values_from = sum_value
+  ) %>%
+  mutate(
+    abs_net_volumetric_change = abs(net_volumetric_change),
+    directionality = abs_net_volumetric_change / gross_volumetric_change,
+    directionality = if_else(
+      is.finite(directionality),
+      directionality,
+      NA_real_
+    )
+  )
+
+volume_directionality_full_ksgt10 <- df_directionality_annual %>%
+  filter(ksfloor_factor != "1e_10") %>%
+  ggplot(aes(x = year, y = directionality, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ interface, scales = "free_y") +
+  labs(
+    title = "Directionality of vertical water exchange by interface",
+    subtitle = "|net volumetric change| / gross volumetric change, excluding ksfloor = 1e-10",
+    x = "Simulation year",
+    y = "Directionality",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+volume_directionality_full_ksgt10
+
+ggsave(
+  filename = path(plot_dir, "volume_directionality_fullTrajectory_Ksfloor_gt10.png"),
+  plot = volume_directionality_full_ksgt10,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
+# directionality ≈ 1
+# fluxo anual quase totalmente em uma direção.
+# 
+# directionality ≈ 0
+# há troca nos dois sentidos que se cancela, ou net muito pequeno em relação ao gross.
+# 
+# directionality = NA
+# gross volumetric change é zero ou quase zero, então não há troca suficiente para calcular.
+
+```
+
+
+```{r combined-interface-annual-table}
+# Combine the main annual interface diagnostics in one table
+
+df_interface_diagnostics_annual <- df_vertical_flux_annual %>%
+  filter(
+    metric %in% c(
+      "mean_ks_harmonic",
+      "gross_volumetric_change",
+      "net_volumetric_change"
+    )
+  ) %>%
+  mutate(
+    metric_value = case_when(
+      metric == "mean_ks_harmonic" ~ mean_value,
+      metric %in% c("gross_volumetric_change", "net_volumetric_change") ~ sum_value,
+      TRUE ~ NA_real_
+    )
+  ) %>%
+  select(
+    scenario,
+    ksfloor_val,
+    ksfloor_factor,
+    year,
+    interface,
+    layer_upper,
+    layer_lower,
+    metric,
+    metric_value
+  ) %>%
+  pivot_wider(
+    names_from = metric,
+    values_from = metric_value
+  ) %>%
+  left_join(
+    df_directionality_annual %>%
+      select(
+        scenario,
+        ksfloor_val,
+        ksfloor_factor,
+        year,
+        interface,
+        directionality
+      ),
+    by = c("scenario", "ksfloor_val", "ksfloor_factor", "year", "interface")
+  )
+
+glimpse(df_interface_diagnostics_annual)
+
+df_interface_diagnostics_annual %>%
+  count(ksfloor_factor, interface)
+```
+
+```{r summary-interface-diagnostics-full-run}
+interface_diagnostics_summary_full <- df_interface_diagnostics_annual %>%
+  group_by(
+    scenario,
+    ksfloor_factor,
+    ksfloor_val,
+    interface,
+    layer_upper,
+    layer_lower
+  ) %>%
+  summarise(
+    n_years = n(),
+    
+    median_ks_harmonic = median(mean_ks_harmonic, na.rm = TRUE),
+    min_ks_harmonic = min(mean_ks_harmonic, na.rm = TRUE),
+    max_ks_harmonic = max(mean_ks_harmonic, na.rm = TRUE),
+    
+    median_gross_volumetric_change = median(gross_volumetric_change, na.rm = TRUE),
+    mean_gross_volumetric_change = mean(gross_volumetric_change, na.rm = TRUE),
+    
+    median_abs_net_volumetric_change = median(abs(net_volumetric_change), na.rm = TRUE),
+    mean_abs_net_volumetric_change = mean(abs(net_volumetric_change), na.rm = TRUE),
+    
+    median_directionality = median(directionality, na.rm = TRUE),
+    mean_directionality = mean(directionality, na.rm = TRUE),
+    
+    .groups = "drop"
+  ) %>%
+  arrange(interface, ksfloor_val)
+
+interface_diagnostics_summary_full
+
+write_csv(interface_diagnostics_summary_full, path(cache_dir, "interface_diagnostics_summary_full.csv"))
+```
+
+```{r}
+# Summary of annual layer states over the full simulation
+
+layer_diagnostics_summary_full <- df_layers_annual %>%
+  group_by(
+    scenario,
+    ksfloor_factor,
+    ksfloor_val,
+    variable,
+    layer
+  ) %>%
+  summarise(
+    n_years = n(),
+    
+    median_value = median(mean_value, na.rm = TRUE),
+    mean_value_full = mean(mean_value, na.rm = TRUE),
+    min_annual_mean = min(mean_value, na.rm = TRUE),
+    max_annual_mean = max(mean_value, na.rm = TRUE),
+    sd_annual_mean = sd(mean_value, na.rm = TRUE),
+    
+    .groups = "drop"
+  ) %>%
+  arrange(variable, layer, ksfloor_val)
+
+layer_diagnostics_summary_full
+```
+
+```{r}
+layer_diagnostics_summary_full %>%
+  filter(variable == "SWC") %>%
+  select(
+    ksfloor_factor,
+    layer,
+    median_value,
+    min_annual_mean,
+    max_annual_mean,
+    sd_annual_mean
+  ) %>%
+  arrange(layer, ksfloor_factor)
+
+df_layers_annual %>%
+  filter(
+    variable == "SWC",
+    ksfloor_factor != "1e_10"
+  ) %>%
+  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ layer, scales = "free_y") +
+  labs(
+    title = "Annual mean SWC by soil layer",
+    subtitle = "Redprec scenario, excluding ksfloor = 1e-10",
+    x = "Simulation year",
+    y = "Annual mean SWC",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+df_layers_annual %>%
+  filter(
+    variable == "SWP",
+    !ksfloor_factor %in% c("1e_10", "1e_12")
+  ) %>%
+  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ layer, scales = "free_y") +
+  labs(
+    title = "Annual mean SWP by soil layer",
+    subtitle = "Redprec scenario, ksfloor <= 1e-14",
+    x = "Simulation year",
+    y = "Annual mean SWP",
+    color = "Scenario"
+  ) +
+  theme_bw()
+```
+Preliminary post-spinup cutoff based on visual inspection (100 years)
+
+```{r}
+post_spinup_start <- 101
+
+df_layers_post100 <- df_water_balance_annual %>%
+  filter(year >= post_spinup_start)
+
+df_layers_post100 %>% 
+filter(
+    variable == "SWP",
+    !ksfloor_factor %in% c("1e_10", "1e_12")
+  ) %>%
+  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ layer, scales = "free_y") +
+  labs(
+    title = "Annual mean SWP by soil layer",
+    subtitle = "Redprec scenario, ksfloor <= 1e-14",
+    x = "Simulation year",
+    y = "Annual mean SWP",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+df_layers_post100 %>% 
+filter(
+    variable == "SWC",
+    !ksfloor_factor %in% c("1e_10", "1e_12")
+  ) %>%
+  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ layer, scales = "free_y") +
+  labs(
+    title = "Annual mean SWC by soil layer",
+    subtitle = "Redprec scenario, ksfloor <= 1e-14",
+    x = "Simulation year",
+    y = "Annual mean SWC",
+    color = "Scenario"
+  ) +
+  theme_bw()
+
+```
+
+Biogeochemical variables
+
+```{r}
+df_biogeochemical_annual <- readRDS(
+  path(cache_dir, "df_biogeochemical_annual.rds")
+)
+
+biog_vars <- names(df_biogeochemical_annual) %>%
+  setdiff(c("scenario", "year"))
+
+biog_vars
+
+plot_biog <- ggplot(
+  df_biogeochemical_annual,
+  aes(
+    x = year,
+    y = mean_value,
+    colour = scenario,
+    fill = scenario,
+    group = scenario
+  )
+) +
+  geom_ribbon(
+    aes(
+      ymin = mean_value - sd_value,
+      ymax = mean_value + sd_value
+    ),
+    alpha = 0.25,
+    colour = NA
+  ) +
+  geom_line(linewidth = 0.3) +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  labs(
+    x = "Simulation year",
+    y = "Annual mean value",
+    title = "Annual biogeochemical variables",
+    subtitle = "Shaded area = annual mean ± SD",
+    colour = "Scenario",
+    fill = "Scenario"
+  )
+
+plot_biog
+
+ggsave(
+  filename = path(plot_dir, "allbiogvar_fullTrajectory_withSD.png"),
+  plot = plot_biog,
+  width = 7,
+  height = 12,
+  dpi = 300
+)
+```
+
+```{r}
+df_biog_plot <- df_biogeochemical_annual
+
+biog_variables <- sort(unique(df_biog_plot$variable))
+
+walk(biog_variables, function(var_i) {
+  
+  p <- df_biog_plot %>%
+    filter(variable == var_i) %>%
+    ggplot(
+      aes(
+        x = year,
+        y = mean_value,
+        colour = scenario,
+        group = scenario
+      )
+    ) +
+    geom_line(linewidth = 0.7) +
+    theme_bw() +
+    labs(
+      title = paste("Annual", var_i),
+      x = "Simulation year",
+      y = "Annual mean value",
+      colour = "Scenario"
+    )
+  
+  filename_i <- paste0(
+    "biogeochemical_",
+    str_replace_all(var_i, "[^A-Za-z0-9_]+", "_"),
+    "_fullTrajectory_redprec_regclim.png"
+  )
+  
+  ggsave(
+    filename = path(plot_dir, filename_i),
+    plot = p,
+    width = 8,
+    height = 5,
+    dpi = 300
+  )
+})
+```
+

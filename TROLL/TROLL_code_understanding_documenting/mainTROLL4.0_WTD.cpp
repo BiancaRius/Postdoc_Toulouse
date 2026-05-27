@@ -7995,8 +7995,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
 
-                if(Ks_cap[l][d] < 1e-14) {
-                    Ks_cap[l][d] = 1e-14; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
+                if(Ks_cap[l][d] < 1e-12) {
+                    Ks_cap[l][d] = 1e-12; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
                 }
 
                 // Update soil phi
