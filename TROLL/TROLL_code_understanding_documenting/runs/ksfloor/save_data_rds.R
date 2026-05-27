@@ -2,63 +2,51 @@
 library(tidyverse)
 library(data.table) 
 library(fs) 
-base_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/ksfloor/veg/deep_WT/sandy"
+base_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/ksfloor/veg/deep_WT/sandy/longterm"
 
 # List simulation folder names
 folders <- c(
-  "deep_sandy_ks1e_10_redprec",
-  "deep_sandy_ks1e_12_redprec",
-  "deep_sandy_ks1e_14_redprec",
-  "deep_sandy_ks1e_16_redprec",
-  "deep_sandy_ks1e_18_redprec",
-  "deep_sandy_ks1e_20_redprec"
+  "longterm_deep_sandy_ks1e_14_redprec"
 )
 
 read_simulation_data <- function(folder) {
   
-  # Extract the ksfloor value from the folder name
   ks_string <- str_extract(folder, "1e_[0-9]+")
   ks_numeric <- as.numeric(str_replace(ks_string, "_", "-"))
   
-  # Define the folder path INCLUDING the 'output' subfolder
   folder_path <- path(base_dir, folder, "output")
   
-  # Dynamically search for the files regardless of their prefix
   file_wb <- list.files(folder_path, pattern = "water_balance\\.txt$", full.names = TRUE)
   file_vf <- list.files(folder_path, pattern = "vertical_water_flux\\.txt$", full.names = TRUE)
   file_biog <- list.files(folder_path, pattern = "sumstats\\.txt$", full.names = TRUE)
-  # Stop and warn if the files are completely missing
+  
   if (length(file_wb) == 0 || length(file_vf) == 0 || length(file_biog) == 0) {
     stop(paste("Could not find the output files inside:", folder_path))
   }
   
-  # Reading water balance (taking the first match if multiple exist)
   df_wb <- read_tsv(file_wb[1], show_col_types = FALSE) %>%
     mutate(
       scenario = folder,
       ksfloor_val = ks_numeric,
-      ksfloor_factor = factor(ks_string, levels = c("1e_20", "1e_18", "1e_16", "1e_14", "1e_12", "1e_10")),
+      ksfloor_factor = ks_string,
       year = floor(iter / 365) + 1
     )
   
-  # Reading vertical flux
   df_vf <- read_tsv(file_vf[1], show_col_types = FALSE) %>%
     mutate(
       scenario = folder,
       ksfloor_val = ks_numeric,
-      ksfloor_factor = factor(ks_string, levels = c("1e_20", "1e_18", "1e_16", "1e_14", "1e_12", "1e_10")),
+      ksfloor_factor = ks_string,
       year = floor(iter / 365) + 1
     )
   
-  # Reading biogeochemical variables
   df_biog <- read_tsv(file_biog[1], show_col_types = FALSE) %>%
     mutate(
       scenario = folder,
       ksfloor_val = ks_numeric,
-      ksfloor_factor = factor(ks_string, levels = c("1e_20", "1e_18", "1e_16", "1e_14", "1e_12", "1e_10")),
+      ksfloor_factor = ks_string,
       year = floor(iter / 365) + 1
     )
-  
   
   return(list(wb = df_wb, vf = df_vf, biog = df_biog))
 }
@@ -106,13 +94,15 @@ biogeochemical_vars <- biog_vars %>%
     "year"
   ))
 
-
+## Discomment if you have new data
 #Saving data as .rds
-cache_dir <- path(base_dir, "_rds")
+# cache_dir <- path(base_dir, "_rds")
 # dir_create(cache_dir)
 # saveRDS(df_water_balance, path(cache_dir, "df_water_balance_daily.rds"))
 # saveRDS(df_vertical_flux, path(cache_dir, "df_vertical_flux_daily.rds"))
 # saveRDS(df_biogem, path(cache_dir, "df_biogem_daily.rds"))
+
+
 
 ##################
 # Aggregate by year
@@ -234,5 +224,5 @@ df_biogem_annual <- df_biogem %>%
     .groups = "drop"
   )
 
-saveRDS(df_biogem_annual, path(cache_dir, "df_biogechemical_annual.rds"))
+saveRDS(df_biogem_annual, path(cache_dir, "df_biogeochemical_annual.rds"))
 

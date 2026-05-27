@@ -5,10 +5,6 @@ date: "2026-05-21"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 ```{r}
 knitr::opts_chunk$set(echo = TRUE)
 # Loading required packages
@@ -21,8 +17,15 @@ library(fs)
 # Load data
 # script to generate the .rds files: "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/ksfloor/save_data_rds.R"
 
+# You can change here if you need to assess other analysis
+# base_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/ksfloor/veg/deep_WT/sandy"
+
 base_dir <- "/Users/biancarius/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/ksfloor/veg/deep_WT/sandy"
+
 cache_dir <- path(base_dir, "_rds")
+
+plot_dir <- path(base_dir, "plots")
+# dir_create(plot_dir)
 
 # Daily data
 # df_water_balance_daily <- readRDS(path(cache_dir, "df_water_balance_daily.rds"))
@@ -46,7 +49,7 @@ To consider in the analysis:
 Increasing ksfloor reduces the risk of numerical hydraulic locking by preventing extremely low hydraulic conductivity values. However, higher ksfloor values also impose an increasingly artificial lower bound on soil-water movement. If the imposed floor is too high, vertical connectivity may be maintained even when the soil profile should physically become hydraulically disconnected, especially under deep water table and sandy soil conditions. Therefore, the sensitivity analysis should identify the lowest ksfloor that stabilizes the model without artificially increasing vertical water exchange.
 
 ```{r plot-full-swc-trajectory}
-df_water_balance_annual %>%
+swc_full_allks <- df_water_balance_annual %>%
   filter(variable == "SWC") %>%
   ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
@@ -58,11 +61,21 @@ df_water_balance_annual %>%
     color = "ksfloor"
   ) +
   theme_bw()
+
+swc_full_allks
+
+# ggsave(
+  # filename = path(plot_dir, "SWC_fullTrajectory_allKsfloor.png"),
+  # plot = swc_full_allks,
+  # width = 10,
+  # height = 7,
+  # dpi = 300
+# )
 ```
 
 ```{r plot-full-swp-trajectory}
 
-df_water_balance_annual %>%
+swp_full_allks <-  df_water_balance_annual %>%
   filter(variable == "SWP") %>%
   ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
@@ -75,11 +88,21 @@ df_water_balance_annual %>%
   ) +
   theme_bw()
 
+swp_full_allks
+
+# ggsave(
+#   filename = path(plot_dir, "SWP_fullTrajectory_allKsfloor.png"),
+#   plot = swp_full_allks,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
 ```
 
 ```{r plot-full-transpiration-trajectory}
 
-df_water_balance_annual %>%
+transpiration_full_allks <- df_water_balance_annual %>%
   filter(variable == "transpiration") %>%
   ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
@@ -92,15 +115,29 @@ df_water_balance_annual %>%
   ) +
   theme_bw()
 
+transpiration_full_allks
+
+# ggsave(
+#   filename = path(plot_dir, "transpiration_fullTrajectory_allKsfloor.png"),
+#   plot = transpiration_full_allks,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
 ```
+
+
 As 1e_10 seems very extreme, I will plot the other ones
 
 ```{r}
 ksfloor_to_plot <- c("1e_12", "1e_14", "1e_16", "1e_18", "1e_20")
 
 df_ksfloor_to_plot <- df_water_balance_annual %>% filter(ksfloor_factor %in% ksfloor_to_plot)
+```
 
-df_ksfloor_to_plot %>%
+```{r}
+swc_full_ksgt10 <- df_ksfloor_to_plot %>%
   filter(variable == "SWC") %>%
   ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
@@ -113,7 +150,20 @@ df_ksfloor_to_plot %>%
   ) +
   theme_bw()
 
-df_ksfloor_to_plot %>%
+swc_full_ksgt10
+
+# ggsave(
+#   filename = path(plot_dir, "swc_fullTrajectory_Ksfloor_gt10.png"),
+#   plot = swc_full_ksgt10,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
+```
+
+```{r}
+swp_full_ksgt10 <- df_ksfloor_to_plot %>%
   filter(variable == "SWP") %>%
   ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
@@ -126,8 +176,21 @@ df_ksfloor_to_plot %>%
   ) +
   theme_bw()
 
+swp_full_ksgt10
 
-df_ksfloor_to_plot %>%
+# ggsave(
+#   filename = path(plot_dir, "swp_fullTrajectory_Ksfloor_gt10.png"),
+#   plot = swp_full_ksgt10,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
+```
+
+```{r}
+
+transpiration_full_ksgt10 <- df_ksfloor_to_plot %>%
   filter(variable == "transpiration") %>%
   ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
@@ -140,13 +203,24 @@ df_ksfloor_to_plot %>%
   ) +
   theme_bw()
 
+transpiration_full_ksgt10
+
+# ggsave(
+#   filename = path(plot_dir, "transpiration_fullTrajectory_Ksfloor_gt10.png"),
+#   plot = transpiration_full_ksgt10,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
+
 ```
 
-Plotting interface variables
+Plotting layer interface variables
 
 ```{r}
-df_interfaces_annual %>%
-  filter(metric == "mean_ks_harmonic") %>%
+mean_ksgeometric_full_allks <- df_vertical_flux_annual %>%
+  filter(metric == "mean_ks_harmonic") %>% # actually this is the ks geometric
   ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ interface, scales = "free_y") +
@@ -155,13 +229,26 @@ df_interfaces_annual %>%
     title = "Mean harmonic hydraulic conductivity by interface",
     subtitle = "Annual mean values over the full 274-year simulation",
     x = "Simulation year",
-    y = "Annual mean Ks harmonic",
+    y = "Annual mean Ks geometric",
     color = "ksfloor"
   ) +
   theme_bw()
+
+mean_ksgeometric_full_allks
+
+ggsave(
+  filename = path(plot_dir, "mean_ksgeometric_fullTrajectory_allKsfloor.png"),
+  plot = mean_ksgeometric_full_allks,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
 ```
+
+
 ```{r}
-df_interfaces_annual %>%
+gross_volumetricchange_full_allks <- df_vertical_flux_annual %>%
   filter(metric == "gross_volumetric_change") %>%
   ggplot(aes(x = year, y = sum_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
@@ -174,12 +261,23 @@ df_interfaces_annual %>%
     color = "ksfloor"
   ) +
   theme_bw()
+
+gross_volumetricchange_full_allks
+
+ggsave(
+  filename = path(plot_dir, "gross_volumetricchange_fullTrajectory_allKsfloor.png"),
+  plot = gross_volumetricchange_full_allks,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
 ```
 
 As 1e_10 seems very extreme, I will plot the other ones
 
 ```{r}
-df_interfaces_annual %>%
+gross_volumetricchange_full_ksgt10 <- df_vertical_flux_annual %>%
   filter(
     metric == "gross_volumetric_change",
     ksfloor_factor != "1e_10"
@@ -196,8 +294,21 @@ df_interfaces_annual %>%
   ) +
   theme_bw()
 
+gross_volumetricchange_full_ksgt10
+
+# ggsave(
+#   filename = path(plot_dir, "gross_volumetricchange_fullTrajectory_Ksfloor_gt10.png"),
+#   plot = gross_volumetricchange_full_ksgt10,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
+```
+
+```{r}
 # Log scale
-df_interfaces_annual %>%
+gross_volumetricchange_full_ksgt10_log <- df_vertical_flux_annual %>%
   filter(metric == "gross_volumetric_change",
          ksfloor_factor != "1e_10") %>%
   mutate(
@@ -215,11 +326,22 @@ df_interfaces_annual %>%
     color = "ksfloor"
   ) +
   theme_bw()
+
+gross_volumetricchange_full_ksgt10_log
+
+# ggsave(
+#   filename = path(plot_dir, "gross_volumetricchange_fullTrajectory_Ksfloor_gt10_log.png"),
+#   plot = gross_volumetricchange_full_ksgt10_log,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
 ```
 
 
 ```{r}
-df_interfaces_annual %>%
+net_volumetricchange_full_ksgt10 <- df_vertical_flux_annual %>%
   filter(
     metric == "net_volumetric_change",
     ksfloor_factor != "1e_10"
@@ -237,12 +359,22 @@ df_interfaces_annual %>%
   ) +
   theme_bw()
 
+net_volumetricchange_full_ksgt10
+
+# ggsave(
+#   filename = path(plot_dir, "net_volumetricchange_fullTrajectory_Ksfloor_gt10.png"),
+#   plot = net_volumetricchange_full_ksgt10,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
 
 ```
 
 Looking to directionality
 ```{r}
-df_directionality_annual <- df_interfaces_annual %>%
+df_directionality_annual <- df_vertical_flux_annual %>%
   filter(metric %in% c("net_volumetric_change", "gross_volumetric_change")) %>%
   select(
     scenario,
@@ -269,7 +401,7 @@ df_directionality_annual <- df_interfaces_annual %>%
     )
   )
 
-df_directionality_annual %>%
+volume_directionality_full_ksgt10 <- df_directionality_annual %>%
   filter(ksfloor_factor != "1e_10") %>%
   ggplot(aes(x = year, y = directionality, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
@@ -282,13 +414,33 @@ df_directionality_annual %>%
     color = "ksfloor"
   ) +
   theme_bw()
+
+volume_directionality_full_ksgt10
+
+# ggsave(
+#   filename = path(plot_dir, "volume_directionality_fullTrajectory_Ksfloor_gt10.png"),
+#   plot = volume_directionality_full_ksgt10,
+#   width = 10,
+#   height = 7,
+#   dpi = 300
+# )
+
+# directionality ≈ 1
+# fluxo anual quase totalmente em uma direção.
+# 
+# directionality ≈ 0
+# há troca nos dois sentidos que se cancela, ou net muito pequeno em relação ao gross.
+# 
+# directionality = NA
+# gross volumetric change é zero ou quase zero, então não há troca suficiente para calcular.
+
 ```
 
 
 ```{r combined-interface-annual-table}
 # Combine the main annual interface diagnostics in one table
 
-df_interface_diagnostics_annual <- df_interfaces_annual %>%
+df_interface_diagnostics_annual <- df_vertical_flux_annual %>%
   filter(
     metric %in% c(
       "mean_ks_harmonic",
@@ -489,6 +641,7 @@ filter(
   theme_bw()
 
 ```
+
 Biogeochemical variables
 
 ```{r}
@@ -501,7 +654,7 @@ biog_vars <- names(df_biogeochemical_annual) %>%
 
 biog_vars
 
-ggplot(df_biogeochemical_annual, aes(x = year, y = mean_value, color = ksfloor_factor)) +
+plot_biog <- ggplot(df_biogeochemical_annual, aes(x = year, y = mean_value, color = ksfloor_factor)) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ variable, scales = "free_y") +
   theme_bw() +
@@ -511,5 +664,52 @@ ggplot(df_biogeochemical_annual, aes(x = year, y = mean_value, color = ksfloor_f
     color = "Ksfloor",
     title = "Annual biogeochemical variables across ksfloor scenarios"
   )
+
+ggsave(
+  filename = path(plot_dir, "allbiogvar_fullTrajectory_allKsfloor.png"),
+  plot = plot_biog,
+  width = 11,
+  height = 12,
+  dpi = 300
+)
+
 ```
 
+```{r}
+df_biog_plot <- df_biogeochemical_annual %>%
+  filter(ksfloor_factor != "1e_10")
+
+biog_variables <- sort(unique(df_biog_plot$variable))
+
+biog_variables
+
+walk(biog_variables, function(var_i) {
+  
+  p <- df_biog_plot %>%
+    filter(variable == var_i) %>%
+    ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
+    geom_line(linewidth = 0.7) +
+    theme_bw() +
+    labs(
+      title = paste("Annual", var_i, "across ksfloor scenarios"),
+      subtitle = "Excluding ksfloor = 1e-10",
+      x = "Simulation year",
+      y = "Annual mean value",
+      color = "Ksfloor"
+    )
+  
+  filename_i <- paste0(
+    "biogeochemical_",
+    str_replace_all(var_i, "[^A-Za-z0-9_]+", "_"),
+    "_fullTrajectory_ksfloor_gt10.png"
+  )
+  
+  ggsave(
+    filename = path(plot_dir, filename_i),
+    plot = p,
+    width = 8,
+    height = 5,
+    dpi = 300
+  )
+})
+```
