@@ -26,9 +26,9 @@ read_simulation_data <- function(folder) {
   # Dynamically search for the files regardless of their prefix
   file_wb <- list.files(folder_path, pattern = "water_balance\\.txt$", full.names = TRUE)
   file_vf <- list.files(folder_path, pattern = "vertical_water_flux\\.txt$", full.names = TRUE)
-  
+  file_biog <- list.files(folder_path, pattern = "sumstats\\.txt$", full.names = TRUE)
   # Stop and warn if the files are completely missing
-  if (length(file_wb) == 0 || length(file_vf) == 0) {
+  if (length(file_wb) == 0 || length(file_vf) == 0 || length(file_biog) == 0) {
     stop(paste("Could not find the output files inside:", folder_path))
   }
   
@@ -50,16 +50,27 @@ read_simulation_data <- function(folder) {
       year = floor(iter / 365) + 1
     )
   
-  return(list(wb = df_wb, vf = df_vf))
+  # Reading biogeochemical variables
+  df_biog <- read_tsv(file_biog[1], show_col_types = FALSE) %>%
+    mutate(
+      scenario = folder,
+      ksfloor_val = ks_numeric,
+      ksfloor_factor = factor(ks_string, levels = c("1e_20", "1e_18", "1e_16", "1e_14", "1e_12", "1e_10")),
+      year = floor(iter / 365) + 1
+    )
+  
+  
+  return(list(wb = df_wb, vf = df_vf, biog = df_biog))
 }
 
-# 4. Apply the function to all folders and bind them together
+# Apply the function to all folders and bind them together
 # map extracts the list, map_dfr binds the rows together into a single dataframe
 all_data <- map(folders, read_simulation_data)
 
 # Creating the two main dataframes we will use in the analysis
 df_water_balance <- map_dfr(all_data, "wb")
 df_vertical_flux <- map_dfr(all_data, "vf")
+df_biogem <- map_dfr(all_data, "biog")
 
 # Clearing memory
 rm(all_data)
@@ -69,6 +80,7 @@ rm(all_data)
 
 wb_vars <- names(df_water_balance)
 vf_vars <- names(df_vertical_flux)
+biog_vars <- names(df_biogem)
 
 # Layer variables in water balance:
 # SWC_i, SWP_i, transpiration_i
@@ -84,11 +96,23 @@ water_balance_vars <- wb_vars %>%
 interface_vars_vf <- vf_vars %>%
   str_subset("layers[0-9]+_[0-9]+")
 
+# Select all biogeochemical variables, excluding identifiers
+biogeochemical_vars <- biog_vars %>%
+  setdiff(c(
+    "iter",
+    "scenario",
+    "ksfloor_val",
+    "ksfloor_factor",
+    "year"
+  ))
+
+
 #Saving data as .rds
 cache_dir <- path(base_dir, "_rds")
-dir_create(cache_dir)
-saveRDS(df_water_balance, path(cache_dir, "df_water_balance_daily.rds"))
-saveRDS(df_vertical_flux, path(cache_dir, "df_vertical_flux_daily.rds"))
+# dir_create(cache_dir)
+# saveRDS(df_water_balance, path(cache_dir, "df_water_balance_daily.rds"))
+# saveRDS(df_vertical_flux, path(cache_dir, "df_vertical_flux_daily.rds"))
+# saveRDS(df_biogem, path(cache_dir, "df_biogem_daily.rds"))
 
 ##################
 # Aggregate by year
@@ -179,4 +203,36 @@ df_interfaces_annual <- df_interfaces_daily %>%
 
 saveRDS(df_interfaces_annual, path(cache_dir, "df_vertical_flux_annual.rds"))
 
+df_biogem_annual <- df_biogem %>%
+  select(
+    scenario,
+    ksfloor_val,
+    ksfloor_factor,
+    iter,
+    year,
+    all_of(biogeochemical_vars)
+  ) %>%
+  pivot_longer(
+    cols = all_of(biogeochemical_vars),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  group_by(
+    scenario,
+    ksfloor_val,
+    ksfloor_factor,
+    year,
+    variable
+  ) %>%
+  summarise(
+    mean_value = mean(value, na.rm = TRUE),
+    sum_value  = sum(value, na.rm = TRUE),
+    min_value  = min(value, na.rm = TRUE),
+    max_value  = max(value, na.rm = TRUE),
+    sd_value   = sd(value, na.rm = TRUE),
+    last_value = value[which.max(iter)],
+    .groups = "drop"
+  )
+
+saveRDS(df_biogem_annual, path(cache_dir, "df_biogechemical_annual.rds"))
 
