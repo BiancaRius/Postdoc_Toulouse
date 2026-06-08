@@ -10,13 +10,17 @@ project_dir <- path_expand(
 runs <- tibble(
   scenario = c(
     "ducke_deep_clayey_regclim",
-    "ducke_shallow_sandy_regclim"
+    "ducke_shallow_sandy_regclim",
+    "ducke_deep_clayey_regclim_ks12",
+    "ducke_shallow_sandy_regclim_ks12"
   ),
   output_dir = path(
     project_dir,
     c(
       "deepWT_clayeysoil/ducke_deep_clayey_regclim/output",
-      "shallowWT_sandysoil/ducke_shallow_sandy_regclim/output"
+      "shallowWT_sandysoil/ducke_shallow_sandy_regclim/output",
+      "deepWT_clayeysoil/ducke_deep_clayey_regclim_ks12/output",
+      "shallowWT_sandysoil/ducke_shallow_sandy_regclim_ks12/output"
     )
   )
 )
@@ -85,7 +89,7 @@ biogeochemical_vars <- biog_vars %>%
 # Discomment if you have new data
 #Saving data as .rds
 cache_dir <- path(project_dir, "_rds")
-dir_create(cache_dir)
+# dir_create(cache_dir)
 saveRDS(df_water_balance, path(cache_dir, "df_water_balance_daily.rds"))
 saveRDS(df_vertical_flux, path(cache_dir, "df_vertical_flux_daily.rds"))
 saveRDS(df_biogem, path(cache_dir, "df_biogem_daily.rds"))
