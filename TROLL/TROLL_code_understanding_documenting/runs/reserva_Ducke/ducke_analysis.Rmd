@@ -43,211 +43,315 @@ First, let's plot the entire time series to visually identify the spin-up period
 
 To consider in the analysis:
 Increasing ksfloor reduces the risk of numerical hydraulic locking by preventing extremely low hydraulic conductivity values. However, higher ksfloor values also impose an increasingly artificial lower bound on soil-water movement. If the imposed floor is too high, vertical connectivity may be maintained even when the soil profile should physically become hydraulically disconnected, especially under deep water table and sandy soil conditions. Therefore, the sensitivity analysis should identify the lowest ksfloor that stabilizes the model without artificially increasing vertical water exchange.
+```{r}
+# aesthetic options -------------------------------------------------------
+
+scenario_colors <- c(
+  "deep_clayey_regclim_ks12" = "#2F4858",
+  "deep_clayey_redprec" = "#0072B2",
+  "shallow_sandy_regclim_ks12" = "#A67C52",
+  "shallow_sandy_redprec" = "#D55E00"
+)
+
+scenario_labels <- c(
+  "deep_clayey_regclim_ks12" = "Deep WT | Clayey soil | Regclim",
+  "deep_clayey_redprec" = "Deep WT | Clayey soil | Redprec",
+  "shallow_sandy_regclim" = "Shallow WT | Sandy soil | Regclim",
+  "shallow_sandy_redprec" = "Shallow WT | Sandy soil | Redprec"
+)
+```
 
 ```{r plot-full-swc-trajectory}
 swc_full <- df_water_balance_annual %>%
   filter(variable == "SWC") %>%
-  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  mutate(
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ggplot(aes(
+    x = year,
+    y = mean_value,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ layer, scales = "free_y") +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
     title = "SWC",
     subtitle = "Reserva Ducke scenarios",
     x = "Simulation year",
-    y = "Annual mean SWC",
-    color = "Scenario"
+    y = "Annual mean SWC"
   ) +
   theme_bw()
 
 swc_full
 
-ggsave(
-  filename = path(plot_dir, "SWC_fullTrajectory_Ducke_scenarios.png"),
-  plot = swc_full,
-  width = 10,
-  height = 7,
-  dpi = 300
-)
-
 ```
 
 ```{r plot-full-swp-trajectory}
-
-swp_full_allks <-  df_water_balance_annual %>%
+swp_full <- df_water_balance_annual %>%
   filter(variable == "SWP") %>%
-  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  mutate(
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ggplot(aes(
+    x = year,
+    y = mean_value,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ layer, scales = "free_y") +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
     title = "SWP",
+    subtitle = "Reserva Ducke scenarios",
     x = "Simulation year",
-    y = "Annual mean SWP",
-    color = "Scenario"
+    y = "Annual mean SWP"
   ) +
   theme_bw()
 
-swp_full_allks
-
-ggsave(
-  filename = path(plot_dir, "SWP_fullTrajectory_allKsfloor.png"),
-  plot = swp_full_allks,
-  width = 10,
-  height = 7,
-  dpi = 300
-)
+swp_full
 
 ```
 
 ```{r plot-full-transpiration-trajectory}
 
-transpiration_full_allks <- df_water_balance_annual %>%
+transpiration_full <- df_water_balance_annual %>%
   filter(variable == "transpiration") %>%
-  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+  mutate(
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ggplot(aes(
+    x = year,
+    y = mean_value,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ layer, scales = "free_y") +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
     title = "Transpiration",
+    subtitle = "Reserva Ducke scenarios",
     x = "Simulation year",
-    y = "Annual mean transpiration",
-    color = "Scenario"
+    y = "Annual mean transpiration"
   ) +
   theme_bw()
 
-transpiration_full_allks
-
-ggsave(
-  filename = path(plot_dir, "transpiration_fullTrajectory_allKsfloor.png"),
-  plot = transpiration_full_allks,
-  width = 10,
-  height = 7,
-  dpi = 300
-)
+transpiration_full
 
 ```
-
 
 
 Plotting layer interface variables
 
 ```{r}
-mean_ksgeometric_full_allks <- df_vertical_flux_annual %>%
-  filter(metric == "mean_ks_harmonic") %>% # actually this is the ks geometric
-  ggplot(aes(x = year, y = mean_value, color = scenario)) +
+mean_ksgeometric_full <- df_vertical_flux_annual %>%
+  filter(metric == "mean_ks_harmonic") %>% # actually this is the Ks geometric
+  mutate(
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ggplot(aes(
+    x = year,
+    y = mean_value,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ interface, scales = "free_y") +
   scale_y_log10() +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
-    title = "Mean harmonic hydraulic conductivity by interface",
+    title = "Mean geometric hydraulic conductivity by interface",
     subtitle = "Annual mean values",
     x = "Simulation year",
     y = "Annual mean Ks geometric",
-    color = "Scenario"
+    color = "WT | Pedology",
+    linetype = "Climate"
   ) +
   theme_bw()
 
-mean_ksgeometric_full_allks
-
-ggsave(
-  filename = path(plot_dir, "mean_ksgeometric_fullTrajectory_allKsfloor.png"),
-  plot = mean_ksgeometric_full_allks,
-  width = 10,
-  height = 7,
-  dpi = 300
-)
+mean_ksgeometric_full
 
 ```
 
 
+
 ```{r}
-gross_volumetricchange_full_allks <- df_vertical_flux_annual %>%
+gross_volumetricchange_full <- df_vertical_flux_annual %>%
   filter(metric == "gross_volumetric_change") %>%
-  ggplot(aes(x = year, y = sum_value, color = scenario)) +
+  mutate(
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ggplot(aes(
+    x = year,
+    y = sum_value,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ interface, scales = "free_y") +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
     title = "Gross vertical water exchange by interface",
     subtitle = "Annual sums",
     x = "Simulation year",
-    y = "Annual gross volumetric change",
-    color = "Scenario"
+    y = "Annual gross volumetric change"
   ) +
   theme_bw()
 
-gross_volumetricchange_full_allks
-
-ggsave(
-  filename = path(plot_dir, "gross_volumetricchange_fullTrajectory_allKsfloor.png"),
-  plot = gross_volumetricchange_full_allks,
-  width = 10,
-  height = 7,
-  dpi = 300
-)
-
+gross_volumetricchange_full
 ```
 
 
+
 ```{r}
-# Log scale
-gross_volumetricchange_full_ksgt10_log <- df_vertical_flux_annual %>%
+net_volumetricchange_full <- df_vertical_flux_annual %>%
+  filter(metric == "net_volumetric_change") %>%
   mutate(
-    sum_value_plot = if_else(sum_value <= 0, NA_real_, sum_value)
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
+    )
   ) %>%
-  ggplot(aes(x = year, y = sum_value_plot, color = scenario)) +
-  geom_line(linewidth = 0.7, na.rm = TRUE) +
-  facet_wrap(~ interface, scales = "free_y") +
-  scale_y_log10() +
-  labs(
-    title = "Gross vertical water exchange by interface",
-    subtitle = "Annual sums, log scale",
-    x = "Simulation year",
-    y = "Annual gross volumetric change, log scale",
-    color = "Scenario"
+  ggplot(aes(
+    x = year,
+    y = sum_value,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
+  geom_hline(
+    yintercept = 0,
+    linetype = "dotted",
+    color = "grey40"
   ) +
-  theme_bw()
-
-gross_volumetricchange_full_ksgt10_log
-
-ggsave(
-  filename = path(plot_dir, "gross_volumetricchange_fullTrajectory_Ksfloor_gt10_log.png"),
-  plot = gross_volumetricchange_full_ksgt10_log,
-  width = 10,
-  height = 7,
-  dpi = 300
-)
-
-```
-
-
-```{r}
-net_volumetricchange_full_ksgt10 <- df_vertical_flux_annual %>%
-  filter(
-    metric == "net_volumetric_change"
-  ) %>%
-  ggplot(aes(x = year, y = sum_value, color = scenario)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ interface, scales = "free_y") +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
     title = "Net vertical water exchange by interface",
     subtitle = "Annual sums",
     x = "Simulation year",
-    y = "Annual net volumetric change",
-    color = "Scenario"
+    y = "Annual net volumetric change"
   ) +
   theme_bw()
 
-net_volumetricchange_full_ksgt10
-
-ggsave(
-  filename = path(plot_dir, "net_volumetricchange_fullTrajectory_Ksfloor_gt10.png"),
-  plot = net_volumetricchange_full_ksgt10,
-  width = 10,
-  height = 7,
-  dpi = 300
-)
-
-
+net_volumetricchange_full
 ```
+
+
 
 Looking to directionality
 ```{r}
@@ -273,31 +377,48 @@ df_directionality_annual <- df_vertical_flux_annual %>%
       is.finite(directionality),
       directionality,
       NA_real_
+    ),
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
     )
   )
 
-volume_directionality_full_ksgt10 <- df_directionality_annual %>%
-  ggplot(aes(x = year, y = directionality, color = scenario)) +
+volume_directionality_full <- df_directionality_annual %>%
+  ggplot(aes(
+    x = year,
+    y = directionality,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ interface, scales = "free_y") +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
     title = "Directionality of vertical water exchange by interface",
     subtitle = "|net volumetric change| / gross volumetric change",
     x = "Simulation year",
-    y = "Directionality",
-    color = "Scenario"
+    y = "Directionality"
   ) +
   theme_bw()
 
-volume_directionality_full_ksgt10
-
-ggsave(
-  filename = path(plot_dir, "volume_directionality_fullTrajectory_Ksfloor_gt10.png"),
-  plot = volume_directionality_full_ksgt10,
-  width = 10,
-  height = 7,
-  dpi = 300
-)
+volume_directionality_full
 
 # directionality ≈ 1
 # fluxo anual quase totalmente em uma direção.
@@ -319,40 +440,56 @@ post_spinup_start <- 101
 df_layers_post100 <- df_water_balance_annual %>%
   filter(year >= post_spinup_start)
 
-df_layers_post100 %>% 
-filter(
-    variable == "SWP",
-    !ksfloor_factor %in% c("1e_10", "1e_12")
+swp_post100 <- df_layers_post100 %>% 
+  filter(variable == "SWP") %>%
+  mutate(
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
+    )
   ) %>%
-  ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
+  ggplot(aes(
+    x = year,
+    y = mean_value,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
   geom_line(linewidth = 0.7) +
   facet_wrap(~ layer, scales = "free_y") +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
     title = "Annual mean SWP by soil layer",
-    subtitle = "Redprec scenario, ksfloor <= 1e-14",
+    subtitle = "Post-spinup period",
     x = "Simulation year",
-    y = "Annual mean SWP",
-    color = "ksfloor"
+    y = "Annual mean SWP"
   ) +
   theme_bw()
 
-df_layers_post100 %>% 
-filter(
-    variable == "SWC",
-    !ksfloor_factor %in% c("1e_10", "1e_12")
-  ) %>%
-  ggplot(aes(x = year, y = mean_value, color = ksfloor_factor)) +
-  geom_line(linewidth = 0.7) +
-  facet_wrap(~ layer, scales = "free_y") +
-  labs(
-    title = "Annual mean SWC by soil layer",
-    subtitle = "Redprec scenario, ksfloor <= 1e-14",
-    x = "Simulation year",
-    y = "Annual mean SWC",
-    color = "ksfloor"
-  ) +
-  theme_bw()
+swp_post100
 
+ggsave(
+  filename = path(plot_dir, "SWP_post100_Ducke_scenarios.png"),
+  plot = swp_post100,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
 ```
 
 
@@ -363,49 +500,78 @@ df_biogeochemical_annual <- readRDS(
   path(cache_dir, "df_biogeochemical_annual.rds")
 )
 
-biog_vars <- names(df_biogeochemical_annual) %>%
-  setdiff(c("scenario", "year"))
-
-biog_vars
-
-plot_biog <- ggplot(
-  df_biogeochemical_annual,
-  aes(x = year, y = mean_value, color = scenario, group = scenario)
-) +
+plot_biog <- df_biogeochemical_annual %>%
+  mutate(
+    wt_pedology = case_when(
+      grepl("deep_clayey", scenario) ~ "deep_clayey",
+      grepl("shallow_sandy", scenario) ~ "shallow_sandy",
+      TRUE ~ NA_character_
+    ),
+    climate = case_when(
+      grepl("regclim", scenario) ~ "regclim",
+      grepl("redprec", scenario) ~ "redprec",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ggplot(aes(
+    x = year,
+    y = mean_value,
+    color = wt_pedology,
+    linetype = climate,
+    group = scenario
+  )) +
   geom_ribbon(
     aes(
       ymin = mean_value - sd_value,
       ymax = mean_value + sd_value,
-      fill = scenario
+      fill = wt_pedology,
+      group = scenario
     ),
-    alpha = 0.25,
+    alpha = 0.18,
     color = NA
   ) +
-  geom_line(linewidth = 0.3) +
+  geom_line(linewidth = 0.45) +
   facet_wrap(~ variable, scales = "free_y") +
-  theme_bw() +
+  scale_color_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_fill_manual(
+    values = wt_pedology_colors,
+    labels = wt_pedology_labels,
+    name = "WT | Pedology"
+  ) +
+  scale_linetype_manual(
+    values = climate_linetypes,
+    labels = climate_labels,
+    name = "Climate"
+  ) +
   labs(
     x = "Simulation year",
     y = "Annual mean value",
-    color = "Scenario",
-    fill = "Scenario",
     title = "Annual biogeochemical variables",
     subtitle = "Shaded area = annual mean ± SD"
-  )
+  ) +
+  guides(
+    fill = "none"
+  ) +
+  theme_bw()
 
 plot_biog
-
-ggsave(
-  filename = path(plot_dir, "allbiogvar_fullTrajectory_withSD.png"),
-  plot = plot_biog,
-  width = 7,
-  height = 12,
-  dpi = 300
-)
 ```
 
 ```{r}
-df_biog_plot <- df_biogeochemical_annual
+df_biog_plot <- df_biogeochemical_annual %>%
+  mutate(
+    scenario_key = case_when(
+      grepl("deep_clayey", scenario) & grepl("regclim", scenario) ~ "deep_clayey_regclim",
+      grepl("deep_clayey", scenario) & grepl("redprec", scenario) ~ "deep_clayey_redprec",
+      grepl("shallow_sandy", scenario) & grepl("regclim", scenario) ~ "shallow_sandy_regclim",
+      grepl("shallow_sandy", scenario) & grepl("redprec", scenario) ~ "shallow_sandy_redprec",
+      TRUE ~ NA_character_
+    )
+  )
 
 biog_variables <- sort(unique(df_biog_plot$variable))
 
@@ -415,21 +581,48 @@ walk(biog_variables, function(var_i) {
   
   p <- df_biog_plot %>%
     filter(variable == var_i) %>%
-    ggplot(aes(x = year, y = mean_value, color = scenario)) +
+    ggplot(aes(
+      x = year,
+      y = mean_value,
+      color = scenario_key,
+      group = scenario
+    )) +
+    geom_ribbon(
+      aes(
+        ymin = mean_value - sd_value,
+        ymax = mean_value + sd_value,
+        fill = scenario_key,
+        group = scenario
+      ),
+      alpha = 0.15,
+      color = NA
+    ) +
     geom_line(linewidth = 0.7) +
+    scale_color_manual(
+      values = scenario_colors,
+      labels = scenario_labels,
+      name = "Scenario"
+    ) +
+    scale_fill_manual(
+      values = scenario_colors,
+      labels = scenario_labels,
+      name = "Scenario"
+    ) +
+    guides(
+      fill = "none"
+    ) +
     theme_bw() +
     labs(
       title = paste("Annual", var_i),
-      subtitle = "Reserva Ducke scenarios",
+      subtitle = "Reserva Ducke scenarios | Shaded area = annual mean ± SD",
       x = "Simulation year",
-      y = "Annual mean value",
-      color = "Scenario"
+      y = "Annual mean value"
     )
   
   filename_i <- paste0(
     "biogeochemical_",
     str_replace_all(var_i, "[^A-Za-z0-9_]+", "_"),
-    "_fullTrajectory_Ducke_scenarios.png"
+    "_fullTrajectory_Ducke_scenarios_withSD.png"
   )
   
   ggsave(
