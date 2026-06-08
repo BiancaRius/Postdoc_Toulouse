@@ -10,17 +10,13 @@ project_dir <- path_expand(
 runs <- tibble(
   scenario = c(
     "ducke_deep_clayey_regclim",
-    "ducke_shallow_sandy_regclim",
-    "ducke_deep_clayey_regclim_ks12",
-    "ducke_shallow_sandy_regclim_ks12"
+    "ducke_shallow_sandy_regclim"
   ),
   output_dir = path(
     project_dir,
     c(
       "deepWT_clayeysoil/ducke_deep_clayey_regclim/output",
-      "shallowWT_sandysoil/ducke_shallow_sandy_regclim/output",
-      "deepWT_clayeysoil/ducke_deep_clayey_regclim_ks12/output",
-      "shallowWT_sandysoil/ducke_shallow_sandy_regclim_ks12/output"
+      "shallowWT_sandysoil/ducke_shallow_sandy_regclim/output"
     )
   )
 )
@@ -69,7 +65,7 @@ layer_vars_wb <- wb_vars %>%
 
 # Whole-system water balance variables
 water_balance_vars <- wb_vars %>%
-  setdiff(c("scenario", "ksfloor_val", "ksfloor_factor", "year")) %>%
+  setdiff(c("scenario", "year")) %>%
   setdiff(layer_vars_wb)
 
 # Interface variables in vertical flux
@@ -81,8 +77,6 @@ biogeochemical_vars <- biog_vars %>%
   setdiff(c(
     "iter",
     "scenario",
-    "ksfloor_val",
-    "ksfloor_factor",
     "year"
   ))
 
