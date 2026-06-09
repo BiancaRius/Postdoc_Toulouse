@@ -47,17 +47,17 @@ Increasing ksfloor reduces the risk of numerical hydraulic locking by preventing
 # aesthetic options -------------------------------------------------------
 
 scenario_colors <- c(
-  "deep_clayey_regclim_ks12" = "#2F4858",
-  "deep_clayey_redprec" = "#0072B2",
-  "shallow_sandy_regclim_ks12" = "#A67C52",
-  "shallow_sandy_redprec" = "#D55E00"
+  "deep_clayey_regclim_ks14" = "#2F4858",
+  "ducke_deep_clayey_redprec30_ks14" = "#0072B2"#,
+  "shallow_sandy_regclim_ks14" = "#A67C52",
+  "shallow_sandy_redprec30_ks14" = "#D55E00"
 )
 
 scenario_labels <- c(
-  "deep_clayey_regclim_ks12" = "Deep WT | Clayey soil | Regclim",
-  "deep_clayey_redprec" = "Deep WT | Clayey soil | Redprec",
-  "shallow_sandy_regclim" = "Shallow WT | Sandy soil | Regclim",
-  "shallow_sandy_redprec" = "Shallow WT | Sandy soil | Redprec"
+  "deep_clayey_regclim_ks14" = "Deep WT | Clayey soil | Regclim",
+  "ducke_deep_clayey_redprec30_ks14" = "Deep WT | Clayey soil | Redprec",
+  "shallow_sandy_regclim_ks14" = "Shallow WT | Sandy soil | Regclim",
+  "shallow_sandy_redprec_redprec30_ks14" = "Shallow WT | Sandy soil | Redprec"
 )
 ```
 
