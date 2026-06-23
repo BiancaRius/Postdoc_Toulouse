@@ -7967,7 +7967,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
                         soil_phi3D[l][d] = soil_phi3D_cap[l][d]; // for output
                         theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1                                       
-                        Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity   
+                        Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity.  Ks_cap is stored in mm/s.   
                         continue;
                 }
                 
@@ -7982,14 +7982,14 @@ if (_WATER_RETENTION_CURVE==1) {
 if (_WATER_RETENTION_CURVE==1) {
                 soil_phi3D_cap[l][d]=a_vgm[l]*pow((pow(theta_w_cap,-b_vgm[l])-1), c_vgm[l]); // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
                 float inter_cap = 1-pow((1-pow(theta_w_cap, b_vgm[l])),m_vgm[l]);
-                Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 0.5)*inter_cap*inter_cap; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014)
+                Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 0.5)*inter_cap*inter_cap; // this is the van Genuchten-Mualem model (as in Table 1 in Marthews et al. 2014).  Ks_cap is stored in mm/s.
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 
 
 } else if (_WATER_RETENTION_CURVE==0) {
 
                 soil_phi3D_cap[l][d]=phi_e[l]*pow(theta_w_cap, -b[l]); // this is the soil water characteristic of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
-                Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014)
+                Ks_cap[l][d]=Ksat[l]*pow(theta_w_cap, 2.5+2*b[l]); // this is the hydraulic conductivity curve of Brooks & Corey-Mualem (as in Table 1 in Marthews et al. 2014).  Ks_cap is stored in mm/s.
                 KsPhi[l][d]=Ksat[l]*phi_e[l]*pow(theta_w_cap, 2.5+b[l]); //Ks times soil_phi3D, computed directly as the exact power of theta.
                 //KsPhi2[l][d]=Ksat[l]*phi_e[l]*pow(theta_w, 2.5);
                 // we may want to shift to the van Genuchten-Mualem expressions of soil_phi3D and Ks, as the van genuchten-Mualem model is currently defacto the more standard soil hydraulic model (see ref in Table 1 in Marthews et al. 2014). To do so, see if we have data of soil pH, cation exchange capacity, organic carbon content, to explicitly compute the parameters with Hodnett & Tomasella 2002 (as recommended by Marthews et al. 2014 -- Table 2; or instead directly use the parameter provided by the map in Marthews et al. 2014.
@@ -8016,7 +8016,8 @@ if (_WATER_RETENTION_CURVE==1) {
                 double k2d = static_cast<double>(Ks_cap[l+1][d]);
 
                 if (std::isfinite(k1d) && std::isfinite(k2d) && k1d > 0.0 && k2d > 0.0) {
-                    Ks_cap_harmonic[l][d] = static_cast<float>(std::sqrt(k1d * k2d));  // BR Using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
+                    // Here Ks_cap_harmonic * 1e-3 is used to convert the units of Ks from mm/s to m/s, as the flux q_cap is calculated in m/s.
+                    Ks_cap_harmonic[l][d] = (static_cast<float>(std::sqrt(k1d * k2d)))*1e-3f;  // BR Using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
                     // double sum_k = k1d + k2d;
                     // Ks_cap_harmonic[l][d] = static_cast<float>((2.0 * k1d * k2d) / sum_k);
 
@@ -8063,8 +8064,9 @@ if (_WATER_RETENTION_CURVE==1) {
 
 if (_UNIFIED_VERT_WATER_FLUX == 0) {              
                 // Only allows upward capillary rise (positive flux), the downard flux will be treated by the bucket model through gravity drainage
-                q_cap[l][d] = max(0.0f, - Ks_cap_harmonic[l][d] * (
-                    (delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1));
+                q_cap[l][d] = - Ks_cap_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
+
+                q_cap[l][d] = max(0.0f, q_cap[l][d]); // Only upward flux is considered, downward flux is treated by the bucket model through gravity drainage  
                 // // cout << "Capillary rise q_cap at interface between layers " << l << " and " << l+1 << " is " << q_cap[l][d] << " m/s" << endl; 
                
                 // // Calculate the total height of water [m] moved during the timestep in the interface of layers.
@@ -8077,6 +8079,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) {
 } else {
                 // Considering up and downward flux (q_cap > 0 = upward flux; q_cap < 0 = downward flux)
                 q_cap[l][d] = - Ks_cap_harmonic[l][d] * ((delta_phi_Pa / ((water_density * gravity) * (delta_z_face[l]))) + 1);
+                
                 // Calculate the total height of water [m] moved during the timestep in the interface of layers.
                 water_height_upward[l][d] = q_cap[l][d] * delta_t_sec; // Height of water moved upward considering the timestep [m]
 
