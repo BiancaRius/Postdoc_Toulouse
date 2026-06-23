@@ -7959,7 +7959,7 @@ if (_WATER_RETENTION_CURVE==1) {
             // conductivity (Ks) based on the chosen water retention model.
             for (int l=0; l<nblayers_soil; l++) {
 
-                // Intermediate relative humidity for capillary rise calculation
+                // Intermediate relative humidity for capillary rise calculation (dimensionless)
                 float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
                 // Special condition for layers below the water table // BR

@@ -10,14 +10,22 @@ scenario_table <- tibble(
   scenario = c(
     "ducke_deep_clayey_regclim_ks14",
     "ducke_deep_clayey_redprec30_ks14",
+    "ducke_deep_sandy_redprec30_ks14",
+    "ducke_deep_sandy_regclim_ks14",
     "ducke_shallow_sandy_regclim_ks14",
-    "ducke_shallow_sandy_redprec30_ks14"
+    "ducke_shallow_sandy_redprec30_ks14",
+    "ducke_shallow_clayey_redprec30_ks14",
+    "ducke_shallow_clayey_regclim_ks14"
   ),
   run_dir = c(
     "deepWT_clayeysoil/ducke_deep_clayey_regclim_ks14",
     "deepWT_clayeysoil/ducke_deep_clayey_redprec30_ks14",
+    "deepWT_sandysoil/ducke_deep_sandy_redprec30_ks14",
+    "deepWT_sandysoil/ducke_deep_sandy_regclim_ks14",
     "shallowWT_sandysoil/ducke_shallow_sandy_regclim_ks14",
-    "shallowWT_sandysoil/ducke_shallow_sandy_redprec30_ks14"
+    "shallowWT_sandysoil/ducke_shallow_sandy_redprec30_ks14",
+    "shallowWT_clayeysoil/ducke_shallow_clayey_redprec30_ks14",
+    "shallowWT_clayeysoil/ducke_shallow_clayey_regclim_ks14"
   )
 ) %>%
   mutate(
@@ -117,15 +125,24 @@ df_trait_dist <- df_threshold %>%
 scenario_colors <- c(
   "ducke_deep_clayey_regclim_ks14"     = "#1B6CA8",
   "ducke_deep_clayey_redprec30_ks14"   = "#56B4E9",
+  "ducke_deep_sandy_redprec30_ks14"   = "green4",
+  "ducke_deep_sandy_regclim_ks14"   = "purple",
   "ducke_shallow_sandy_regclim_ks14"   = "#CC5500",
-  "ducke_shallow_sandy_redprec30_ks14" = "#E8A268"
+  "ducke_shallow_sandy_redprec30_ks14" = "#E8A268",
+  "ducke_shallow_clayey_redprec30_ks14" = "chocolate4",
+  "ducke_shallow_clayey_regclim_ks14" = "red"
+  
 )
 
 scenario_labels <- c(
   "ducke_deep_clayey_regclim_ks14"     = "Deep WT | Clayey soil | Regclim",
   "ducke_deep_clayey_redprec30_ks14"   = "Deep WT | Clayey soil | Redprec",
+  "ducke_deep_sandy_redprec30_ks14"   = "Deep WT | Sandy soil | Redprec",
+  "ducke_deep_sandy_regclim_ks14"   = "Deep WT | Sandy soil | Regclim",
   "ducke_shallow_sandy_regclim_ks14"   = "Shallow WT | Sandy soil | Regclim",
-  "ducke_shallow_sandy_redprec30_ks14" = "Shallow WT | Sandy soil | Redprec"
+  "ducke_shallow_sandy_redprec30_ks14" = "Shallow WT | Sandy soil | Redprec",
+  "ducke_shallow_clayey_redprec30_ks14" = "Shallow WT | Clayey soil | Redprec",
+  "ducke_shallow_clayey_regclim_ks14" = "Shallow WT | Clayey soil | Regclim"
 )
 
 
@@ -145,8 +162,12 @@ plot_trait_distribution <- function(data,
                                     scenario_keep = c(
                                       "ducke_deep_clayey_regclim_ks14",
                                       "ducke_deep_clayey_redprec30_ks14",
+                                      "ducke_deep_sandy_redprec30_ks14",
+                                      "ducke_deep_sandy_regclim_ks14",
                                       "ducke_shallow_sandy_regclim_ks14",
-                                      "ducke_shallow_sandy_redprec30_ks14"
+                                      "ducke_shallow_sandy_redprec30_ks14",
+                                      "ducke_shallow_clayey_redprec30_ks14",
+                                      "ducke_shallow_clayey_regclim_ks14"
                                     ),
                                     colors = scenario_colors,
                                     labels = scenario_labels,
@@ -202,8 +223,44 @@ plot_trait_distribution <- function(data,
       group_by(scenario, weighting) %>%
       summarise(
         mode_val = {
-          d <- density(trait_value, weights = weight / sum(weight), na.rm = TRUE)
-          d$x[which.max(d$y)]
+          
+          # Keep only valid trait values and valid weights
+          keep <- is.finite(trait_value) & is.finite(weight) & weight > 0
+          x <- trait_value[keep]
+          w <- weight[keep]
+          
+          # If there are too few values, return NA
+          if (length(x) < 2 || sum(w, na.rm = TRUE) <= 0) {
+            NA_real_
+          } else {
+            
+            # Normalize weights so they sum to 1
+            w <- w / sum(w, na.rm = TRUE)
+            
+            # Compute a numeric bandwidth.
+            # This avoids the warning caused by bw = "nrd0".
+            bw_value <- bw.nrd0(x)
+            
+            # If the bandwidth is invalid, use a small fallback value
+            if (!is.finite(bw_value) || bw_value <= 0) {
+              bw_value <- diff(range(x, na.rm = TRUE)) / 30
+            }
+            
+            if (!is.finite(bw_value) || bw_value <= 0) {
+              bw_value <- 0.01
+            }
+            
+            # Estimate weighted density using a numeric bandwidth
+            d <- density(
+              x,
+              weights = w,
+              bw = bw_value,
+              na.rm = TRUE
+            )
+            
+            # Return the x value where the weighted density is highest
+            d$x[which.max(d$y)]
+          }
         },
         .groups = "drop"
       )
@@ -280,8 +337,44 @@ plot_trait_distribution <- function(data,
       group_by(scenario, weighting) %>%
       summarise(
         mode_val = {
-          d <- density(trait_value, weights = weight / sum(weight), na.rm = TRUE)
-          d$x[which.max(d$y)]
+          
+          # Keep only valid trait values and valid weights
+          keep <- is.finite(trait_value) & is.finite(weight) & weight > 0
+          x <- trait_value[keep]
+          w <- weight[keep]
+          
+          # If there are too few values, return NA
+          if (length(x) < 2 || sum(w, na.rm = TRUE) <= 0) {
+            NA_real_
+          } else {
+            
+            # Normalize weights so they sum to 1
+            w <- w / sum(w, na.rm = TRUE)
+            
+            # Compute a numeric bandwidth.
+            # This avoids the warning caused by bw = "nrd0".
+            bw_value <- bw.nrd0(x)
+            
+            # If the bandwidth is invalid, use a small fallback value
+            if (!is.finite(bw_value) || bw_value <= 0) {
+              bw_value <- diff(range(x, na.rm = TRUE)) / 30
+            }
+            
+            if (!is.finite(bw_value) || bw_value <= 0) {
+              bw_value <- 0.01
+            }
+            
+            # Estimate weighted density using a numeric bandwidth
+            d <- density(
+              x,
+              weights = w,
+              bw = bw_value,
+              na.rm = TRUE
+            )
+            
+            # Return the x value where the weighted density is highest
+            d$x[which.max(d$y)]
+          }
         },
         .groups = "drop"
       )
@@ -359,8 +452,12 @@ plot_trait_weighted_boxplot <- function(data,
                                         scenario_keep = c(
                                           "ducke_deep_clayey_regclim_ks14",
                                           "ducke_deep_clayey_redprec30_ks14",
+                                          "ducke_deep_sandy_redprec30_ks14",
+                                          "ducke_deep_sandy_regclim_ks14",
                                           "ducke_shallow_sandy_regclim_ks14",
-                                          "ducke_shallow_sandy_redprec30_ks14"
+                                          "ducke_shallow_sandy_redprec30_ks14",
+                                          "ducke_shallow_clayey_redprec30_ks14",
+                                          "ducke_shallow_clayey_regclim_ks14"
                                         ),
                                         colors = NULL,
                                         labels = NULL,
@@ -380,8 +477,13 @@ plot_trait_weighted_boxplot <- function(data,
     colors <- c(
       "ducke_deep_clayey_regclim_ks14"     = "#1B6CA8",
       "ducke_deep_clayey_redprec30_ks14"   = "#56B4E9",
+      "ducke_deep_sandy_redprec30_ks14"  = "green4",
+      "ducke_deep_sandy_regclim_ks14"  = "purple",
       "ducke_shallow_sandy_regclim_ks14"   = "#CC5500",
-      "ducke_shallow_sandy_redprec30_ks14" = "#E8A268"
+      "ducke_shallow_sandy_redprec30_ks14" = "#E8A268",
+      "ducke_shallow_clayey_redprec30_ks14" = "chocolate4",
+      "ducke_shallow_clayey_regclim_ks14" = "red"
+      
     )
   }
   
@@ -390,8 +492,12 @@ plot_trait_weighted_boxplot <- function(data,
     labels <- c(
       "ducke_deep_clayey_regclim_ks14"     = "Deep WT | Clayey soil | Regclim",
       "ducke_deep_clayey_redprec30_ks14"   = "Deep WT | Clayey soil | Redprec",
+      "ducke_deep_sandy_redprec30_ks14"   = "Deep WT | Sandy soil | Redprec",
+      "ducke_deep_sandy_regclim_ks14"   = "Deep WT | Sandy soil | Regclim",
       "ducke_shallow_sandy_regclim_ks14"   = "Shallow WT | Sandy soil | Regclim",
-      "ducke_shallow_sandy_redprec30_ks14" = "Shallow WT | Sandy soil | Redprec"
+      "ducke_shallow_sandy_redprec30_ks14" = "Shallow WT | Sandy soil | Redprec",
+      "ducke_shallow_clayey_redprec30_ks14" = "Shallow WT | Clayey soil | Redprec",
+      "ducke_shallow_clayey_regclim_ks14" = "Shallow WT | Clayey soil | Regclim"
     )
   }
   
@@ -488,7 +594,7 @@ plot_trait_weighted_boxplot <- function(data,
       title   = paste0("Weighted ", trait_title, " distribution - ", dbh_label),
       x       = NULL,
       y       = y_label,
-      caption = "Boxes: 25th–75th percentile | Whiskers: 10th–90th percentile | ● Weighted mean
+      caption = "Boxes: 25th–75th percentile | Whiskers: 10th–90th percentile | ● Weighted mean"
     )
   
   if (save_plot) {

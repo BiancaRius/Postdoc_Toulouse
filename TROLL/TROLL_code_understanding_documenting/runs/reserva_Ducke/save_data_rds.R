@@ -5,6 +5,7 @@
 # Load required packages
 library(tidyverse)
 library(fs)
+library(dplyr)
 
 # ------------------------------------------------------------
 # 1. Define the main project directory
@@ -23,35 +24,44 @@ runs <- tibble(
     "ducke_deep_clayey_regclim_ks14",
     "ducke_deep_clayey_redprec30_ks14",
     "ducke_deep_sandy_redprec30_ks14",
+    "ducke_deep_sandy_regclim_ks14",
     "ducke_shallow_sandy_regclim_ks14",
-    "ducke_shallow_sandy_redprec30_ks14"
+    "ducke_shallow_sandy_redprec30_ks14",
+    "ducke_shallow_clayey_redprec30_ks14",
+    "ducke_shallow_clayey_regclim_ks14"
   ),
   output_dir = path(
     project_dir,
     c(
-      "deepWT_clayeysoil/ducke_deep_clayey_regclim_ks14/output",
-      "deepWT_clayeysoil/ducke_deep_clayey_redprec30_ks14/output",
-      "deepWT_sandysoil/ducke_deep_sandy_redprec30_ks14/output",
-      "shallowWT_sandysoil/ducke_shallow_sandy_regclim_ks14/output",
-      "shallowWT_sandysoil/ducke_shallow_sandy_redprec30_ks14/output"
+      "deepWT_clayeysoil/ducke_deep_clayey_regclim_ks14",
+      "deepWT_clayeysoil/ducke_deep_clayey_redprec30_ks14",
+      "deepWT_sandysoil/ducke_deep_sandy_redprec30_ks14",
+      "deepWT_sandysoil/ducke_deep_sandy_regclim_ks14",
+      "shallowWT_sandysoil/ducke_shallow_sandy_regclim_ks14",
+      "shallowWT_sandysoil/ducke_shallow_sandy_redprec30_ks14",
+      "shallowWT_clayeysoil/ducke_shallow_clayey_redprec30_ks14",
+      "shallowWT_clayeysoil/ducke_shallow_clayey_regclim_ks14"
     )
+  )  
+) %>%
+  mutate(
+    final_pattern_file = path(output_dir, "output")
   )
-)
 
 # ------------------------------------------------------------
-# 3. Helper function to safely find one output file
+# 3. Function to find one output file
 # ------------------------------------------------------------
 
 find_output_file <- function(output_dir, pattern, file_label) {
   
-  # Look for files matching the expected pattern
+  # Search for files that match the expected pattern
   files <- list.files(
     output_dir,
     pattern = pattern,
     full.names = TRUE
   )
   
-  # Stop the script if the file is missing
+  # Stop if the file does not exist
   if (length(files) == 0 || !file_exists(files[1])) {
     stop("Missing ", file_label, " file in: ", output_dir)
   }
@@ -61,55 +71,71 @@ find_output_file <- function(output_dir, pattern, file_label) {
 }
 
 # ------------------------------------------------------------
-# 4. Function to read one simulation folder
+# 4. Function to remove empty columns created by read_tsv()
+# ------------------------------------------------------------
+
+clean_output_columns <- function(df) {
+  
+  # Remove unnamed columns such as ...44
+  df %>%
+    select(-matches("^\\.\\.\\.[0-9]+$"))
+}
+
+# ------------------------------------------------------------
+# 5. Function to read one simulation folder
 # ------------------------------------------------------------
 
 read_simulation_data <- function(scenario, output_dir) {
   
-  # Find the three main output files
+  # Find water balance file
   file_wb <- find_output_file(
-    output_dir,
+    output_dir = output_dir,
     pattern = "water_balance\\.txt$",
     file_label = "water balance"
   )
   
+  # Find vertical water flux file
   file_vf <- find_output_file(
-    output_dir,
+    output_dir = output_dir,
     pattern = "vertical_water_flux\\.txt$",
     file_label = "vertical water flux"
   )
   
+  # Find biogeochemical summary file
   file_biog <- find_output_file(
-    output_dir,
+    output_dir = output_dir,
     pattern = "sumstats\\.txt$",
     file_label = "biogeochemical"
   )
   
-  # Read water balance data
+  # Read water balance output
   wb <- read_tsv(file_wb, show_col_types = FALSE) %>%
+    clean_output_columns() %>%
     mutate(
-      scenario = scenario,
       iter = as.numeric(iter),
+      scenario = scenario,
       year = floor(iter / 365) + 1
     )
   
-  # Read vertical flux data
+  # Read vertical flux output
   vf <- read_tsv(file_vf, show_col_types = FALSE) %>%
+    clean_output_columns() %>%
     mutate(
-      scenario = scenario,
       iter = as.numeric(iter),
+      scenario = scenario,
       year = floor(iter / 365) + 1
     )
   
-  # Read biogeochemical data
+  # Read biogeochemical output
   biog <- read_tsv(file_biog, show_col_types = FALSE) %>%
+    clean_output_columns() %>%
     mutate(
-      scenario = scenario,
       iter = as.numeric(iter),
+      scenario = scenario,
       year = floor(iter / 365) + 1
     )
   
-  # Return the three dataframes as a list
+  # Return the three outputs as a list
   list(
     wb = wb,
     vf = vf,
@@ -118,13 +144,13 @@ read_simulation_data <- function(scenario, output_dir) {
 }
 
 # ------------------------------------------------------------
-# 5. Read all simulations
+# 6. Read all simulations
 # ------------------------------------------------------------
 
 # Apply the reading function to all scenarios
 all_data <- map2(
   runs$scenario,
-  runs$output_dir,
+  runs$final_pattern_file,
   read_simulation_data
 )
 
@@ -133,11 +159,11 @@ df_water_balance <- map_dfr(all_data, "wb")
 df_vertical_flux <- map_dfr(all_data, "vf")
 df_biogem        <- map_dfr(all_data, "biog")
 
-# Remove temporary list to save memory
+# Remove temporary object
 rm(all_data)
 
 # ------------------------------------------------------------
-# 6. Create cache directory and save daily data
+# 7. Create cache directory and save daily dataframes
 # ------------------------------------------------------------
 
 cache_dir <- path(project_dir, "_rds")
@@ -152,15 +178,20 @@ saveRDS(df_biogem,        path(cache_dir, "df_biogem_daily.rds"))
 # ============================================================
 
 # ------------------------------------------------------------
-# 7. Water balance: layer variables
+# 8. Water balance annual data
 # ------------------------------------------------------------
 
-# Identify variables with layer information:
-# Examples: SWC_0, SWP_0, transpiration_0
+# Identify water balance variables that are specific to soil layers.
+# Examples:
+# SWC_0, SWC_1, SWP_0, SWP_1, transpiration_0, transpiration_1
 layer_vars_wb <- names(df_water_balance) %>%
   str_subset("^(SWC|SWP|transpiration)_[0-9]+$")
 
-# Convert layer variables from wide to long format
+# Convert water balance layer variables from wide to long format.
+# This creates:
+# - variable: SWC, SWP, or transpiration
+# - layer: soil layer number
+# - value: the value of the variable
 df_water_balance_annual <- df_water_balance %>%
   select(
     scenario,
@@ -193,41 +224,42 @@ df_water_balance_annual <- df_water_balance %>%
     .groups = "drop"
   )
 
+# Save annual water balance data
 saveRDS(
   df_water_balance_annual,
   path(cache_dir, "df_water_balance_annual.rds")
 )
 
 # ------------------------------------------------------------
-# 8. Vertical flux: interface variables
+# 9. Vertical flux annual data
 # ------------------------------------------------------------
 
-# Identify vertical flux variables that contain soil interface information.
+# Identify vertical flux variables between soil layers.
 # Examples:
 # mean_flux_layers0_1
 # mean_abs_flux_layers0_1
-# mean_delta_swp_layers0_1
-# mean_ks_harmonic_layers0_1
-#
-# The important part is that these names have:
-# <variable name>_layers<upper layer>_<lower layer>
+# gross_volumetric_change_layers0_1
+# net_volumetric_change_layers0_1
 interface_vars_vf <- names(df_vertical_flux) %>%
   str_subset("_layers[0-9]+_[0-9]+$")
 
-# Stop if no interface variables were found
+# Stop if no vertical flux interface variables were found
 if (length(interface_vars_vf) == 0) {
-  stop(
-    "No vertical flux interface variables were found. ",
-    "Check the column names in df_vertical_flux."
-  )
+  stop("No vertical flux interface variables were found.")
 }
 
-# Convert interface variables from wide to long format.
-# This is the corrected part:
-# - variable stores the name of the flux variable
-# - layer_upper stores the upper soil layer
-# - layer_lower stores the lower soil layer
-df_vertical_flux_interfaces_daily <- df_vertical_flux %>%
+# Convert vertical flux variables from wide to long format.
+# This is the important corrected step.
+#
+# Example:
+# gross_volumetric_change_layers0_1
+#
+# becomes:
+# variable    = gross_volumetric_change
+# layer_upper = 0
+# layer_lower = 1
+# interface   = 0_1
+df_vertical_flux_daily_long <- df_vertical_flux %>%
   select(
     scenario,
     iter,
@@ -243,89 +275,16 @@ df_vertical_flux_interfaces_daily <- df_vertical_flux %>%
   mutate(
     layer_upper = as.integer(layer_upper),
     layer_lower = as.integer(layer_lower),
-    interface = paste0(layer_upper, "_", layer_lower),
-    
-    # Keep this extra column because some plotting functions
-    # may still expect a column called metric.
-    metric = variable,
-    
-    # This identifies that these variables are layer-interface fluxes.
-    flux_group = "interface"
+    interface = paste0(layer_upper, "_", layer_lower)
   )
 
-# ------------------------------------------------------------
-# 9. Vertical flux: non-interface variables, if they exist
-# ------------------------------------------------------------
-
-# Some vertical flux outputs may also contain variables without layers.
-# Examples could be gross_volumetric_change, net_volumetric_change,
-# directionality, or similar variables.
-other_vf_vars <- names(df_vertical_flux) %>%
-  setdiff(c("scenario", "iter", "year", interface_vars_vf))
-
-# Keep only numeric non-interface variables
-other_vf_vars <- other_vf_vars[
-  map_lgl(df_vertical_flux[other_vf_vars], is.numeric)
-]
-
-# Convert non-interface vertical flux variables to long format.
-# If there are no such variables, create an empty dataframe.
-if (length(other_vf_vars) > 0) {
-  
-  df_vertical_flux_other_daily <- df_vertical_flux %>%
-    select(
-      scenario,
-      iter,
-      year,
-      all_of(other_vf_vars)
-    ) %>%
-    pivot_longer(
-      cols = all_of(other_vf_vars),
-      names_to = "variable",
-      values_to = "value"
-    ) %>%
-    mutate(
-      layer_upper = NA_integer_,
-      layer_lower = NA_integer_,
-      interface = NA_character_,
-      metric = variable,
-      flux_group = "whole_profile"
-    )
-  
-} else {
-  
-  df_vertical_flux_other_daily <- tibble(
-    scenario = character(),
-    iter = numeric(),
-    year = numeric(),
-    variable = character(),
-    value = numeric(),
-    layer_upper = integer(),
-    layer_lower = integer(),
-    interface = character(),
-    metric = character(),
-    flux_group = character()
-  )
-}
-
-# ------------------------------------------------------------
-# 10. Combine all vertical flux variables and aggregate by year
-# ------------------------------------------------------------
-
-# Combine interface and non-interface vertical flux variables
-df_vertical_flux_daily_long <- bind_rows(
-  df_vertical_flux_interfaces_daily,
-  df_vertical_flux_other_daily
-)
-
-# Aggregate vertical flux data by year
+# Aggregate vertical flux data by year.
+# The column 'variable' keeps the name of the flux variable.
 df_vertical_flux_annual <- df_vertical_flux_daily_long %>%
   group_by(
     scenario,
     year,
     variable,
-    metric,
-    flux_group,
     layer_upper,
     layer_lower,
     interface
@@ -340,6 +299,7 @@ df_vertical_flux_annual <- df_vertical_flux_daily_long %>%
     .groups = "drop"
   )
 
+# Save vertical flux data
 saveRDS(
   df_vertical_flux_daily_long,
   path(cache_dir, "df_vertical_flux_daily_long.rds")
@@ -351,19 +311,22 @@ saveRDS(
 )
 
 # ------------------------------------------------------------
-# 11. Biogeochemical variables
+# 10. Biogeochemical annual data
 # ------------------------------------------------------------
 
-# Identify all biogeochemical variables, excluding identifiers
+# Identify biogeochemical variables.
+# These are all numeric variables except identifiers.
 biogeochemical_vars <- names(df_biogem) %>%
   setdiff(c("scenario", "iter", "year"))
 
-# Keep only numeric variables
 biogeochemical_vars <- biogeochemical_vars[
   map_lgl(df_biogem[biogeochemical_vars], is.numeric)
 ]
 
-# Convert biogeochemical variables from wide to long format
+# Convert biogeochemical variables from wide to long format.
+# This creates:
+# - variable: name of the biogeochemical variable
+# - value: value of the variable
 df_biogem_annual <- df_biogem %>%
   select(
     scenario,
@@ -391,24 +354,29 @@ df_biogem_annual <- df_biogem %>%
     .groups = "drop"
   )
 
+# Save annual biogeochemical data
 saveRDS(
   df_biogem_annual,
   path(cache_dir, "df_biogeochemical_annual.rds")
 )
 
 # ------------------------------------------------------------
-# 12. Quick checks
+# 11. Simple checks
 # ------------------------------------------------------------
 
-# Check which vertical flux variables were saved
-print("Vertical flux variables saved:")
+# Check the variables saved in the vertical flux annual dataframe
+print("Vertical flux variables:")
 print(unique(df_vertical_flux_annual$variable))
 
+# Check the interfaces saved in the vertical flux annual dataframe
+print("Vertical flux interfaces:")
+print(unique(df_vertical_flux_annual$interface))
+
 # Check the first rows of the annual vertical flux dataframe
-print("Preview of annual vertical flux dataframe:")
+print("Preview of df_vertical_flux_annual:")
 print(head(df_vertical_flux_annual))
 
-# Check output files
+# Check where the files were saved
 print("RDS files saved in:")
 print(cache_dir)
 
