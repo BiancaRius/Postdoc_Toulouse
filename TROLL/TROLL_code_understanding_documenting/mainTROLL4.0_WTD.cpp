@@ -7959,7 +7959,7 @@ if (_WATER_RETENTION_CURVE==1) {
             // conductivity (Ks) based on the chosen water retention model.
             for (int l=0; l<nblayers_soil; l++) {
 
-                // Intermediate relative humidity for capillary rise calculation (dimensionless)
+                // Intermediate relative humidity for capillary rise calculation (dimensionless )
                 float theta_w_cap = (SWC3D[l][d]-Min_SWC[l])/(Max_SWC[l]-Min_SWC[l]);  
 
                 // Special condition for layers below the water table // BR
@@ -7967,7 +7967,7 @@ if (_WATER_RETENTION_CURVE==1) {
                         soil_phi3D_cap[l][d] = 0.0f;   // if there is saturation, soil water potential = 0 (soil water matric potential = 0)  
                         soil_phi3D[l][d] = soil_phi3D_cap[l][d]; // for output
                         theta_w_cap = 1.0f;            // if there is saturation, relative soil water content = 1                                       
-                        Ks_cap[l][d] = Ksat[l];        // if there is saturation, hydraulic conductivity = saturated hydraulic conductivity.  Ks_cap is stored in mm/s.   
+                        Ks_cap[l][d] = Ksat[l]* 1e-3f; // *1e-3f converts from mm/s to m/s. If there is saturation, hydraulic conductivity = saturated hydraulic conductivity. 
                         continue;
                 }
                 
@@ -7996,6 +7996,8 @@ if (_WATER_RETENTION_CURVE==1) {
 
                 // INCLUDE:  Checking sanity of calculated variables for capillary rise //BR
 }
+                //* 1e-3 is used to convert the units of Ks from mm/s to m/s, as the flux q_cap is calculated in m/s.
+                Ks_cap[l][d] = Ks_cap[l][d] * 1e-3f; // mm/s -> m/s
 
                 if(Ks_cap[l][d] < 1e-14) {
                     Ks_cap[l][d] = 1e-14; // BR changing the limit to avoid ks and ks harmonic = 0 and as a consequence to hydraulic locking
@@ -8016,8 +8018,7 @@ if (_WATER_RETENTION_CURVE==1) {
                 double k2d = static_cast<double>(Ks_cap[l+1][d]);
 
                 if (std::isfinite(k1d) && std::isfinite(k2d) && k1d > 0.0 && k2d > 0.0) {
-                    // Here Ks_cap_harmonic * 1e-3 is used to convert the units of Ks from mm/s to m/s, as the flux q_cap is calculated in m/s.
-                    Ks_cap_harmonic[l][d] = (static_cast<float>(std::sqrt(k1d * k2d)))*1e-3f;  // BR Using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
+                    Ks_cap_harmonic[l][d] = static_cast<float>(std::sqrt(k1d * k2d));  // BR Using geometric mean instead of harmonic mean to avoid hydraulic locking when one of the two conductivities is very low. The geometric mean is a common alternative to the harmonic mean in cases where one of the values can be very small, as it does not approach zero as rapidly as the harmonic mean does.
                     // double sum_k = k1d + k2d;
                     // Ks_cap_harmonic[l][d] = static_cast<float>((2.0 * k1d * k2d) / sum_k);
 
