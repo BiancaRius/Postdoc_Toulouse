@@ -7788,25 +7788,13 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
 
 } else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
             
-            // Throughfall (in) is available in m3
-            // First we calculate the volume of a layer
-            float voxel_area = sites_per_dcell * LH * LH;   // m2
-            float layer0_volume = voxel_area * layer_thickness_global[0]; // m3 soil
-
-            // Amount of water that layer 0 can receive in m3/m3
-            float receiv0 = std::max(0.0f, Max_SWC[0] - SWC3D[0][d]);
-            // Transform this amount in volume of water in m3
-            float receiv0_vol = receiv0  * layer0_volume;    // m3 water 
+            // Amount of water that layer 0 can receive in m3
+            float receiv_l0 = std::max(0.0f, Max_SWC[0] - SWC3D[0][d]);
             
             // Actual infiltration into layer 0, in m3 water
-            float infil0_vol = fminf(in, receiv0_vol);
+            float infil0_vol = fminf(in, receiv_l0);
 
-            // Update SWC in layer 0
-            if (layer0_volume > 0.0f) {
-                SWC3D[0][d] += infil0_vol / layer0_volume;
-            } else {
-                cout << "ERROR: layer0_volume <= 0 at d=" << d << endl;     
-            }
+            SWC3D[0][d] += infil0_vol;
 
              //Excess becomes runoff, in m3 water
             float excess_vol = in - infil0_vol;
@@ -7830,18 +7818,6 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                     << " at d=" << d
                     << ". Capping to Min_SWC[0]." << endl;
                 SWC3D[0][d] = Min_SWC[0];
-            }
-
-            // 12. Optional mass-balance check for this infiltration step
-            float mb_error = Throughfall[d] - infil0_vol - std::max(0.0f, excess_vol);
-
-            if (fabs(mb_error) > 1e-6f) {
-                cout << "WARNING infiltration mass balance error at d=" << d
-                    << " | Throughfall=" << Throughfall[d]
-                    << " | infil0_vol=" << infil0_vol
-                    << " | excess_vol=" << excess_vol
-                    << " | error=" << mb_error
-                    << endl;
             }
 
 
