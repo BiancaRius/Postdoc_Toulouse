@@ -7786,7 +7786,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
                 Leakage[d]=in;
 
 
-} else if (_UNIFIED_VERT_WATER_FLUX == 1){ // if the unified vertical water flux is enabled the water from throughfall only enters the 1st layer (layer 0)
+} else if (_UNIFIED_VERT_WATER_FLUX == 1){ // // In the unified vertical flux scheme, throughfall first enters only the top soil layer. Redistribution to deeper layers is handled later by the Darcy-based vertical flux routine.
             
             // Amount of water that layer 0 can receive in m3
             float receiv_l0 = std::max(0.0f, Max_SWC[0] - SWC3D[0][d]);
@@ -7813,6 +7813,7 @@ if (_UNIFIED_VERT_WATER_FLUX == 0) { // if the unified vertical water flux schem
             }
 
             if (SWC3D[0][d] < Min_SWC[0]) {
+                cout << "Warning: SWC3D[0][d] below Min_SWC after infiltration:" << endl;
                 cout << SWC3D[0][d]
                     << " is lower than Min_SWC[0]=" << Min_SWC[0]
                     << " at d=" << d
