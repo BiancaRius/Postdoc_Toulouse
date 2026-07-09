@@ -1963,7 +1963,7 @@ void Tree::Water_availability() {
     //t_root_depth=fminf(0.35*pow(t_dbh*100, 0.54), layer_depth[(nblayers_soil-1)]); // this is the allometry used in ED2-hydro, Xu et al. 2016, for evergreen trees, with one parameter, b1=root_depth(dbh=1cm), changed to correct the overall underestimation of tree rootdepth it leads to (cf. Smith-Martin et al. 2019 New phytol.). In absence of data on root depth (in general, and even more at the species level, see email with V. Freycon & B. Ferry january 20th 2020), this should probably be calibrated/fine-tuned.
     
     // Mimicking hypoxia (no roots can grow in the water table) // BR
-    t_root_depth=fminf(0.35*pow(t_dbh*100, 0.54), water_table_depth); 
+    t_root_depth=fminf(0.35*pow(t_dbh*100, 0.54), WTD); 
 
     float i_root_depth=1.0/t_root_depth;
     
