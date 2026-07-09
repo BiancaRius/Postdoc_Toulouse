@@ -22,13 +22,13 @@ project_dir <- path_expand("~/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understa
 runs <- tibble(
   scenario = c(
     "deepWT_clayey_regclim",
-    "test_short_term_newmac"
+    "deepWT_clayey_regclim_root_hypoxia_shortterm"
   ),
   output_dir = path(
     project_dir,
     c(
       "deepWT_clayey_regclim",
-      "test_short_term_newmac"
+      "deepWT_clayey_regclim_root_hypoxia_shortterm"
     ),
     "output"
   )
@@ -180,7 +180,7 @@ df_vertical_flux <- map(all_data, "vf") %>%
 
 target_scenarios <- c(
   "deepWT_clayey_regclim",
-  "test_short_term_newmac"
+  "deepWT_clayey_regclim_root_hypoxia_shortterm"
 )
 
 max_year_target <- 30

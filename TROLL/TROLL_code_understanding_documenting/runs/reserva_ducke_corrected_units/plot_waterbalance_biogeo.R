@@ -27,9 +27,7 @@ library(fs)
 # 2. Define directories
 # ============================================================
 
-project_dir <- path_expand(
-  "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/"
-)
+project_dir <- path_expand("~/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/")
 
 cache_dir <- path(project_dir, "_rds")
 
@@ -97,10 +95,10 @@ df_vertical_flux_annual <- read_optional_rds(
 )
 
 # ============================================================
-# 4.1. Keep only the first 500 simulation years
+# 4.1. Keep only the years you want to plot
 # ============================================================
 
-max_year_to_plot <- 500
+max_year_to_plot <- 30
 
 keep_first_years <- function(df, max_year) {
   
@@ -247,18 +245,29 @@ if (!is.null(df_water_balance_other_annual)) {
 # 5. Aesthetic options
 # ============================================================
 
+# scenario_colors <- c(
+#   "deepWT_clayey_regclim"     = "#1B6CA8",
+#   "deepWT_clayey_redprec"   = "#56B4E9",
+#   "shallowWT_sandy_regclim"   = "#CC5500",
+#   "shallowWT_sandy_redprec" = "#E8A268"
+# )
+
 scenario_colors <- c(
   "deepWT_clayey_regclim"     = "#1B6CA8",
-  "deepWT_clayey_redprec"   = "#56B4E9",
-  "shallowWT_sandy_regclim"   = "#CC5500",
-  "shallowWT_sandy_redprec" = "#E8A268"
+  "deepWT_clayey_regclim_root_hypoxia_shortterm"   = "#56B4E9"
 )
+
+
+# scenario_labels <- c(
+#   "deepWT_clayey_regclim"     = "Deep WT | Clayey soil | Regclim",
+#   "deepWT_clayey_redprec"   = "Deep WT | Clayey soil | Redprec" ,
+#   "shallowWT_sandy_regclim"   = "Shallow WT | Sandy soil | Regclim",
+#   "shallowWT_sandy_redprec" = "Shallow WT | Sandy soil | Redprec"
+# )
 
 scenario_labels <- c(
   "deepWT_clayey_regclim"     = "Deep WT | Clayey soil | Regclim",
-  "deepWT_clayey_redprec"   = "Deep WT | Clayey soil | Redprec" ,
-  "shallowWT_sandy_regclim"   = "Shallow WT | Sandy soil | Regclim",
-  "shallowWT_sandy_redprec" = "Shallow WT | Sandy soil | Redprec"
+  "deepWT_clayey_regclim_root_hypoxia_shortterm"   = "Deep WT | Clayey soil | regclimn hypoxia" 
 )
 
 comparison_subtitle <- "Mimicking reserva ducke `topography` "
