@@ -98,7 +98,7 @@ df_vertical_flux_annual <- read_optional_rds(
 # 4.1. Keep only the years you want to plot
 # ============================================================
 
-max_year_to_plot <- 30
+max_year_to_plot <- 150
 
 keep_first_years <- function(df, max_year) {
   
@@ -254,7 +254,7 @@ if (!is.null(df_water_balance_other_annual)) {
 
 scenario_colors <- c(
   "deepWT_clayey_regclim"     = "#1B6CA8",
-  "deepWT_clayey_regclim_root_hypoxia_shortterm"   = "#56B4E9"
+  "deepWT_clayey_regclim_root_hypoxia_longterm"   = "#56B4E9"
 )
 
 
@@ -267,7 +267,7 @@ scenario_colors <- c(
 
 scenario_labels <- c(
   "deepWT_clayey_regclim"     = "Deep WT | Clayey soil | Regclim",
-  "deepWT_clayey_regclim_root_hypoxia_shortterm"   = "Deep WT | Clayey soil | regclimn hypoxia" 
+  "deepWT_clayey_regclim_root_hypoxia_longterm"   = "Deep WT | Clayey soil | regclimn hypoxia" 
 )
 
 comparison_subtitle <- "Mimicking reserva ducke `topography` "
