@@ -1,18 +1,18 @@
-run_name: deepWT_clayey_regclim_root_hypoxia
-date: Thu Jul  9 11:15:10 -03 2026
+run_name: deepWT_regclim_root_hypoxia
+date: Thu Jul  9 11:20:48 -03 2026
 
-branch_dir: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim
+branch_dir: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia
 project_root: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting
 
-git_commit: 70a32dea1df12a65132b2620163b96ee8397b408
-git_commit_short: 70a32de
+git_commit: da8dfebf8624064ac2ec94aba2952c3274c49e94
+git_commit_short: da8dfeb
 git_branch: wip
 
-climate_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim/common_inputs/Paracou_input_climate.txt
-daily_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim/common_inputs/Paracou_input_daily.txt
-species_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim/common_inputs/Paracou_input_species.txt
-global_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim/common_inputs/Paracou_input_global.txt
-pedology_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim/common_inputs/Paracou_input_pedology.txt
+climate_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_climate.txt
+daily_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_daily.txt
+species_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_species.txt
+global_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_global.txt
+pedology_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_pedology.txt
 
 ========================
 GLOBAL FILE CONTENT
