@@ -13,9 +13,7 @@ library(dplyr)
 # 1. Define the main project directory
 # ------------------------------------------------------------
 
-project_dir <- path_expand(
-  "~/Desktop/Postdoc_Toulouse/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/"
-)
+project_dir <- path_expand("~/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/")
 
 # ------------------------------------------------------------
 # 2. Define the simulation scenarios and their output folders
@@ -24,17 +22,13 @@ project_dir <- path_expand(
 runs <- tibble(
   scenario = c(
     "deepWT_clayey_regclim",
-    "deepWT_clayey_redprec",
-    "shallowWT_sandy_regclim",
-    "shallowWT_sandy_redprec"
+    "test_short_term_newmac"
   ),
   output_dir = path(
     project_dir,
     c(
       "deepWT_clayey_regclim",
-      "deepWT_clayey_redprec",
-      "shallowWT_sandy_regclim",
-      "shallowWT_sandy_redprec"
+      "test_short_term_newmac"
     ),
     "output"
   )
@@ -185,11 +179,11 @@ df_vertical_flux <- map(all_data, "vf") %>%
 # ------------------------------------------------------------
 
 target_scenarios <- c(
-  "shallowWT_sandy_regclim",
-  "shallowWT_sandy_redprec"
+  "deepWT_clayey_regclim",
+  "test_short_term_newmac"
 )
 
-max_year_target <- 150
+max_year_target <- 30
 
 keep_first_years_target <- function(df, target_scenarios, max_year_target) {
   
@@ -535,3 +529,4 @@ if (!is.null(df_vertical_flux_annual)) {
 
 print("RDS files saved in:")
 print(cache_dir)
+
