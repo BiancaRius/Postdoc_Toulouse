@@ -1,18 +1,20 @@
-run_name: deepWT_regclim_root_hypoxia
-date: Thu Jul  9 11:20:48 -03 2026
+run_name: sandy_WTD_4
+soil: sandy
+date: Thu Jul  9 15:26:48 -03 2026
 
-branch_dir: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia
+soil_dir: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/fixed_soil_profile/sandy
+run_dir: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/fixed_soil_profile/sandy/sandy_WTD_4
 project_root: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting
 
-git_commit: da8dfebf8624064ac2ec94aba2952c3274c49e94
-git_commit_short: da8dfeb
+git_commit: dcb3ee56f31c7128908ae26e2901afd6dc09a81a
+git_commit_short: dcb3ee5
 git_branch: wip
 
-climate_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_climate.txt
-daily_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_daily.txt
-species_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_species.txt
-global_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_global.txt
-pedology_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/deepWT_clayey_regclim_root_hypoxia/common_inputs/Paracou_input_pedology.txt
+climate_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/fixed_soil_profile/sandy/common_inputs/Paracou_input_climate.txt
+daily_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/fixed_soil_profile/sandy/common_inputs/Paracou_input_daily.txt
+species_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/fixed_soil_profile/sandy/common_inputs/Paracou_input_species.txt
+global_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/fixed_soil_profile/sandy/sandy_WTD_4/Paracou_input_global.txt
+pedology_file: /Users/biancarius/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/fixed_soil_profile/sandy/common_inputs/Paracou_input_pedology.txt
 
 ========================
 GLOBAL FILE CONTENT
@@ -22,7 +24,7 @@ cols	100	/* nb of columns */
 rows	100	/* nb of rows  */
 HEIGHT	50	/* vertical extent of simulation */
 length_dcell	25	/* linear size of a dcell */
-nbiter	 10950	/* original value: 219000 total nb of timesteps (in days so X ans = X*365) */
+nbiter	 54750	/* original value: 219000 total nb of timesteps (in days so X ans = X*365) */
 NV	1	/* vertical nb of cells (nb per m) */
 NH	1	/* horizontal nb of cells (nb per m) */
 nbout	4	/* Number of outputs */
@@ -46,12 +48,12 @@ CR_a	1.8	/* CR log intercept or Michaelis Menten initial growth */
 CR_b	0.386	/* CR log slope or Michaelis Menten asymptotic CR */
 CD_a	0	/* CD intercept (absolute value) */
 CD_b	0.2	/* CD slope (as fraction of tree height) */
-CD0 	0.3	/* initial crown depth(in m) */
+CD0	0.3	/* initial crown depth(in m) */
 shape_crown	0.72	/* crown shape parameter */
 dens	1	/* initial leaf density (m^2/m^2) */
 fallocwood	0.35	/* fraction of biomass allocated to above ground wood (branch turnover+stem) */
 falloccanopy	0.25	/* fraction of biomass allocated to canopy (leaves + reproductive organs + twigs) */
-Cseedrain 50000/* (50000) constant used to scale total seed rain per hectare across species (in next computation) */
+Cseedrain	50000 /* (50000) constant used to scale total seed rain per hectare across species (in next computation) */
 nbs0	10	/* nb of seeds produced and dispersed by each mature tree when SEEDTRADEOFF is not defined */
 sigma_height	0.19	/* intraspecific variation in tree height (lognormal) */
 sigma_CR	0.29	/* intraspecific variation in crown radius (lognormal) */
@@ -75,7 +77,7 @@ m	0.035	/* minimal death rate */
 m1	0.035	/* m1 (slope of death rate) */
 Cair	375	/* atmospheric CO2 concentration in micromol/mol */
 PRESS	101	/* atmospheric pressure in kPa */
-WTD 	10 /* fixed water table depth 
+WTD 	4.0 /* fixed water table depth */
 _SOIL_LAYER_WEIGHT	2	/* soil layer weights: relative biomass, conductance, max transpiration (0,1, 2) */
 _WATER_RETENTION_CURVE	1	/* water retention curve (Brooks&Corey: 0; Van Genuchten Mualem: 1) */
 _WATER_TABLE 1 /* if _WATER_TABLE == 1, WTD implementation is considered */ 
@@ -98,9 +100,9 @@ extent_visual	0	/* extent for visualization output *
 PEDOLOGY FILE CONTENT
 ==========================
 layer_thickness	proportion_Silt	proportion_Clay	proportion_Sand	SOC	DBD	pH	CEC	...9
-0.1	2.64	60.09	37.27	2.54	1.125	3.84	2.97	NA
-0.5	2.64	60.09	37.27	2.54	1.125	3.84	2.97	NA
-1	2.64	60.09	37.27	2.54	1.125	3.84	2.97	NA
-2.4	2.64	60.09	37.27	2.54	1.125	3.84	2.97	NA
-6	2.64	60.09	37.27	2.54	1.125	3.84	2.97	NA
-10	2.64	60.09	37.27	2.54	1.125	3.84	2.97	NA
+0.1	13.25	21.5	65.25	2.37	1.04	4.34	2.98	NA
+0.5	13.25	21.5	65.25	2.37	1.04	4.34	2.98	NA
+1	13.25	21.5	65.25	2.37	1.04	4.34	2.98	NA
+2.4	13.25	21.5	65.25	2.37	1.04	4.34	2.98	NA
+6	13.25	21.5	65.25	2.37	1.04	4.34	2.98	NA
+10	13.25	21.5	65.25	2.37	1.04	4.34	2.98	NA
