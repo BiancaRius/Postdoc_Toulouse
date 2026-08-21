@@ -13,7 +13,7 @@ library(dplyr)
 # 1. Define the main project directory
 # ------------------------------------------------------------
 
-project_dir <- path_expand("~/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/reserva_ducke_corrected_units/")
+project_dir <- path_expand("~/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understanding_documenting/runs/fixed_soil_profile/sandy/")
 
 # ------------------------------------------------------------
 # 2. Define the simulation scenarios and their output folders
@@ -21,14 +21,15 @@ project_dir <- path_expand("~/Desktop/Postdoc_Toulouse/TROLL/TROLL_code_understa
 
 runs <- tibble(
   scenario = c(
-    "deepWT_clayey_regclim",
-    "deepWT_clayey_regclim_root_hypoxia_longterm"
-  ),
+    "sandy_WTD_0_6", 
+    "sandy_WTD_1_6", 
+    "sandy_WTD_4"),
   output_dir = path(
     project_dir,
     c(
-      "deepWT_clayey_regclim",
-      "deepWT_clayey_regclim_root_hypoxia_longterm"
+      "sandy_WTD_0_6", 
+      "sandy_WTD_1_6", 
+      "sandy_WTD_4"
     ),
     "output"
   )
@@ -179,11 +180,12 @@ df_vertical_flux <- map(all_data, "vf") %>%
 # ------------------------------------------------------------
 
 target_scenarios <- c(
-  "deepWT_clayey_regclim",
-  "deepWT_clayey_regclim_root_hypoxia_longterm"
+  "sandy_WTD_0_6", 
+  "sandy_WTD_1_6", 
+  "sandy_WTD_4"
 )
 
-max_year_target <- 150
+max_year_target <- 30
 
 keep_first_years_target <- function(df, target_scenarios, max_year_target) {
   
